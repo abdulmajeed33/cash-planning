@@ -205,28 +205,65 @@ investmentForm.addEventListener('submit', async function(e) {
     };
 
     try {
-        // Add investment to IndexedDB
-        await addData(STORES.investments, formData);
+        const investmentIdField = document.querySelector('input[name="investment-id"]');
         
-        // Also add to the investment chart's data
-        if (window.investmentChart && typeof window.investmentChart.addInvestment === 'function') {
-            await window.investmentChart.addInvestment(formData);
+        if (investmentIdField && investmentIdField.value) {
+            // Update existing investment
+            const id = parseInt(investmentIdField.value);
+            await updateInvestment(id, formData);
+            resetInvestmentForm();
+        } else {
+            // Add new investment
+            // Add date_added field for new investments
+            formData.date_added = new Date().toISOString();
+            await addData(STORES.investments, formData);
         }
         
-        investmentForm.reset();
+        // Also update the investment chart's data
+        if (window.investmentChart && typeof window.investmentChart.reloadData === 'function') {
+            window.investmentChart.reloadData();
+        }
+        
         loadInvestments();
-        
-        // Refresh the investment chart if it's visible
-        if (document.getElementById('investment-timeline').classList.contains('active')) {
-            if (window.investmentChart && typeof window.investmentChart.reloadData === 'function') {
-                window.investmentChart.reloadData();
-            }
-        }
     } catch (error) {
-        console.error('Error adding investment:', error);
-        alert('Failed to add investment. Please try again.');
+        console.error('Error managing investment:', error);
+        alert('Failed to save investment. Please try again.');
     }
 });
+
+// Function to update an existing investment
+async function updateInvestment(id, formData) {
+    // First get the existing investment to preserve the date_added
+    const transaction = db.transaction(STORES.investments, 'readonly');
+    const store = transaction.objectStore(STORES.investments);
+    
+    return new Promise((resolve, reject) => {
+        const request = store.get(id);
+        
+        request.onsuccess = async function(event) {
+            const existingInvestment = event.target.result;
+            if (existingInvestment) {
+                // Preserve the original date_added
+                formData.date_added = existingInvestment.date_added;
+                // Add the ID to ensure we update the correct record
+                formData.id = id;
+                
+                try {
+                    await updateData(STORES.investments, formData);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            } else {
+                reject(new Error(`Investment with ID ${id} not found`));
+            }
+        };
+        
+        request.onerror = function(event) {
+            reject(event.target.error);
+        };
+    });
+}
 
 // Land management
 const landForm = document.getElementById('land-form');
@@ -281,28 +318,65 @@ landForm.addEventListener('submit', async function(e) {
     };
 
     try {
-        // Add land to IndexedDB
-        await addData(STORES.lands, formData);
+        const landIdField = document.querySelector('input[name="land-id"]');
         
-        // Also add to the investment chart's data
-        if (window.investmentChart && typeof window.investmentChart.addLand === 'function') {
-            await window.investmentChart.addLand(formData);
+        if (landIdField && landIdField.value) {
+            // Update existing land
+            const id = parseInt(landIdField.value);
+            await updateLand(id, formData);
+            resetLandForm();
+        } else {
+            // Add new land
+            // Add date_added field for new lands
+            formData.date_added = new Date().toISOString();
+            await addData(STORES.lands, formData);
         }
         
-        landForm.reset();
+        // Also update the investment chart's data
+        if (window.investmentChart && typeof window.investmentChart.reloadData === 'function') {
+            window.investmentChart.reloadData();
+        }
+        
         loadLands();
-        
-        // Refresh the investment chart if it's visible
-        if (document.getElementById('investment-timeline').classList.contains('active')) {
-            if (window.investmentChart && typeof window.investmentChart.reloadData === 'function') {
-                window.investmentChart.reloadData();
-            }
-        }
     } catch (error) {
-        console.error('Error adding land:', error);
-        alert('Failed to add land. Please try again.');
+        console.error('Error managing land:', error);
+        alert('Failed to save land. Please try again.');
     }
 });
+
+// Function to update an existing land
+async function updateLand(id, formData) {
+    // First get the existing land to preserve the date_added
+    const transaction = db.transaction(STORES.lands, 'readonly');
+    const store = transaction.objectStore(STORES.lands);
+    
+    return new Promise((resolve, reject) => {
+        const request = store.get(id);
+        
+        request.onsuccess = async function(event) {
+            const existingLand = event.target.result;
+            if (existingLand) {
+                // Preserve the original date_added
+                formData.date_added = existingLand.date_added;
+                // Add the ID to ensure we update the correct record
+                formData.id = id;
+                
+                try {
+                    await updateData(STORES.lands, formData);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            } else {
+                reject(new Error(`Land with ID ${id} not found`));
+            }
+        };
+        
+        request.onerror = function(event) {
+            reject(event.target.error);
+        };
+    });
+}
 
 // Delete handlers
 document.addEventListener('click', async function(e) {
@@ -333,11 +407,155 @@ document.addEventListener('click', async function(e) {
 });
 
 // Add event handler for edit buttons (not implemented yet)
-document.addEventListener('click', function(e) {
+document.addEventListener('click', async function(e) {
     if (e.target.classList.contains('edit-btn')) {
         const id = parseInt(e.target.dataset.id);
         const type = e.target.closest('table').id === 'investments-table' ? 'investments' : 'lands';
         
-        alert(`Edit functionality for ${type} with ID ${id} is not implemented yet.`);
+        try {
+            // Get the item from IndexedDB
+            const db = await openDatabase();
+            const transaction = db.transaction([STORES[type]], 'readonly');
+            const store = transaction.objectStore(STORES[type]);
+            const request = store.get(id);
+            
+            request.onsuccess = function(event) {
+                const item = event.target.result;
+                if (item) {
+                    // Populate the form with the item's data
+                    if (type === 'investments') {
+                        populateInvestmentForm(item);
+                    } else {
+                        populateLandForm(item);
+                    }
+                } else {
+                    console.error(`Item with ID ${id} not found in ${type}`);
+                    alert(`Item not found. Please refresh the page and try again.`);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error getting item:', event.target.error);
+                alert('Failed to get item. Please try again.');
+            };
+        } catch (error) {
+            console.error('Error in edit process:', error);
+            alert('An error occurred. Please try again.');
+        }
     }
 });
+
+// Helper function to open the database
+function openDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('investmentTracker', 1);
+        request.onerror = function(event) {
+            reject(event.target.error);
+        };
+        request.onsuccess = function(event) {
+            resolve(event.target.result);
+        };
+    });
+}
+
+// Function to populate the investment form with existing data
+function populateInvestmentForm(investment) {
+    const form = document.getElementById('investment-form');
+    
+    document.getElementById('inv-name').value = investment.name;
+    document.getElementById('inv-size').value = investment.size;
+    document.getElementById('inv-share').value = investment.share_percentage;
+    document.getElementById('inv-debt').value = investment.debt_percentage;
+    
+    // Store the ID in a hidden field for update
+    if (!form.querySelector('input[name="investment-id"]')) {
+        const idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.name = 'investment-id';
+        form.appendChild(idField);
+    }
+    form.querySelector('input[name="investment-id"]').value = investment.id;
+    
+    // Change the submit button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.textContent = 'Update Investment';
+    
+    // Add a cancel button if not exists
+    if (!form.querySelector('button.cancel-edit')) {
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.className = 'cancel-edit';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = resetInvestmentForm;
+        submitButton.parentNode.insertBefore(cancelButton, submitButton.nextSibling);
+    }
+}
+
+// Function to populate the land form with existing data
+function populateLandForm(land) {
+    const form = document.getElementById('land-form');
+    
+    document.getElementById('land-name').value = land.land_name;
+    document.getElementById('land-size').value = land.size_sqm;
+    document.getElementById('land-price').value = land.price_per_sqm;
+    document.getElementById('land-debt').value = land.debt_percentage;
+    
+    // Store the ID in a hidden field for update
+    if (!form.querySelector('input[name="land-id"]')) {
+        const idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.name = 'land-id';
+        form.appendChild(idField);
+    }
+    form.querySelector('input[name="land-id"]').value = land.id;
+    
+    // Change the submit button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.textContent = 'Update Land';
+    
+    // Add a cancel button if not exists
+    if (!form.querySelector('button.cancel-edit')) {
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.className = 'cancel-edit';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = resetLandForm;
+        submitButton.parentNode.insertBefore(cancelButton, submitButton.nextSibling);
+    }
+}
+
+// Function to reset the investment form to add mode
+function resetInvestmentForm() {
+    const form = document.getElementById('investment-form');
+    form.reset();
+    
+    // Remove the hidden ID field if it exists
+    const idField = form.querySelector('input[name="investment-id"]');
+    if (idField) idField.value = '';
+    
+    // Reset the submit button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.textContent = 'Add Investment';
+    
+    // Remove the cancel button
+    const cancelButton = form.querySelector('button.cancel-edit');
+    if (cancelButton) cancelButton.remove();
+}
+
+// Function to reset the land form to add mode
+function resetLandForm() {
+    const form = document.getElementById('land-form');
+    form.reset();
+    
+    // Remove the hidden ID field if it exists
+    const idField = form.querySelector('input[name="land-id"]');
+    if (idField) idField.value = '';
+    
+    // Reset the submit button text
+    const submitButton = form.querySelector('button[type="submit"]');
+    submitButton.textContent = 'Add Land';
+    
+    // Remove the cancel button
+    const cancelButton = form.querySelector('button.cancel-edit');
+    if (cancelButton) cancelButton.remove();
+}
