@@ -1,72 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, width=device-width, initial-scale=1.0"
+    />
     <title>Financial Management</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="./css/investment-chart-style.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <!-- Add D3.js for the investment chart -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+  </head>
+  <body>
     <nav>
-        <button class="tab-button active" data-tab="data-entry">Data Entry</button>
+      <button class="tab-button active" data-tab="data-entry">
+        Data Entry
+      </button>
+      <button class="tab-button" data-tab="investment-timeline">
+        Investment Timeline
+      </button>
     </nav>
 
     <main>
-        <section id="data-entry" class="tab-content active">
-            <div class="investments-section">
-                <h2>Investments</h2>
-                <form id="investment-form">
-                    <input type="text" id="inv-name" placeholder="Investment Name" required>
-                    <input type="number" id="inv-size" placeholder="Size" required>
-                    <input type="number" id="inv-share" placeholder="Share %" required min="0" max="100">
-                    <input type="number" id="inv-debt" placeholder="Debt %" required min="0" max="100">
-                    <button type="submit">Add Investment</button>
-                </form>
-                <table id="investments-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Size</th>
-                            <th>Share %</th>
-                            <th>Debt %</th>
-                            <th>Investment Amount</th>
-                            <th>Debt Amount</th>
-                            <th>Cash Investment</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+      <section id="data-entry" class="tab-content active">
+        <div class="investments-section">
+          <h2>Investments</h2>
+          <form id="investment-form">
+            <input
+              type="text"
+              id="inv-name"
+              placeholder="Investment Name"
+              required
+            />
+            <input type="number" id="inv-size" placeholder="Size" required />
+            <input
+              type="number"
+              id="inv-share"
+              placeholder="Share %"
+              required
+              min="0"
+              max="100"
+            />
+            <input
+              type="number"
+              id="inv-debt"
+              placeholder="Debt %"
+              required
+              min="0"
+              max="100"
+            />
+            <button type="submit">Add Investment</button>
+          </form>
+          <table id="investments-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Share %</th>
+                <th>Debt %</th>
+                <th>Investment Amount</th>
+                <th>Debt Amount</th>
+                <th>Cash Investment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="lands-section">
+          <h2>Lands</h2>
+          <form id="land-form">
+            <input
+              type="text"
+              id="land-name"
+              placeholder="Land Name"
+              required
+            />
+            <input
+              type="number"
+              id="land-size"
+              placeholder="Size (sqm)"
+              required
+            />
+            <input
+              type="number"
+              id="land-price"
+              placeholder="Price per sqm"
+              required
+            />
+            <input
+              type="number"
+              id="land-debt"
+              placeholder="Debt %"
+              required
+              min="0"
+              max="100"
+            />
+            <button type="submit">Add Land</button>
+          </form>
+          <table id="lands-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Size (sqm)</th>
+                <th>Price/sqm</th>
+                <th>Debt %</th>
+                <th>Total Value</th>
+                <th>Debt Amount</th>
+                <th>Cash Injection</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="investment-timeline" class="tab-content">
+        <div class="container">
+          <div class="investment-section">
+            <h2>Investment Transactions</h2>
+            <div id="investment-legend" class="transaction-legend"></div>
+            <div class="chart-description">
+              This chart displays investment transactions over time.
+              Transactions include fund purchases/sales and land
+              purchases/sales. Click on a transaction in the chart to edit it.
             </div>
 
-            <div class="lands-section">
-                <h2>Lands</h2>
-                <form id="land-form">
-                    <input type="text" id="land-name" placeholder="Land Name" required>
-                    <input type="number" id="land-size" placeholder="Size (sqm)" required>
-                    <input type="number" id="land-price" placeholder="Price per sqm" required>
-                    <input type="number" id="land-debt" placeholder="Debt %" required min="0" max="100">
-                    <button type="submit">Add Land</button>
-                </form>
-                <table id="lands-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Size (sqm)</th>
-                            <th>Price/sqm</th>
-                            <th>Debt %</th>
-                            <th>Total Value</th>
-                            <th>Debt Amount</th>
-                            <th>Cash Injection</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            <div class="date-range-control">
+              <div class="date-inputs">
+                <div class="form-group">
+                  <label for="start-date">Start Date:</label>
+                  <input type="date" id="start-date" />
+                </div>
+                <div class="form-group">
+                  <label for="end-date">End Date:</label>
+                  <input type="date" id="end-date" />
+                </div>
+              </div>
+              <button id="apply-dates">Apply</button>
             </div>
-        </section>
+
+            <div id="investment-chart"></div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <script src="js/main.js"></script>
-</body>
+    <script src="./js/investment-chart.js"></script>
+  </body>
 </html>

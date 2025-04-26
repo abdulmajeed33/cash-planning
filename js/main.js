@@ -1,3 +1,14 @@
+// Tab functionality
+document.addEventListener('DOMContentLoaded', async function() {
+    // Tab functionality is now handled in investment-chart.js
+    
+    // Initial data load
+    await Promise.all([
+        loadInvestments(),
+        loadLands()
+    ]);
+});
+
 // API endpoints
 const API = {
     investments: '/api/investments',
@@ -157,12 +168,4 @@ document.addEventListener('click', async function(e) {
             }
         }
     }
-});
-
-// Initial load
-document.addEventListener('DOMContentLoaded', async function() {
-    await Promise.all([
-        loadInvestments(),
-        loadLands()
-    ]);
 });
