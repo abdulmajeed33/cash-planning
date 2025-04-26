@@ -761,6 +761,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function updateModalInvestmentOptions() {
     const select = document.getElementById("investment-name");
     if (!select) return;
+    
     // Clear existing options
     select.innerHTML = '';
     
@@ -1271,9 +1272,9 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("div")
         .attr("class", "no-data-message")
         .text(
-          "No investment transactions in the selected date range. Adjust the date range or add new transactions."
+          "No investment transactions in the selected date range. Click anywhere on the timeline below to add a new transaction."
         );
-      return;
+      // Continue rendering the chart instead of returning
     }
 
     // Create a timeline for investments at the top of the chart
@@ -1772,188 +1773,177 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-    // Now draw the bar chart below the timeline
-    // Sort transactions by date
-    const sortedTransactions = [...visibleTransactions].sort(
-      (a, b) => a.date - b.date
-    );
-
-    // Group transactions by date
-    const transactions = d3.groups(sortedTransactions, (d) => {
-      const date = d.date;
-      return `${date.getMonth() + 1}/${date.getDate()}/${date
-        .getFullYear()
-        .toString()
-        .substr(-2)}`;
-    });
-
-    // Set chart dimensions
-    const margin = { top: 20, right: 50, bottom: 80, left: 60 };
-    const width = 1000 - margin.left - margin.right;
-    const height = 300 - margin.top - margin.bottom;
-
-    // Create SVG for bar chart
-    const barChartSvg = d3
-      .select("#investment-chart")
-      .append("svg")
-      .attr("width", "100%")
-      .attr("height", height + margin.top + margin.bottom)
-      .attr(
-        "viewBox",
-        `0 0 ${width + margin.left + margin.right} ${
-          height + margin.top + margin.bottom
-        }`
-      )
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
-
-    // Create scales
-    const x = d3
-      .scaleBand()
-      .domain(transactions.map((d) => d[0]))
-      .range([0, width])
-      .padding(0.3);
-
-    // Get max value for y axis
-    const maxValue = d3.max(transactions, (d) => {
-      return d3.sum(d[1], (t) => Math.abs(t.amount));
-    });
-
-    const y = d3
-      .scaleLinear()
-      .domain([0, maxValue * 1.1]) // Add 10% padding
-      .range([height, 0]);
-
-    // Add X axis
-    barChartSvg
-      .append("g")
-      .attr("transform", `translate(0,${height})`)
-      .call(d3.axisBottom(x))
-      .selectAll("text")
-      .style("text-anchor", "end")
-      .attr("dx", "-.8em")
-      .attr("dy", ".15em")
-      .attr("transform", "rotate(-45)");
-
-    // Add Y axis
-    barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d}`));
-
-    // Draw stacked bars
-    transactions.forEach((transaction) => {
-      const date = transaction[0];
-      const entries = transaction[1];
-
-      let yPos = height;
-
-      // Group by investment type and transaction type
-      const byType = d3.groups(
-        entries,
-        (d) => `${d.investmentType}-${d.transactionType}`
+    // Now draw the bar chart below the timeline - only if we have transactions
+    if (visibleTransactions.length > 0) {
+      // Sort transactions by date
+      const sortedTransactions = [...visibleTransactions].sort(
+        (a, b) => a.date - b.date
       );
 
-      byType.forEach((group) => {
-        const type = group[0];
-        const items = group[1];
-
-        // Get total amount for this group
-        const totalAmount = d3.sum(items, (d) => Math.abs(d.amount));
-        const barHeight = height - y(totalAmount);
-
-        // Create group for each bar segment
-        const barGroup = barChartSvg
-          .append("g")
-          .attr("class", "investment-bar")
-          .attr("data-date", date)
-          .attr("data-type", type);
-
-        // Draw the bar segment
-        barGroup
-          .append("rect")
-          .attr("x", x(date))
-          .attr("y", yPos - barHeight)
-          .attr("width", x.bandwidth())
-          .attr("height", barHeight)
-          .attr("fill", color(type))
-          .attr("opacity", 0.8)
-          .on("mouseenter", function (event) {
-            // Show tooltip
-            tooltip.transition().duration(200).style("opacity", 0.9);
-
-            // Format the items for display
-            const itemsList = items
-              .map(
-                (item) =>
-                  `${item.name}: ${
-                    item.transactionType === "buy" ? "+" : "-"
-                  }$${Math.abs(item.amount)}`
-              )
-              .join("<br>");
-
-            tooltip
-              .html(
-                `
-              <strong>${date}</strong><br>
-              <strong>${
-                type.split("-")[0].charAt(0).toUpperCase() +
-                type.split("-")[0].slice(1)
-              } 
-              ${type.split("-")[1]}</strong><br>
-              Total: $${totalAmount}<br>
-              <hr style="margin: 5px 0; opacity: 0.3">
-              ${itemsList}
-            `
-              )
-              .style("left", event.pageX + 10 + "px")
-              .style("top", event.pageY - 28 + "px");
-          })
-          .on("mouseleave", function () {
-            tooltip.transition().duration(500).style("opacity", 0);
-          })
-          .on("click", function () {
-            // When clicked, open the modal to edit the transaction
-            // For simplicity, just open it with the first item in this group
-            if (items.length > 0) {
-              showTransactionModal(items[0].date, items[0]);
-            }
-          });
-
-        // Update position for next segment
-        yPos -= barHeight;
+      // Group transactions by date
+      const transactions = d3.groups(sortedTransactions, (d) => {
+        const date = d.date;
+        return `${date.getMonth() + 1}/${date.getDate()}/${date
+          .getFullYear()
+          .toString()
+          .substr(-2)}`;
       });
-    });
 
-    // Add X axis label
-    barChartSvg
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("x", width / 2)
-      .attr("y", height + margin.bottom - 5)
-      .text("Transaction Date")
-      .style("font-size", "12px");
+      // Set chart dimensions
+      const margin = { top: 20, right: 50, bottom: 80, left: 60 };
+      const width = 1000 - margin.left - margin.right;
+      const height = 300 - margin.top - margin.bottom;
 
-    // Add Y axis label
-    barChartSvg
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("transform", "rotate(-90)")
-      .attr("y", -margin.left + 15)
-      .attr("x", -height / 2)
-      .text("Amount ($)")
-      .style("font-size", "12px");
+      // Create SVG for bar chart
+      const barChartSvg = d3
+        .select("#investment-chart")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", height + margin.top + margin.bottom)
+        .attr(
+          "viewBox",
+          `0 0 ${width + margin.left + margin.right} ${
+            height + margin.top + margin.bottom
+          }`
+        )
+        .attr("preserveAspectRatio", "xMidYMid meet")
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Update total payroll and annual projection in header
-    // const monthlySumPayroll = Math.round(
-    //   transactionData.reduce((sum, t) => sum + Math.abs(t.amount), 0)
-    // );
-    // document.getElementById(
-    //   "total-payroll"
-    // ).textContent = `Total monthly investment: $${monthlySumPayroll.toLocaleString()}`;
+      // Create scales
+      const x = d3
+        .scaleBand()
+        .domain(transactions.map((d) => d[0]))
+        .range([0, width])
+        .padding(0.3);
 
-    // const annualProjection = calculateAnnualProjection();
-    // document.getElementById(
-    //   "annual-projection"
-    // ).textContent = `Annual projection: $${annualProjection.toLocaleString()}`;
+      // Get max value for y axis
+      const maxValue = d3.max(transactions, (d) => {
+        return d3.sum(d[1], (t) => Math.abs(t.amount));
+      });
+
+      const y = d3
+        .scaleLinear()
+        .domain([0, maxValue * 1.1]) // Add 10% padding
+        .range([height, 0]);
+
+      // Add X axis
+      barChartSvg
+        .append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .style("text-anchor", "end")
+        .attr("dx", "-.8em")
+        .attr("dy", ".15em")
+        .attr("transform", "rotate(-45)");
+
+      // Add Y axis
+      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d}`));
+
+      // Draw stacked bars
+      transactions.forEach((transaction) => {
+        const date = transaction[0];
+        const entries = transaction[1];
+
+        let yPos = height;
+
+        // Group by investment type and transaction type
+        const byType = d3.groups(
+          entries,
+          (d) => `${d.investmentType}-${d.transactionType}`
+        );
+
+        byType.forEach((group) => {
+          const type = group[0];
+          const items = group[1];
+
+          // Get total amount for this group
+          const totalAmount = d3.sum(items, (d) => Math.abs(d.amount));
+          const barHeight = height - y(totalAmount);
+
+          // Create group for each bar segment
+          const barGroup = barChartSvg
+            .append("g")
+            .attr("class", "investment-bar")
+            .attr("data-date", date)
+            .attr("data-type", type);
+
+          // Draw the bar segment
+          barGroup
+            .append("rect")
+            .attr("x", x(date))
+            .attr("y", yPos - barHeight)
+            .attr("width", x.bandwidth())
+            .attr("height", barHeight)
+            .attr("fill", color(type))
+            .attr("opacity", 0.8)
+            .on("mouseenter", function (event) {
+              // Show tooltip
+              tooltip.transition().duration(200).style("opacity", 0.9);
+
+              // Format the items for display
+              const itemsList = items
+                .map(
+                  (item) =>
+                    `${item.name}: ${
+                      item.transactionType === "buy" ? "+" : "-"
+                    }$${Math.abs(item.amount)}`
+                )
+                .join("<br>");
+
+              tooltip
+                .html(
+                  `
+                <strong>${date}</strong><br>
+                <strong>${
+                  type.split("-")[0].charAt(0).toUpperCase() +
+                  type.split("-")[0].slice(1)
+                } 
+                ${type.split("-")[1]}</strong><br>
+                Total: $${totalAmount}<br>
+                <hr style="margin: 5px 0; opacity: 0.3">
+                ${itemsList}
+              `
+                )
+                .style("left", event.pageX + 10 + "px")
+                .style("top", event.pageY - 28 + "px");
+            })
+            .on("mouseleave", function () {
+              tooltip.transition().duration(500).style("opacity", 0);
+            })
+            .on("click", function () {
+              // When clicked, open the modal to edit the transaction
+              // For simplicity, just open it with the first item in this group
+              if (items.length > 0) {
+                showTransactionModal(items[0].date, items[0]);
+              }
+            });
+
+          // Update position for next segment
+          yPos -= barHeight;
+        });
+      });
+
+      // Add X axis label
+      barChartSvg
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + margin.bottom - 5)
+        .text("Transaction Date")
+        .style("font-size", "12px");
+
+      // Add Y axis label
+      barChartSvg
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left + 15)
+        .attr("x", -height / 2)
+        .text("Amount ($)")
+        .style("font-size", "12px");
+    }
   }
 
   // Function to show transaction modal
