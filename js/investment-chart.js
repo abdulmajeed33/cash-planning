@@ -23,6 +23,304 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
     
+  // IndexedDB setup
+  const DB_NAME = 'investmentTracker';
+  const DB_VERSION = 1;
+  const STORES = {
+    investments: 'investments',
+    lands: 'lands',
+    transactions: 'transactions'
+  };
+  
+  let db;
+  
+  // Initialize the database
+  function initDatabase() {
+    return new Promise((resolve, reject) => {
+      // First check if db is already initialized (could be initialized by main.js)
+      if (db) {
+        console.log('Database already initialized, using existing connection');
+        resolve(db);
+        return;
+      }
+      
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onerror = event => {
+        console.error('IndexedDB error:', event.target.error);
+        reject('Error opening database');
+      };
+      
+      request.onsuccess = event => {
+        db = event.target.result;
+        console.log('Database initialized successfully');
+        resolve(db);
+      };
+      
+      request.onupgradeneeded = event => {
+        const db = event.target.result;
+        
+        // Create object stores
+        if (!db.objectStoreNames.contains(STORES.investments)) {
+          const investmentsStore = db.createObjectStore(STORES.investments, { keyPath: 'id', autoIncrement: true });
+          investmentsStore.createIndex('name', 'name', { unique: false });
+        }
+        
+        if (!db.objectStoreNames.contains(STORES.lands)) {
+          const landsStore = db.createObjectStore(STORES.lands, { keyPath: 'id', autoIncrement: true });
+          landsStore.createIndex('land_name', 'land_name', { unique: false });
+        }
+        
+        if (!db.objectStoreNames.contains(STORES.transactions)) {
+          const transactionsStore = db.createObjectStore(STORES.transactions, { keyPath: 'id', autoIncrement: true });
+          transactionsStore.createIndex('entity_id', 'entity_id', { unique: false });
+          transactionsStore.createIndex('transaction_date', 'transaction_date', { unique: false });
+        }
+        
+        console.log('Database schema created');
+      };
+    });
+  }
+  
+  // Check if database is empty and add sample data if needed
+  async function seedDatabaseIfEmpty() {
+    try {
+      const investments = await getAllData(STORES.investments);
+      const lands = await getAllData(STORES.lands);
+      
+      if (investments.length === 0 && lands.length === 0) {
+        console.log('Database is empty, adding sample data...');
+        await seedSampleData();
+      } else {
+        console.log('Database already has data, skipping seed');
+      }
+    } catch (error) {
+      console.error('Error checking database:', error);
+    }
+  }
+  
+  // Add sample data to database
+  async function seedSampleData() {
+    // Sample investments
+    const sampleInvestments = [
+      {
+        id: 1,
+        name: 'Tech Growth Fund',
+        size: '500000',
+        share_percentage: '15',
+        investment_amount: '75000',
+        debt_percentage: '20',
+        debt_amount: '15000',
+        cash_investment: '60000'
+      },
+      {
+        id: 2,
+        name: 'Renewable Energy Fund',
+        size: '750000',
+        share_percentage: '10',
+        investment_amount: '75000',
+        debt_percentage: '30',
+        debt_amount: '22500',
+        cash_investment: '52500'
+      }
+    ];
+    
+    // Sample lands
+    const sampleLands = [
+      {
+        id: 1,
+        land_name: 'Downtown Land',
+        size_sqm: '1200',
+        price_per_sqm: '500',
+        value: '600000',
+        debt_percentage: '40',
+        debt_amount: '240000',
+        cash_injection: '360000'
+      },
+      {
+        id: 2,
+        land_name: 'Suburban Land',
+        size_sqm: '5000',
+        price_per_sqm: '100',
+        value: '500000',
+        debt_percentage: '25',
+        debt_amount: '125000',
+        cash_injection: '375000'
+      }
+    ];
+    
+    // Sample transactions
+    const currentYear = new Date().getFullYear();
+    const sampleTransactions = [
+      {
+        id: 1,
+        entity_id: 1,
+        entity_type: 'investment',
+        transaction_type: 'buy',
+        amount: '30000',
+        transaction_date: new Date(currentYear, 1, 15),
+        notes: 'Initial investment'
+      },
+      {
+        id: 2,
+        entity_id: 1,
+        entity_type: 'investment',
+        transaction_type: 'buy',
+        amount: '20000',
+        transaction_date: new Date(currentYear, 3, 10),
+        notes: 'Additional investment'
+      },
+      {
+        id: 3,
+        entity_id: 2,
+        entity_type: 'investment',
+        transaction_type: 'buy',
+        amount: '50000',
+        transaction_date: new Date(currentYear, 5, 20),
+        notes: 'Initial investment'
+      },
+      {
+        id: 4,
+        entity_id: 1,
+        entity_type: 'land',
+        transaction_type: 'buy',
+        amount: '120000',
+        transaction_date: new Date(currentYear, 2, 8),
+        notes: 'Land acquisition'
+      },
+      {
+        id: 5,
+        entity_id: 1,
+        entity_type: 'investment',
+        transaction_type: 'sale',
+        amount: '15000',
+        transaction_date: new Date(currentYear, 7, 12),
+        notes: 'Partial exit'
+      }
+    ];
+    
+    // Add all sample data to database
+    try {
+      await Promise.all([
+        ...sampleInvestments.map(inv => addData(STORES.investments, inv)),
+        ...sampleLands.map(land => addData(STORES.lands, land)),
+        ...sampleTransactions.map(tx => addData(STORES.transactions, tx))
+      ]);
+      console.log('Sample data added successfully');
+    } catch (error) {
+      console.error('Error adding sample data:', error);
+    }
+  }
+  
+  // Generic function to add data to a store
+  function addData(storeName, data) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      
+      const request = store.add(data);
+      
+      request.onsuccess = event => {
+        resolve(event.target.result);
+      };
+      
+      request.onerror = event => {
+        console.error(`Error adding data to ${storeName}:`, event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+  
+  // Generic function to get all data from a store
+  function getAllData(storeName) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      
+      const request = store.getAll();
+      
+      request.onsuccess = event => {
+        resolve(event.target.result);
+      };
+      
+      request.onerror = event => {
+        console.error(`Error getting data from ${storeName}:`, event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+  
+  // Generic function to update data in a store
+  function updateData(storeName, data) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      
+      const request = store.put(data);
+      
+      request.onsuccess = event => {
+        resolve(event.target.result);
+      };
+      
+      request.onerror = event => {
+        console.error(`Error updating data in ${storeName}:`, event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+  
+  // Generic function to delete data from a store
+  function deleteData(storeName, id) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      
+      const request = store.delete(id);
+      
+      request.onsuccess = event => {
+        resolve();
+      };
+      
+      request.onerror = event => {
+        console.error(`Error deleting data from ${storeName}:`, event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+  
+  // Replace the API fetch functions with IndexedDB functions
+  async function fetchInvestments() {
+    try {
+      return await getAllData(STORES.investments);
+    } catch (error) {
+      console.error('Error fetching investments:', error);
+      return [];
+    }
+  }
+  
+  async function fetchLands() {
+    try {
+      return await getAllData(STORES.lands);
+    } catch (error) {
+      console.error('Error fetching lands:', error);
+      return [];
+    }
+  }
+  
+  async function fetchTransactions() {
+    try {
+      const transactions = await getAllData(STORES.transactions);
+      // Ensure transaction_date is a Date object
+      return transactions.map(tx => ({
+        ...tx,
+        transaction_date: new Date(tx.transaction_date)
+      }));
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      return [];
+    }
+  }
+  
   // Date formatting utilities
   const dateFormat = d3.timeFormat("%b %d, %Y");
   const inputDateFormat = d3.timeFormat("%Y-%m-%d");
@@ -152,136 +450,394 @@ document.addEventListener("DOMContentLoaded", function () {
     updateDateRange();
   }
 
-  // Investment data array
-  const investmentData = [
-    {
-      name: "Fund 1",
-      val1: 70.0,
-      val2: "25%",
-      val3: 17.5,
-      val4: "80%",
-      val5: 14.0,
-      val6: 3.5,
-    },
-    {
-      name: "Fund 2",
-      val1: 70.0,
-      val2: "25%",
-      val3: 17.5,
-      val4: "50%",
-      val5: 8.8,
-      val6: 8.8,
-    },
-    {
-      name: "Fund 3",
-      val1: 70.0,
-      val2: "25%",
-      val3: 17.5,
-      val4: "80%",
-      val5: 14.0,
-      val6: 3.5,
-    },
-    {
-      name: "Fund 4",
-      val1: 70.0,
-      val2: "25%",
-      val3: 17.5,
-      val4: "80%",
-      val5: 14.0,
-      val6: 3.5,
-    },
-    {
-      name: "Land 1",
-      val1: 1000,
-      val2: 2500,
-      val3: 3500.0,
-      val4: "80%",
-      val5: 2800.0,
-      val6: 700.0,
-    },
-    {
-      name: "Land 2",
-      val1: 1000,
-      val2: 2500,
-      val3: 3500.0,
-      val4: "80%",
-      val5: 2800.0,
-      val6: 700.0,
-    },
-    {
-      name: "Land 3",
-      val1: 1000,
-      val2: 2500,
-      val3: 3500.0,
-      val4: "80%",
-      val5: 2800.0,
-      val6: 700.0,
-    },
-    {
-      name: "Land 4",
-      val1: 1000,
-      val2: 2500,
-      val3: 3500.0,
-      val4: "80%",
-      val5: 2800.0,
-      val6: 700.0,
-    },
-  ];
+  // Investment data array - now can be dynamically updated
+  let investmentData = [];
+  
+  // Transaction data array - now can be dynamically updated
+  let transactionData = [];
 
-  // Transaction data array
-  let transactionData = [
-    {
-      name: "Fund 1",
-      investmentType: "fund",
-      transactionType: "buy",
-      amount: 1000,
-      date: new Date(2025, 0, 15), // Jan 15, 2021
-    },
-    {
-      name: "Land 1",
-      investmentType: "land",
-      transactionType: "buy",
-      amount: 5000,
-      date: new Date(2025, 2, 12), // Mar 12, 2025
-    },
-    {
-      name: "Fund 1",
-      investmentType: "fund",
-      transactionType: "sale",
-      amount: -800,
-      date: new Date(2025, 5, 18), // Jun 18, 2025
-    },
-    {
-      name: "Land 2",
-      investmentType: "land",
-      transactionType: "buy",
-      amount: 3500,
-      date: new Date(2025, 7, 5), // Aug 5, 2025
-    },
-    {
-      name: "Fund 2",
-      investmentType: "fund",
-      transactionType: "buy",
-      amount: 2000,
-      date: new Date(2025, 8, 22), // Sep 22, 2021
-    },
-    {
-      name: "Land 1",
-      investmentType: "land",
-      transactionType: "sale",
-      amount: -6000,
-      date: new Date(2021, 10, 10), // Nov 10, 2021
-    },
-  ];
-
-  // Convert string dates to Date objects in transaction data
-  transactionData = transactionData.map((transaction) => {
-    if (typeof transaction.date === "string") {
-      transaction.date =
-        transactionDateParse(transaction.date) || new Date(transaction.date);
+  // Function to fetch all required data for the investment chart
+  async function fetchChartData() {
+    try {
+      console.log("Fetching chart data from IndexedDB...");
+      
+      // Ensure database is initialized
+      if (!db) {
+        await initDatabase();
+        await seedDatabaseIfEmpty();
+      }
+      
+      // Fetch investments, lands, and transactions in parallel
+      const [investments, lands, transactions] = await Promise.all([
+        fetchInvestments(),
+        fetchLands(),
+        fetchTransactions()
+      ]);
+      
+      console.log("Investments:", investments);
+      console.log("Lands:", lands);
+      console.log("Transactions:", transactions);
+      
+      // Map investments to the expected format
+      const mappedInvestments = investments.map(inv => ({
+        id: inv.id,
+        name: inv.name,
+        val1: parseFloat(inv.size),
+        val2: `${inv.share_percentage}%`,
+        val3: parseFloat(inv.investment_amount),
+        val4: `${inv.debt_percentage}%`,
+        val5: parseFloat(inv.debt_amount),
+        val6: parseFloat(inv.cash_investment)
+      }));
+      
+      // Map lands to the expected format
+      const mappedLands = lands.map(land => ({
+        id: land.id,
+        name: land.land_name,
+        val1: parseFloat(land.size_sqm),
+        val2: parseFloat(land.price_per_sqm),
+        val3: parseFloat(land.value),
+        val4: `${land.debt_percentage}%`,
+        val5: parseFloat(land.debt_amount),
+        val6: parseFloat(land.cash_injection)
+      }));
+      
+      // Combine investments and lands
+      const combinedInvestmentData = [...mappedInvestments, ...mappedLands];
+      console.log("Combined investment data:", combinedInvestmentData);
+      
+      // Map transactions to the expected format
+      const mappedTransactions = transactions.map(tx => {
+        const isInvestmentType = tx.entity_type === 'investment';
+        
+        // Find the related entity
+        const relatedEntity = isInvestmentType 
+          ? mappedInvestments.find(inv => inv.id === tx.entity_id)
+          : mappedLands.find(land => land.id === tx.entity_id);
+        
+        const name = relatedEntity ? relatedEntity.name : `Unknown ${tx.entity_type} (ID: ${tx.entity_id})`;
+        
+        return {
+          id: tx.id,
+          entity_id: tx.entity_id,
+          name: name,
+          investmentType: tx.entity_type === 'investment' ? 'fund' : 'land',
+          transactionType: tx.transaction_type,
+          amount: parseFloat(tx.amount),
+          date: new Date(tx.transaction_date),
+          notes: tx.notes
+        };
+      });
+      
+      console.log("Mapped transactions:", mappedTransactions);
+      
+      // Update the chart data
+      window.investmentChart.setInvestmentData(combinedInvestmentData);
+      window.investmentChart.setTransactionData(mappedTransactions);
+      
+      return { investments: combinedInvestmentData, transactions: mappedTransactions };
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+      return { investments: [], transactions: [] };
     }
-    return transaction;
-  });
+  }
+  
+  // Expose these functions to the global scope to allow for dynamic data loading
+  window.investmentChart = {
+    // Function to update investment data
+    setInvestmentData: function(newData) {
+      investmentData = newData;
+      // If modal exists, update its investment options
+      updateModalInvestmentOptions();
+      return this; // For chaining
+    },
+    
+    // Function to update transaction data
+    setTransactionData: function(newData) {
+      // Process incoming transaction data to ensure dates are Date objects
+      transactionData = newData.map((transaction) => {
+        if (typeof transaction.date === "string") {
+          transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+        }
+        return transaction;
+      });
+      
+      // Refresh visualization if it's already initialized
+      if (document.querySelector("#investment-chart svg")) {
+        updateInvestmentVisualization();
+      }
+      return this; // For chaining
+    },
+    
+    // Function to add a single transaction
+    addTransaction: async function(transaction) {
+      // Process date if it's a string
+      if (typeof transaction.date === "string") {
+        transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+      }
+      
+      // Format transaction for IndexedDB
+      const dbTransaction = {
+        entity_id: transaction.entity_id,
+        entity_type: transaction.investmentType === 'fund' ? 'investment' : 'land',
+        transaction_type: transaction.transactionType,
+        amount: transaction.amount.toString(),
+        transaction_date: transaction.date,
+        notes: transaction.notes || ''
+      };
+      
+      // If it has an ID, it's an update
+      if (transaction.id) {
+        dbTransaction.id = transaction.id;
+        await updateData(STORES.transactions, dbTransaction);
+      } else {
+        // Add to database
+        const newId = await addData(STORES.transactions, dbTransaction);
+        transaction.id = newId;
+      }
+      
+      // Add to local array
+      transactionData.push(transaction);
+      
+      // Refresh visualization if it's already initialized
+      if (document.querySelector("#investment-chart svg")) {
+        updateInvestmentVisualization();
+      }
+      return this; // For chaining
+    },
+    
+    // Function to update a transaction
+    updateTransaction: async function(transaction) {
+      // Find the transaction in our array
+      const index = transactionData.findIndex(t => t.id === transaction.id);
+      
+      if (index >= 0) {
+        // Process date if it's a string
+        if (typeof transaction.date === "string") {
+          transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+        }
+        
+        // Update in memory
+        transactionData[index] = transaction;
+        
+        // Format transaction for IndexedDB
+        const dbTransaction = {
+          id: transaction.id,
+          entity_id: transaction.entity_id,
+          entity_type: transaction.investmentType === 'fund' ? 'investment' : 'land',
+          transaction_type: transaction.transactionType,
+          amount: transaction.amount.toString(),
+          transaction_date: transaction.date,
+          notes: transaction.notes || ''
+        };
+        
+        // Update in database
+        await updateData(STORES.transactions, dbTransaction);
+        
+        // Refresh visualization
+        updateInvestmentVisualization();
+      }
+      
+      return this; // For chaining
+    },
+    
+    // Function to remove a transaction by ID
+    removeTransaction: async function(idOrIndex) {
+      let id, index;
+      
+      if (typeof idOrIndex === 'object' && idOrIndex.id) {
+        id = idOrIndex.id;
+        index = transactionData.findIndex(t => t.id === id);
+      } else if (typeof idOrIndex === 'number') {
+        index = idOrIndex;
+        id = transactionData[index]?.id;
+      }
+      
+      if (index >= 0 && index < transactionData.length && id) {
+        // Remove from array
+        transactionData.splice(index, 1);
+        
+        // Remove from database
+        await deleteData(STORES.transactions, id);
+        
+        // Refresh visualization
+        updateInvestmentVisualization();
+      }
+      
+      return this; // For chaining
+    },
+    
+    // Method to initialize or refresh the chart
+    refreshChart: function() {
+      updateInvestmentVisualization();
+      return this; // For chaining
+    },
+    
+    // Get current data
+    getInvestmentData: function() {
+      return [...investmentData];
+    },
+    
+    getTransactionData: function() {
+      return [...transactionData];
+    },
+    
+    // Method to reload data from IndexedDB
+    reloadData: async function() {
+      await fetchChartData();
+      return this; // For chaining
+    },
+    
+    // Add new investment to IndexedDB
+    addInvestment: async function(investment) {
+      // Format for database
+      const dbInvestment = {
+        name: investment.name,
+        size: investment.size.toString(),
+        share_percentage: investment.share_percentage.toString(),
+        investment_amount: investment.investment_amount.toString(),
+        debt_percentage: investment.debt_percentage.toString(),
+        debt_amount: investment.debt_amount.toString(),
+        cash_investment: investment.cash_investment.toString()
+      };
+      
+      // Add to database
+      const newId = await addData(STORES.investments, dbInvestment);
+      
+      // Add to memory with proper format
+      const newInvestment = {
+        id: newId,
+        name: investment.name,
+        val1: parseFloat(investment.size),
+        val2: `${investment.share_percentage}%`,
+        val3: parseFloat(investment.investment_amount),
+        val4: `${investment.debt_percentage}%`,
+        val5: parseFloat(investment.debt_amount),
+        val6: parseFloat(investment.cash_investment)
+      };
+      
+      investmentData.push(newInvestment);
+      updateModalInvestmentOptions();
+      
+      return newId;
+    },
+    
+    // Add new land to IndexedDB
+    addLand: async function(land) {
+      // Format for database
+      const dbLand = {
+        land_name: land.land_name,
+        size_sqm: land.size_sqm.toString(),
+        price_per_sqm: land.price_per_sqm.toString(),
+        value: land.value.toString(),
+        debt_percentage: land.debt_percentage.toString(),
+        debt_amount: land.debt_amount.toString(),
+        cash_injection: land.cash_injection.toString()
+      };
+      
+      // Add to database
+      const newId = await addData(STORES.lands, dbLand);
+      
+      // Add to memory with proper format
+      const newLand = {
+        id: newId,
+        name: land.land_name,
+        val1: parseFloat(land.size_sqm),
+        val2: parseFloat(land.price_per_sqm),
+        val3: parseFloat(land.value),
+        val4: `${land.debt_percentage}%`,
+        val5: parseFloat(land.debt_amount),
+        val6: parseFloat(land.cash_injection)
+      };
+      
+      investmentData.push(newLand);
+      updateModalInvestmentOptions();
+      
+      return newId;
+    }
+  };
+
+  // Function to update the modal's investment options
+  function updateModalInvestmentOptions() {
+    const select = document.getElementById("investment-name");
+    if (!select) return;
+    // Clear existing options
+    select.innerHTML = '';
+    
+    // Add placeholder option
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Select an investment';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.appendChild(placeholder);
+    
+    // Simple arrays to hold fund and land options
+    const fundOptions = [];
+    const landOptions = [];
+    
+    // Add options to appropriate arrays first
+    investmentData.forEach(item => {
+      if (!item || !item.name) return; // Skip items without a name
+      
+      if (item.name.includes('Fund')) {
+        fundOptions.push({
+          id: item.id,
+          name: item.name,
+          type: 'investment'
+        });
+      } else if (item.name.includes('Land')) {
+        landOptions.push({
+          id: item.id,
+          name: item.name,
+          type: 'land'
+        });
+      }
+    });
+    
+    // Add a fund header if we have fund options
+    if (fundOptions.length > 0) {
+      const fundHeader = document.createElement('option');
+      fundHeader.disabled = true;
+      fundHeader.textContent = '--- Funds ---';
+      select.appendChild(fundHeader);
+      
+      // Add all fund options
+      fundOptions.forEach(fund => {
+        const option = document.createElement('option');
+        option.value = fund.id;
+        option.textContent = fund.name;
+        option.dataset.type = fund.type;
+        select.appendChild(option);
+      });
+    }
+    
+    // Add a land header if we have land options
+    if (landOptions.length > 0) {
+      const landHeader = document.createElement('option');
+      landHeader.disabled = true;
+      landHeader.textContent = '--- Lands ---';
+      select.appendChild(landHeader);
+      
+      // Add all land options
+      landOptions.forEach(land => {
+        const option = document.createElement('option');
+        option.value = land.id;
+        option.textContent = land.name;
+        option.dataset.type = land.type;
+        select.appendChild(option);
+      });
+    }
+    
+    // If no options were added, show a message
+    if (fundOptions.length === 0 && landOptions.length === 0) {
+      const noOptions = document.createElement('option');
+      noOptions.value = '';
+      noOptions.textContent = 'No investments or lands available';
+      noOptions.disabled = true;
+      select.appendChild(noOptions);
+    }
+  }
 
   // // Create tooltip container with enhanced styling
   const tooltip = d3
@@ -306,16 +862,46 @@ document.addEventListener("DOMContentLoaded", function () {
     .style("pointer-events", "none")
     .style("z-index", "1000");
 
-  // // Create modal for adding/editing roles
-
-  // Create investment transaction modal
+  // Create investment transaction modal - initially empty, will be populated when needed
   const investmentModal = d3
     .select("body")
     .append("div")
     .attr("class", "modal")
     .style("display", "none");
 
-  investmentModal.html(`
+  // Initialization function to populate the modal when investmentData is available
+  function initTransactionModal() {
+    if (!investmentData.length) return;
+    
+    // Build options HTML
+    let optionsHtml = '<option value="" disabled selected>Select an investment</option>';
+    
+    // Get fund and land items
+    const fundItems = investmentData.filter(item => item.name && item.name.includes('Fund'));
+    const landItems = investmentData.filter(item => item.name && item.name.includes('Land'));
+    
+    // Add fund options
+    if (fundItems.length > 0) {
+      optionsHtml += '<option disabled>--- Funds ---</option>';
+      fundItems.forEach(item => {
+        optionsHtml += `<option value="${item.id}" data-type="investment">${item.name}</option>`;
+      });
+    }
+    
+    // Add land options
+    if (landItems.length > 0) {
+      optionsHtml += '<option disabled>--- Lands ---</option>';
+      landItems.forEach(item => {
+        optionsHtml += `<option value="${item.id}" data-type="land">${item.name}</option>`;
+      });
+    }
+    
+    // If no options, add a message
+    if (fundItems.length === 0 && landItems.length === 0) {
+      optionsHtml += '<option disabled>No investments available</option>';
+    }
+    
+    investmentModal.html(`
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2 id="transaction-modal-title">Add Investment Transaction</h2>
@@ -324,31 +910,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="form-group">
                     <label for="investment-name">Investment</label>
                     <select id="investment-name" required>
-                        <optgroup label="Funds">
-                            ${investmentData
-                              .filter((item) => item.name.includes("Fund"))
-                              .map(
-                                (item) =>
-                                  `<option value="${item.name}">${item.name}</option>`
-                              )
-                              .join("")}
-                        </optgroup>
-                        <optgroup label="Lands">
-                            ${investmentData
-                              .filter((item) => item.name.includes("Land"))
-                              .map(
-                                (item) =>
-                                  `<option value="${item.name}">${item.name}</option>`
-                              )
-                              .join("")}
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="investment-type">Investment Type</label>
-                    <select id="investment-type" required>
-                        <option value="fund">Fund</option>
-                        <option value="land">Land</option>
+                        ${optionsHtml}
                     </select>
                 </div>
                 <div class="form-group">
@@ -366,11 +928,74 @@ document.addEventListener("DOMContentLoaded", function () {
                     <label for="transaction-date">Date</label>
                     <input type="date" id="transaction-date" required>
                 </div>
+                <div class="form-group">
+                    <label for="transaction-notes">Notes (Optional)</label>
+                    <textarea id="transaction-notes" rows="3"></textarea>
+                </div>
                 <button type="submit" class="btn-submit">Save</button>
                 <button type="button" class="btn-delete">Delete</button>
             </form>
         </div>
     `);
+    
+    // Add event listener for form submission
+    document
+      .getElementById("transaction-form")
+      .addEventListener("submit", async function (e) {
+        e.preventDefault();
+        
+        // Get form values
+        const formData = {
+          id: document.getElementById("transaction-id").value || undefined,
+          entity_id: parseInt(document.getElementById("investment-name").value),
+          transactionType: document.getElementById("transaction-type").value,
+          amount: parseFloat(document.getElementById("transaction-amount").value),
+          date: new Date(document.getElementById("transaction-date").value),
+          notes: document.getElementById("transaction-notes").value
+        };
+        
+        // Get investment type from selected option
+        const selectedOption = document.getElementById("investment-name").selectedOptions[0];
+        const entityType = selectedOption.dataset.type;
+        formData.investmentType = entityType === 'investment' ? 'fund' : 'land';
+        formData.name = selectedOption.textContent;
+        
+        // Save to IndexedDB via the investmentChart object
+        if (formData.id) {
+          await window.investmentChart.updateTransaction(formData);
+        } else {
+          await window.investmentChart.addTransaction(formData);
+        }
+        
+        // Close the modal
+        investmentModal.style("display", "none");
+      });
+
+    // Investment modal delete button
+    document
+      .querySelector("#transaction-form .btn-delete")
+      .addEventListener("click", async function () {
+        const id = document.getElementById("transaction-id").value;
+        
+        if (id) {
+          // Confirm deletion
+          if (confirm("Are you sure you want to delete this transaction?")) {
+            await window.investmentChart.removeTransaction({ id: parseInt(id) });
+            
+            // Close the modal
+            investmentModal.style("display", "none");
+          }
+        } else {
+          // Just close the modal for new transactions
+          investmentModal.style("display", "none");
+        }
+      });
+
+    // Investment modal close button
+    investmentModal.select(".close").on("click", function () {
+      investmentModal.style("display", "none");
+    });
+  }
 
   // Function to find date from position on timeline
   function getDateFromPosition(xPos) {
@@ -491,6 +1116,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to update only the investment visualization
   function updateInvestmentVisualization() {
+    // Ensure we have investment data to work with
+    if (!investmentData.length) {
+      console.warn("No investment data available for visualization");
+    }
+    
+    // If modal hasn't been initialized yet, do it now
+    if (!document.getElementById("transaction-form")) {
+      initTransactionModal();
+    }
+    
     // First fully clear the investment chart to ensure complete redraw
     const investmentChart = d3.select("#investment-chart");
 
@@ -545,6 +1180,43 @@ document.addEventListener("DOMContentLoaded", function () {
       event.preventDefault();
     }
   });
+
+  // Main function to initialize investment chart
+  async function initInvestmentChart() {
+    try {
+      // Show loading indicator
+      const investmentChart = d3.select("#investment-chart");
+      investmentChart.html('<div class="loading-indicator">Loading investment data...</div>');
+      
+      // Initialize IndexedDB
+      if (!db) {
+        await initDatabase();
+        await seedDatabaseIfEmpty();
+      }
+      
+      // Fetch data from IndexedDB
+      await fetchChartData();
+      
+      // Initialize the visualization with the fetched data
+      updateDateRange();
+    } catch (error) {
+      console.error('Error initializing investment chart:', error);
+      
+      // Show error message
+      const investmentChart = d3.select("#investment-chart");
+      investmentChart.html(`
+        <div class="error-message">
+          <p>Error loading investment data: ${error.message}</p>
+          <button id="retry-load-btn">Retry</button>
+        </div>
+      `);
+      
+      // Add retry button event listener
+      d3.select("#retry-load-btn").on("click", () => {
+        initInvestmentChart();
+      });
+    }
+  }
 
   // Function to draw the investment chart
   function drawInvestmentChart() {
@@ -1286,6 +1958,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to show transaction modal
   function showTransactionModal(date, transaction = null) {
+    // Ensure modal is initialized
+    if (!document.getElementById("transaction-form")) {
+      initTransactionModal();
+    }
+    
     // Reset form
     document.getElementById("transaction-form").reset();
     document.getElementById("transaction-id").value = "";
@@ -1294,26 +1971,62 @@ document.addEventListener("DOMContentLoaded", function () {
       : "Add Investment Transaction";
 
     if (transaction) {
-      // Populate form with existing data
-      document.getElementById("investment-name").value = transaction.name;
-      document.getElementById("investment-type").value =
-        transaction.investmentType;
-      document.getElementById("transaction-type").value =
-        transaction.transactionType;
-      document.getElementById("transaction-amount").value = Math.abs(
-        transaction.amount
-      );
+      // Find the correct investment option in the dropdown
+      let foundOption = false;
+      
+      // First try to find by name
+      if (transaction.name) {
+        const options = Array.from(document.getElementById("investment-name").options);
+        const matchingOption = options.find(option => 
+          option.textContent === transaction.name && !option.disabled
+        );
+        
+        if (matchingOption) {
+          document.getElementById("investment-name").value = matchingOption.value;
+          foundOption = true;
+        }
+      }
+      
+      // If not found by name and we have an ID, try by ID
+      if (!foundOption && transaction.id) {
+        const investmentSelect = document.getElementById("investment-name");
+        
+        // Look for matching investment in our data
+        const matchingInvestment = investmentData.find(inv => 
+          inv.id === transaction.id || 
+          (transaction.entity_id && inv.id === transaction.entity_id)
+        );
+        
+        if (matchingInvestment) {
+          // Find the option with this ID
+          const options = Array.from(investmentSelect.options);
+          const matchingOption = options.find(option => 
+            option.value == matchingInvestment.id && !option.disabled
+          );
+          
+          if (matchingOption) {
+            investmentSelect.value = matchingOption.value;
+            foundOption = true;
+          }
+        }
+      }
+      
+      document.getElementById("transaction-type").value = transaction.transactionType;
+      document.getElementById("transaction-amount").value = Math.abs(transaction.amount);
+      
+      // Add notes if available
+      if (transaction.notes) {
+        document.getElementById("transaction-notes").value = transaction.notes;
+      }
 
       // Format date for the input field (YYYY-MM-DD)
       const dateStr = transaction.date.toISOString().split("T")[0];
       document.getElementById("transaction-date").value = dateStr;
-      document.getElementById("transaction-id").value =
-        transaction.id || transactionData.indexOf(transaction);
+      document.getElementById("transaction-id").value = transaction.id;
     } else {
       // Set default values for new transaction
       const dateStr = date.toISOString().split("T")[0];
       document.getElementById("transaction-date").value = dateStr;
-      document.getElementById("investment-type").value = "fund";
       document.getElementById("transaction-type").value = "buy";
     }
 
@@ -1325,80 +2038,11 @@ document.addEventListener("DOMContentLoaded", function () {
     investmentModal.style("display", "block");
   }
 
-  // Handle transaction form submission
-  document
-    .getElementById("transaction-form")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      // Get form values
-      const id = document.getElementById("transaction-id").value;
-      const name = document.getElementById("investment-name").value;
-      const investmentType = document.getElementById("investment-type").value;
-      const transactionType = document.getElementById("transaction-type").value;
-      let amount = parseInt(
-        document.getElementById("transaction-amount").value
-      );
-      const dateStr = document.getElementById("transaction-date").value;
-      const date = new Date(dateStr);
-
-      // Adjust amount sign based on transaction type
-      if (transactionType === "sale") {
-        amount = -Math.abs(amount);
-      } else {
-        amount = Math.abs(amount);
-      }
-
-      if (id && !isNaN(id)) {
-        // Update existing transaction
-        const index = parseInt(id);
-        if (index >= 0 && index < transactionData.length) {
-          transactionData[index] = {
-            name,
-            investmentType,
-            transactionType,
-            amount,
-            date,
-          };
-        }
-      } else {
-        // Add new transaction
-        transactionData.push({
-          name,
-          investmentType,
-          transactionType,
-          amount,
-          date,
-        });
-      }
-
-      // Close modal
-      investmentModal.style("display", "none");
-
-      // Update visualization
-      updateInvestmentVisualization();
-    });
-
-  // Investment modal delete button
-  document
-    .querySelector("#transaction-form .btn-delete")
-    .addEventListener("click", function () {
-      const id = document.getElementById("transaction-id").value;
-      if (id && !isNaN(id)) {
-        const index = parseInt(id);
-        if (index >= 0 && index < transactionData.length) {
-          transactionData.splice(index, 1);
-          updateInvestmentVisualization();
-        }
-      }
-      investmentModal.style("display", "none");
-    });
-
-  // Investment modal close button
-  investmentModal.select(".close").on("click", function () {
-    investmentModal.style("display", "none");
+  // Initialize the IndexedDB when the page loads
+  initDatabase().then(() => {
+    console.log('Database initialized, checking if data needs to be seeded...');
+    return seedDatabaseIfEmpty();
+  }).catch(error => {
+    console.error('Error initializing database:', error);
   });
-
-  // Initialize the visualization
-  updateDateRange();
 });

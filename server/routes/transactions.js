@@ -44,4 +44,15 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Delete transaction
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM transactions WHERE id = $1', [id]);
+        res.json({ message: 'Transaction deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
