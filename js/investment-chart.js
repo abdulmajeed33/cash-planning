@@ -1,326 +1,358 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Tab switching logic
+  const tabButtons = document.querySelectorAll(".tab-button");
+  const tabContents = document.querySelectorAll(".tab-content");
 
-    // Tab switching logic
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const tabContents = document.querySelectorAll('.tab-content');
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tabId = button.getAttribute("data-tab");
 
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const tabId = button.getAttribute('data-tab');
-            
-            // Update active button
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Update active content
-            tabContents.forEach(content => content.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            
-            // Initialize investment chart when switching to that tab
-            if (tabId === 'investment-timeline') {
-                initInvestmentChart();
-            }
-        });
+      // Update active button
+      tabButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      // Update active content
+      tabContents.forEach((content) => content.classList.remove("active"));
+      document.getElementById(tabId).classList.add("active");
+
+      // Initialize investment chart when switching to that tab
+      if (tabId === "investment-timeline") {
+        initInvestmentChart();
+      }
     });
-    
+  });
+
   // IndexedDB setup
-  const DB_NAME = 'investmentTracker';
+  const DB_NAME = "investmentTracker";
   const DB_VERSION = 1;
   const STORES = {
-    investments: 'investments',
-    lands: 'lands',
-    transactions: 'transactions'
+    investments: "investments",
+    lands: "lands",
+    transactions: "transactions",
   };
-  
+
   let db;
-  
+
   // Initialize the database
   function initDatabase() {
     return new Promise((resolve, reject) => {
       // First check if db is already initialized (could be initialized by main.js)
       if (db) {
-        console.log('Database already initialized, using existing connection');
+        console.log("Database already initialized, using existing connection");
         resolve(db);
         return;
       }
-      
+
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-      
-      request.onerror = event => {
-        console.error('IndexedDB error:', event.target.error);
-        reject('Error opening database');
+
+      request.onerror = (event) => {
+        console.error("IndexedDB error:", event.target.error);
+        reject("Error opening database");
       };
-      
-      request.onsuccess = event => {
+
+      request.onsuccess = (event) => {
         db = event.target.result;
-        console.log('Database initialized successfully');
+        console.log("Database initialized successfully");
         resolve(db);
       };
-      
-      request.onupgradeneeded = event => {
+
+      request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        
+
         // Create object stores
         if (!db.objectStoreNames.contains(STORES.investments)) {
-          const investmentsStore = db.createObjectStore(STORES.investments, { keyPath: 'id', autoIncrement: true });
-          investmentsStore.createIndex('name', 'name', { unique: false });
+          const investmentsStore = db.createObjectStore(STORES.investments, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          investmentsStore.createIndex("name", "name", { unique: false });
         }
-        
+
         if (!db.objectStoreNames.contains(STORES.lands)) {
-          const landsStore = db.createObjectStore(STORES.lands, { keyPath: 'id', autoIncrement: true });
-          landsStore.createIndex('land_name', 'land_name', { unique: false });
+          const landsStore = db.createObjectStore(STORES.lands, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          landsStore.createIndex("land_name", "land_name", { unique: false });
         }
-        
+
         if (!db.objectStoreNames.contains(STORES.transactions)) {
-          const transactionsStore = db.createObjectStore(STORES.transactions, { keyPath: 'id', autoIncrement: true });
-          transactionsStore.createIndex('entity_id', 'entity_id', { unique: false });
-          transactionsStore.createIndex('transaction_date', 'transaction_date', { unique: false });
+          const transactionsStore = db.createObjectStore(STORES.transactions, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          transactionsStore.createIndex("entity_id", "entity_id", {
+            unique: false,
+          });
+          transactionsStore.createIndex(
+            "transaction_date",
+            "transaction_date",
+            { unique: false }
+          );
         }
-        
-        console.log('Database schema created');
+
+        console.log("Database schema created");
       };
     });
   }
-  
+
   // Check if database is empty and add sample data if needed
   async function seedDatabaseIfEmpty() {
     try {
       const investments = await getAllData(STORES.investments);
       const lands = await getAllData(STORES.lands);
-      
+
       if (investments.length === 0 && lands.length === 0) {
-        console.log('Database is empty, adding sample data...');
+        console.log("Database is empty, adding sample data...");
         await seedSampleData();
       } else {
-        console.log('Database already has data, skipping seed');
+        console.log("Database already has data, skipping seed");
       }
     } catch (error) {
-      console.error('Error checking database:', error);
+      console.error("Error checking database:", error);
     }
   }
-  
+
   // Add sample data to database
   async function seedSampleData() {
     // Sample investments
     const sampleInvestments = [
       {
         id: 1,
-        name: 'Tech Growth Fund',
-        size: '500000',
-        share_percentage: '15',
-        investment_amount: '75000',
-        debt_percentage: '20',
-        debt_amount: '15000',
-        cash_investment: '60000'
+        name: "Tech Growth Fund",
+        size: "500000",
+        share_percentage: "15",
+        investment_amount: "75000",
+        debt_percentage: "20",
+        debt_amount: "15000",
+        cash_investment: "60000",
       },
       {
         id: 2,
-        name: 'Renewable Energy Fund',
-        size: '750000',
-        share_percentage: '10',
-        investment_amount: '75000',
-        debt_percentage: '30',
-        debt_amount: '22500',
-        cash_investment: '52500'
-      }
+        name: "Renewable Energy Fund",
+        size: "750000",
+        share_percentage: "10",
+        investment_amount: "75000",
+        debt_percentage: "30",
+        debt_amount: "22500",
+        cash_investment: "52500",
+      },
     ];
-    
+
     // Sample lands
     const sampleLands = [
       {
         id: 1,
-        land_name: 'Downtown Land',
-        size_sqm: '1200',
-        price_per_sqm: '500',
-        value: '600000',
-        debt_percentage: '40',
-        debt_amount: '240000',
-        cash_injection: '360000'
+        land_name: "Downtown Land",
+        size_sqm: "1200",
+        price_per_sqm: "500",
+        value: "600000",
+        debt_percentage: "40",
+        debt_amount: "240000",
+        cash_injection: "360000",
       },
       {
         id: 2,
-        land_name: 'Suburban Land',
-        size_sqm: '5000',
-        price_per_sqm: '100',
-        value: '500000',
-        debt_percentage: '25',
-        debt_amount: '125000',
-        cash_injection: '375000'
-      }
+        land_name: "Suburban Land",
+        size_sqm: "5000",
+        price_per_sqm: "100",
+        value: "500000",
+        debt_percentage: "25",
+        debt_amount: "125000",
+        cash_injection: "375000",
+      },
     ];
-    
+
     // Sample transactions
     const currentYear = new Date().getFullYear();
     const sampleTransactions = [
       {
         id: 1,
         entity_id: 1,
-        entity_type: 'investment',
-        transaction_type: 'buy',
-        amount: '30000',
-        transaction_date: new Date(currentYear, 1, 15),
-        notes: 'Initial investment'
+        entity_type: "investment",
+        transaction_type: "buy",
+        amount: "30000",
+        transaction_date: new Date(currentYear, 0, 15),
+        notes: "Initial investment",
       },
       {
         id: 2,
         entity_id: 1,
-        entity_type: 'investment',
-        transaction_type: 'buy',
-        amount: '20000',
+        entity_type: "investment",
+        transaction_type: "buy",
+        amount: "20000",
         transaction_date: new Date(currentYear, 3, 10),
-        notes: 'Additional investment'
+        notes: "Additional investment",
       },
       {
         id: 3,
         entity_id: 2,
-        entity_type: 'investment',
-        transaction_type: 'buy',
-        amount: '50000',
+        entity_type: "investment",
+        transaction_type: "buy",
+        amount: "50000",
         transaction_date: new Date(currentYear, 5, 20),
-        notes: 'Initial investment'
+        notes: "Initial investment",
       },
       {
         id: 4,
         entity_id: 1,
-        entity_type: 'land',
-        transaction_type: 'buy',
-        amount: '120000',
+        entity_type: "land",
+        transaction_type: "buy",
+        amount: "120000",
         transaction_date: new Date(currentYear, 2, 8),
-        notes: 'Land acquisition'
+        notes: "Land acquisition",
       },
       {
         id: 5,
         entity_id: 1,
-        entity_type: 'investment',
-        transaction_type: 'sale',
-        amount: '15000',
+        entity_type: "land",
+        transaction_type: "sale",
+        amount: "50000",
+        transaction_date: new Date(currentYear, 2, 8),
+        notes: "Land acquisition",
+      },
+      {
+        id: 6,
+        entity_id: 1,
+        entity_type: "investment",
+        transaction_type: "sale",
+        amount: "15000",
         transaction_date: new Date(currentYear, 7, 12),
-        notes: 'Partial exit'
-      }
+        notes: "Partial exit",
+      },
     ];
-    
+
     // Add all sample data to database
     try {
       await Promise.all([
-        ...sampleInvestments.map(inv => addData(STORES.investments, inv)),
-        ...sampleLands.map(land => addData(STORES.lands, land)),
-        ...sampleTransactions.map(tx => addData(STORES.transactions, tx))
+        ...sampleInvestments.map((inv) => addData(STORES.investments, inv)),
+        ...sampleLands.map((land) => addData(STORES.lands, land)),
+        ...sampleTransactions.map((tx) => addData(STORES.transactions, tx)),
       ]);
-      console.log('Sample data added successfully');
+      console.log("Sample data added successfully");
     } catch (error) {
-      console.error('Error adding sample data:', error);
+      console.error("Error adding sample data:", error);
     }
   }
-  
+
   // Generic function to add data to a store
   function addData(storeName, data) {
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
+      const transaction = db.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
-      
+
       const request = store.add(data);
-      
-      request.onsuccess = event => {
+
+      request.onsuccess = (event) => {
         resolve(event.target.result);
       };
-      
-      request.onerror = event => {
+
+      request.onerror = (event) => {
         console.error(`Error adding data to ${storeName}:`, event.target.error);
         reject(event.target.error);
       };
     });
   }
-  
+
   // Generic function to get all data from a store
   function getAllData(storeName) {
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
+      const transaction = db.transaction(storeName, "readonly");
       const store = transaction.objectStore(storeName);
-      
+
       const request = store.getAll();
-      
-      request.onsuccess = event => {
+
+      request.onsuccess = (event) => {
         resolve(event.target.result);
       };
-      
-      request.onerror = event => {
-        console.error(`Error getting data from ${storeName}:`, event.target.error);
+
+      request.onerror = (event) => {
+        console.error(
+          `Error getting data from ${storeName}:`,
+          event.target.error
+        );
         reject(event.target.error);
       };
     });
   }
-  
+
   // Generic function to update data in a store
   function updateData(storeName, data) {
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
+      const transaction = db.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
-      
+
       const request = store.put(data);
-      
-      request.onsuccess = event => {
+
+      request.onsuccess = (event) => {
         resolve(event.target.result);
       };
-      
-      request.onerror = event => {
-        console.error(`Error updating data in ${storeName}:`, event.target.error);
+
+      request.onerror = (event) => {
+        console.error(
+          `Error updating data in ${storeName}:`,
+          event.target.error
+        );
         reject(event.target.error);
       };
     });
   }
-  
+
   // Generic function to delete data from a store
   function deleteData(storeName, id) {
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
+      const transaction = db.transaction(storeName, "readwrite");
       const store = transaction.objectStore(storeName);
-      
+
       const request = store.delete(id);
-      
-      request.onsuccess = event => {
+
+      request.onsuccess = (event) => {
         resolve();
       };
-      
-      request.onerror = event => {
-        console.error(`Error deleting data from ${storeName}:`, event.target.error);
+
+      request.onerror = (event) => {
+        console.error(
+          `Error deleting data from ${storeName}:`,
+          event.target.error
+        );
         reject(event.target.error);
       };
     });
   }
-  
+
   // Replace the API fetch functions with IndexedDB functions
   async function fetchInvestments() {
     try {
       return await getAllData(STORES.investments);
     } catch (error) {
-      console.error('Error fetching investments:', error);
+      console.error("Error fetching investments:", error);
       return [];
     }
   }
-  
+
   async function fetchLands() {
     try {
       return await getAllData(STORES.lands);
     } catch (error) {
-      console.error('Error fetching lands:', error);
+      console.error("Error fetching lands:", error);
       return [];
     }
   }
-  
+
   async function fetchTransactions() {
     try {
       const transactions = await getAllData(STORES.transactions);
       // Ensure transaction_date is a Date object
-      return transactions.map(tx => ({
+      return transactions.map((tx) => ({
         ...tx,
-        transaction_date: new Date(tx.transaction_date)
+        transaction_date: new Date(tx.transaction_date),
       }));
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error("Error fetching transactions:", error);
       return [];
     }
   }
-  
+
   // Date formatting utilities
   const dateFormat = d3.timeFormat("%b %d, %Y");
   const inputDateFormat = d3.timeFormat("%Y-%m-%d");
@@ -328,11 +360,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Get current year's date range
   const currentYear = new Date().getFullYear();
-  
+
   // Define initial date range for the timeline (current year by default)
   let startDate = new Date(currentYear, 0, 1); // Jan 1, current year
   let endDate = new Date(currentYear + 1, 0, 1); // Jan 1, next year
-  
+
   // Setup visualization dimensions
   const svgWidth = 1200;
   const svgHeight = 150;
@@ -363,96 +395,97 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Add date preset buttons
   const dateRangeControl = d3.select(".date-range-control");
-  
+
   // Create date presets container
-  const datePresets = dateRangeControl.insert("div", ":first-child")
+  const datePresets = dateRangeControl
+    .insert("div", ":first-child")
     .attr("class", "date-presets");
-  
+
   // Add title
-  datePresets.append("h4")
-    .text("Quick Select:");
-  
+  datePresets.append("h4").text("Quick Select:");
+
   // Add preset buttons
   const presetButtons = [
     { text: "Current Year", handler: setCurrentYear },
     { text: "Last 12 Months", handler: setLast12Months },
     { text: "Next 12 Months", handler: setNext12Months },
     { text: "2 Years", handler: set2Years },
-    { text: "5 Years", handler: set5Years }
+    { text: "5 Years", handler: set5Years },
   ];
-  
-  presetButtons.forEach(btn => {
-    datePresets.append("button")
+
+  presetButtons.forEach((btn) => {
+    datePresets
+      .append("button")
       .attr("type", "button")
       .attr("class", "date-preset-btn")
       .text(btn.text)
       .on("click", btn.handler);
   });
-  
+
   // Date preset handler functions
   function setCurrentYear() {
     const now = new Date();
     const year = now.getFullYear();
-    
+
     startDate = new Date(year, 0, 1); // Jan 1 of current year
     endDate = new Date(year + 1, 0, 1); // Jan 1 of next year
-    
+
     updateInputsAndChart();
   }
-  
+
   function setLast12Months() {
     const now = new Date();
-    
+
     endDate = new Date(now);
     startDate = new Date(now);
     startDate.setFullYear(now.getFullYear() - 1);
-    
+
     updateInputsAndChart();
   }
-  
+
   function setNext12Months() {
     const now = new Date();
-    
+
     startDate = new Date(now);
     endDate = new Date(now);
     endDate.setFullYear(now.getFullYear() + 1);
-    
+
     updateInputsAndChart();
   }
-  
+
   function set2Years() {
     const now = new Date();
     const year = now.getFullYear();
-    
+
     startDate = new Date(year, 0, 1);
     endDate = new Date(year + 2, 0, 1);
-    
+
     updateInputsAndChart();
   }
-  
+
   function set5Years() {
     const now = new Date();
     const year = now.getFullYear();
-    
+
     startDate = new Date(year, 0, 1);
     endDate = new Date(year + 5, 0, 1);
-    
+
     updateInputsAndChart();
   }
-  
+
   // Helper function to update inputs and refresh chart
   function updateInputsAndChart() {
     // Update input fields
     d3.select("#start-date").property("value", inputDateFormat(startDate));
     d3.select("#end-date").property("value", inputDateFormat(endDate));
-    
+
     // Update chart
     updateDateRange();
   }
 
   // Investment data array - now can be dynamically updated
   let investmentData = [];
-  
+
   // Transaction data array - now can be dynamically updated
   let transactionData = [];
 
@@ -460,26 +493,26 @@ document.addEventListener("DOMContentLoaded", function () {
   async function fetchChartData() {
     try {
       console.log("Fetching chart data from IndexedDB...");
-      
+
       // Ensure database is initialized
       if (!db) {
         await initDatabase();
         await seedDatabaseIfEmpty();
       }
-      
+
       // Fetch investments, lands, and transactions in parallel
       const [investments, lands, transactions] = await Promise.all([
         fetchInvestments(),
         fetchLands(),
-        fetchTransactions()
+        fetchTransactions(),
       ]);
-      
+
       console.log("Investments:", investments);
       console.log("Lands:", lands);
       console.log("Transactions:", transactions);
-      
+
       // Map investments to the expected format
-      const mappedInvestments = investments.map(inv => ({
+      const mappedInvestments = investments.map((inv) => ({
         id: inv.id,
         name: inv.name,
         val1: parseFloat(inv.size),
@@ -487,11 +520,11 @@ document.addEventListener("DOMContentLoaded", function () {
         val3: parseFloat(inv.investment_amount),
         val4: `${inv.debt_percentage}%`,
         val5: parseFloat(inv.debt_amount),
-        val6: parseFloat(inv.cash_investment)
+        val6: parseFloat(inv.cash_investment),
       }));
-      
+
       // Map lands to the expected format
-      const mappedLands = lands.map(land => ({
+      const mappedLands = lands.map((land) => ({
         id: land.id,
         name: land.land_name,
         val1: parseFloat(land.size_sqm),
@@ -499,93 +532,102 @@ document.addEventListener("DOMContentLoaded", function () {
         val3: parseFloat(land.value),
         val4: `${land.debt_percentage}%`,
         val5: parseFloat(land.debt_amount),
-        val6: parseFloat(land.cash_injection)
+        val6: parseFloat(land.cash_injection),
       }));
-      
+
       // Combine investments and lands
       const combinedInvestmentData = [...mappedInvestments, ...mappedLands];
       console.log("Combined investment data:", combinedInvestmentData);
-      
+
       // Map transactions to the expected format
-      const mappedTransactions = transactions.map(tx => {
-        const isInvestmentType = tx.entity_type === 'investment';
-        
+      const mappedTransactions = transactions.map((tx) => {
+        const isInvestmentType = tx.entity_type === "investment";
+
         // Find the related entity
-        const relatedEntity = isInvestmentType 
-          ? mappedInvestments.find(inv => inv.id === tx.entity_id)
-          : mappedLands.find(land => land.id === tx.entity_id);
-        
-        const name = relatedEntity ? relatedEntity.name : `Unknown ${tx.entity_type} (ID: ${tx.entity_id})`;
-        
+        const relatedEntity = isInvestmentType
+          ? mappedInvestments.find((inv) => inv.id === tx.entity_id)
+          : mappedLands.find((land) => land.id === tx.entity_id);
+
+        const name = relatedEntity
+          ? relatedEntity.name
+          : `Unknown ${tx.entity_type} (ID: ${tx.entity_id})`;
+
         return {
           id: tx.id,
           entity_id: tx.entity_id,
           name: name,
-          investmentType: tx.entity_type === 'investment' ? 'fund' : 'land',
+          investmentType: tx.entity_type === "investment" ? "fund" : "land",
           transactionType: tx.transaction_type,
           amount: parseFloat(tx.amount),
           date: new Date(tx.transaction_date),
-          notes: tx.notes
+          notes: tx.notes,
         };
       });
-      
+
       console.log("Mapped transactions:", mappedTransactions);
-      
+
       // Update the chart data
       window.investmentChart.setInvestmentData(combinedInvestmentData);
       window.investmentChart.setTransactionData(mappedTransactions);
-      
-      return { investments: combinedInvestmentData, transactions: mappedTransactions };
+
+      return {
+        investments: combinedInvestmentData,
+        transactions: mappedTransactions,
+      };
     } catch (error) {
-      console.error('Error fetching chart data:', error);
+      console.error("Error fetching chart data:", error);
       return { investments: [], transactions: [] };
     }
   }
-  
+
   // Expose these functions to the global scope to allow for dynamic data loading
   window.investmentChart = {
     // Function to update investment data
-    setInvestmentData: function(newData) {
+    setInvestmentData: function (newData) {
       investmentData = newData;
       // If modal exists, update its investment options
       updateModalInvestmentOptions();
       return this; // For chaining
     },
-    
+
     // Function to update transaction data
-    setTransactionData: function(newData) {
+    setTransactionData: function (newData) {
       // Process incoming transaction data to ensure dates are Date objects
       transactionData = newData.map((transaction) => {
         if (typeof transaction.date === "string") {
-          transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+          transaction.date =
+            transactionDateParse(transaction.date) ||
+            new Date(transaction.date);
         }
         return transaction;
       });
-      
+
       // Refresh visualization if it's already initialized
       if (document.querySelector("#investment-chart svg")) {
         updateInvestmentVisualization();
       }
       return this; // For chaining
     },
-    
+
     // Function to add a single transaction
-    addTransaction: async function(transaction) {
+    addTransaction: async function (transaction) {
       // Process date if it's a string
       if (typeof transaction.date === "string") {
-        transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+        transaction.date =
+          transactionDateParse(transaction.date) || new Date(transaction.date);
       }
-      
+
       // Format transaction for IndexedDB
       const dbTransaction = {
         entity_id: transaction.entity_id,
-        entity_type: transaction.investmentType === 'fund' ? 'investment' : 'land',
+        entity_type:
+          transaction.investmentType === "fund" ? "investment" : "land",
         transaction_type: transaction.transactionType,
         amount: transaction.amount.toString(),
         transaction_date: transaction.date,
-        notes: transaction.notes || ''
+        notes: transaction.notes || "",
       };
-      
+
       // If it has an ID, it's an update
       if (transaction.id) {
         dbTransaction.id = transaction.id;
@@ -595,110 +637,121 @@ document.addEventListener("DOMContentLoaded", function () {
         const newId = await addData(STORES.transactions, dbTransaction);
         transaction.id = newId;
       }
-      
+
       // Add to local array
       transactionData.push(transaction);
-      
+
       // Refresh visualization if it's already initialized
       if (document.querySelector("#investment-chart svg")) {
         updateInvestmentVisualization();
       }
       return this; // For chaining
     },
-    
+
     // Function to update a transaction
-    updateTransaction: async function(transaction) {
+    updateTransaction: async function (transaction) {
       // Ensure transaction.id is a number
       if (transaction.id) {
         transaction.id = Number(transaction.id);
       }
-      
+
       // Find the transaction in our array - ensure we compare as numbers
-      const index = transactionData.findIndex(t => Number(t.id) === Number(transaction.id));
-      
+      const index = transactionData.findIndex(
+        (t) => Number(t.id) === Number(transaction.id)
+      );
+
       if (index >= 0) {
         // Process date if it's a string
         if (typeof transaction.date === "string") {
-          transaction.date = transactionDateParse(transaction.date) || new Date(transaction.date);
+          transaction.date =
+            transactionDateParse(transaction.date) ||
+            new Date(transaction.date);
         }
-        
+
         // Update in memory
         transactionData[index] = transaction;
-        
+
         // Format transaction for IndexedDB
         const dbTransaction = {
           id: transaction.id,
           entity_id: transaction.entity_id,
-          entity_type: transaction.investmentType === 'fund' ? 'investment' : 'land',
+          entity_type:
+            transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
           amount: transaction.amount.toString(),
           transaction_date: transaction.date,
-          notes: transaction.notes || ''
+          notes: transaction.notes || "",
         };
-        
+
         // Update in database
         await updateData(STORES.transactions, dbTransaction);
-        
+
         // Refresh visualization
         updateInvestmentVisualization();
       } else {
-        console.warn("Transaction with ID", transaction.id, "not found in local data");
+        console.warn(
+          "Transaction with ID",
+          transaction.id,
+          "not found in local data"
+        );
       }
-      
+
       return this; // For chaining
     },
-    
+
     // Function to remove a transaction by ID
-    removeTransaction: async function(idOrIndex) {
+    removeTransaction: async function (idOrIndex) {
       let id, index;
-      
-      if (typeof idOrIndex === 'object' && idOrIndex.id) {
+
+      if (typeof idOrIndex === "object" && idOrIndex.id) {
         id = Number(idOrIndex.id);
-        index = transactionData.findIndex(t => Number(t.id) === id);
-      } else if (typeof idOrIndex === 'number') {
+        index = transactionData.findIndex((t) => Number(t.id) === id);
+      } else if (typeof idOrIndex === "number") {
         index = idOrIndex;
-        id = transactionData[index]?.id ? Number(transactionData[index].id) : null;
+        id = transactionData[index]?.id
+          ? Number(transactionData[index].id)
+          : null;
       }
-      
+
       if (index >= 0 && index < transactionData.length && id) {
         // Remove from array
         transactionData.splice(index, 1);
-        
+
         // Remove from database
         await deleteData(STORES.transactions, id);
-        
+
         // Refresh visualization
         updateInvestmentVisualization();
       } else {
         console.warn("Failed to remove transaction:", idOrIndex);
       }
-      
+
       return this; // For chaining
     },
-    
+
     // Method to initialize or refresh the chart
-    refreshChart: function() {
+    refreshChart: function () {
       updateInvestmentVisualization();
       return this; // For chaining
     },
-    
+
     // Get current data
-    getInvestmentData: function() {
+    getInvestmentData: function () {
       return [...investmentData];
     },
-    
-    getTransactionData: function() {
+
+    getTransactionData: function () {
       return [...transactionData];
     },
-    
+
     // Method to reload data from IndexedDB
-    reloadData: async function() {
+    reloadData: async function () {
       await fetchChartData();
       return this; // For chaining
     },
-    
+
     // Add new investment to IndexedDB
-    addInvestment: async function(investment) {
+    addInvestment: async function (investment) {
       // Format for database
       const dbInvestment = {
         name: investment.name,
@@ -707,12 +760,12 @@ document.addEventListener("DOMContentLoaded", function () {
         investment_amount: investment.investment_amount.toString(),
         debt_percentage: investment.debt_percentage.toString(),
         debt_amount: investment.debt_amount.toString(),
-        cash_investment: investment.cash_investment.toString()
+        cash_investment: investment.cash_investment.toString(),
       };
-      
+
       // Add to database
       const newId = await addData(STORES.investments, dbInvestment);
-      
+
       // Add to memory with proper format
       const newInvestment = {
         id: newId,
@@ -722,17 +775,17 @@ document.addEventListener("DOMContentLoaded", function () {
         val3: parseFloat(investment.investment_amount),
         val4: `${investment.debt_percentage}%`,
         val5: parseFloat(investment.debt_amount),
-        val6: parseFloat(investment.cash_investment)
+        val6: parseFloat(investment.cash_investment),
       };
-      
+
       investmentData.push(newInvestment);
       updateModalInvestmentOptions();
-      
+
       return newId;
     },
-    
+
     // Add new land to IndexedDB
-    addLand: async function(land) {
+    addLand: async function (land) {
       // Format for database
       const dbLand = {
         land_name: land.land_name,
@@ -741,12 +794,12 @@ document.addEventListener("DOMContentLoaded", function () {
         value: land.value.toString(),
         debt_percentage: land.debt_percentage.toString(),
         debt_amount: land.debt_amount.toString(),
-        cash_injection: land.cash_injection.toString()
+        cash_injection: land.cash_injection.toString(),
       };
-      
+
       // Add to database
       const newId = await addData(STORES.lands, dbLand);
-      
+
       // Add to memory with proper format
       const newLand = {
         id: newId,
@@ -756,94 +809,94 @@ document.addEventListener("DOMContentLoaded", function () {
         val3: parseFloat(land.value),
         val4: `${land.debt_percentage}%`,
         val5: parseFloat(land.debt_amount),
-        val6: parseFloat(land.cash_injection)
+        val6: parseFloat(land.cash_injection),
       };
-      
+
       investmentData.push(newLand);
       updateModalInvestmentOptions();
-      
+
       return newId;
-    }
+    },
   };
 
   // Function to update the modal's investment options
   function updateModalInvestmentOptions() {
     const select = document.getElementById("investment-name");
     if (!select) return;
-    
+
     // Clear existing options
-    select.innerHTML = '';
-    
+    select.innerHTML = "";
+
     // Add placeholder option
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = 'Select an investment';
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select an investment";
     placeholder.disabled = true;
     placeholder.selected = true;
     select.appendChild(placeholder);
-    
+
     // Simple arrays to hold fund and land options
     const fundOptions = [];
     const landOptions = [];
-    
+
     // Add options to appropriate arrays first
-    investmentData.forEach(item => {
+    investmentData.forEach((item) => {
       if (!item || !item.name) return; // Skip items without a name
-      
-      if (item.name.includes('Fund')) {
+
+      if (item.name.includes("Fund")) {
         fundOptions.push({
           id: item.id,
           name: item.name,
-          type: 'investment'
+          type: "investment",
         });
-      } else if (item.name.includes('Land')) {
+      } else if (item.name.includes("Land")) {
         landOptions.push({
           id: item.id,
           name: item.name,
-          type: 'land'
+          type: "land",
         });
       }
     });
-    
+
     // Add a fund header if we have fund options
     if (fundOptions.length > 0) {
-      const fundHeader = document.createElement('option');
+      const fundHeader = document.createElement("option");
       fundHeader.disabled = true;
-      fundHeader.textContent = '--- Funds ---';
+      fundHeader.textContent = "--- Funds ---";
       select.appendChild(fundHeader);
-      
+
       // Add all fund options
-      fundOptions.forEach(fund => {
-        const option = document.createElement('option');
+      fundOptions.forEach((fund) => {
+        const option = document.createElement("option");
         option.value = fund.id;
         option.textContent = fund.name;
         option.dataset.type = fund.type;
         select.appendChild(option);
       });
     }
-    
+
     // Add a land header if we have land options
     if (landOptions.length > 0) {
-      const landHeader = document.createElement('option');
+      const landHeader = document.createElement("option");
       landHeader.disabled = true;
-      landHeader.textContent = '--- Lands ---';
+      landHeader.textContent = "--- Lands ---";
       select.appendChild(landHeader);
-      
+
       // Add all land options
-      landOptions.forEach(land => {
-        const option = document.createElement('option');
+      landOptions.forEach((land) => {
+        const option = document.createElement("option");
         option.value = land.id;
         option.textContent = land.name;
         option.dataset.type = land.type;
         select.appendChild(option);
       });
     }
-    
+
     // If no options were added, show a message
     if (fundOptions.length === 0 && landOptions.length === 0) {
-      const noOptions = document.createElement('option');
-      noOptions.value = '';
-      noOptions.textContent = 'No investments or lands available';
+      const noOptions = document.createElement("option");
+      noOptions.value = "";
+      noOptions.textContent = "No investments or lands available";
       noOptions.disabled = true;
       select.appendChild(noOptions);
     }
@@ -882,35 +935,40 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initialization function to populate the modal when investmentData is available
   function initTransactionModal() {
     if (!investmentData.length) return;
-    
+
     // Build options HTML
-    let optionsHtml = '<option value="" disabled selected>Select an investment</option>';
-    
+    let optionsHtml =
+      '<option value="" disabled selected>Select an investment</option>';
+
     // Get fund and land items
-    const fundItems = investmentData.filter(item => item.name && item.name.includes('Fund'));
-    const landItems = investmentData.filter(item => item.name && item.name.includes('Land'));
-    
+    const fundItems = investmentData.filter(
+      (item) => item.name && item.name.includes("Fund")
+    );
+    const landItems = investmentData.filter(
+      (item) => item.name && item.name.includes("Land")
+    );
+
     // Add fund options
     if (fundItems.length > 0) {
-      optionsHtml += '<option disabled>--- Funds ---</option>';
-      fundItems.forEach(item => {
+      optionsHtml += "<option disabled>--- Funds ---</option>";
+      fundItems.forEach((item) => {
         optionsHtml += `<option value="${item.id}" data-type="investment">${item.name}</option>`;
       });
     }
-    
+
     // Add land options
     if (landItems.length > 0) {
-      optionsHtml += '<option disabled>--- Lands ---</option>';
-      landItems.forEach(item => {
+      optionsHtml += "<option disabled>--- Lands ---</option>";
+      landItems.forEach((item) => {
         optionsHtml += `<option value="${item.id}" data-type="land">${item.name}</option>`;
       });
     }
-    
+
     // If no options, add a message
     if (fundItems.length === 0 && landItems.length === 0) {
-      optionsHtml += '<option disabled>No investments available</option>';
+      optionsHtml += "<option disabled>No investments available</option>";
     }
-    
+
     investmentModal.html(`
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -947,36 +1005,41 @@ document.addEventListener("DOMContentLoaded", function () {
             </form>
         </div>
     `);
-    
+
     // Add event listener for form submission
     document
       .getElementById("transaction-form")
       .addEventListener("submit", async function (e) {
         e.preventDefault();
-        
+
         // Get form values
         const formData = {
-          id: document.getElementById("transaction-id").value ? parseInt(document.getElementById("transaction-id").value) : undefined,
+          id: document.getElementById("transaction-id").value
+            ? parseInt(document.getElementById("transaction-id").value)
+            : undefined,
           entity_id: parseInt(document.getElementById("investment-name").value),
           transactionType: document.getElementById("transaction-type").value,
-          amount: parseFloat(document.getElementById("transaction-amount").value),
+          amount: parseFloat(
+            document.getElementById("transaction-amount").value
+          ),
           date: new Date(document.getElementById("transaction-date").value),
-          notes: document.getElementById("transaction-notes").value
+          notes: document.getElementById("transaction-notes").value,
         };
-        
+
         // Get investment type from selected option
-        const selectedOption = document.getElementById("investment-name").selectedOptions[0];
+        const selectedOption =
+          document.getElementById("investment-name").selectedOptions[0];
         const entityType = selectedOption.dataset.type;
-        formData.investmentType = entityType === 'investment' ? 'fund' : 'land';
+        formData.investmentType = entityType === "investment" ? "fund" : "land";
         formData.name = selectedOption.textContent;
-        
+
         // Save to IndexedDB via the investmentChart object
         if (formData.id) {
           await window.investmentChart.updateTransaction(formData);
         } else {
           await window.investmentChart.addTransaction(formData);
         }
-        
+
         // Close the modal
         investmentModal.style("display", "none");
       });
@@ -986,12 +1049,12 @@ document.addEventListener("DOMContentLoaded", function () {
       .querySelector("#transaction-form .btn-delete")
       .addEventListener("click", async function () {
         const id = document.getElementById("transaction-id").value;
-        
+
         if (id) {
           // Confirm deletion
           if (confirm("Are you sure you want to delete this transaction?")) {
             await window.investmentChart.removeTransaction({ id: Number(id) });
-            
+
             // Close the modal
             investmentModal.style("display", "none");
           }
@@ -1130,12 +1193,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!investmentData.length) {
       console.warn("No investment data available for visualization");
     }
-    
+
     // If modal hasn't been initialized yet, do it now
     if (!document.getElementById("transaction-form")) {
       initTransactionModal();
     }
-    
+
     // First fully clear the investment chart to ensure complete redraw
     const investmentChart = d3.select("#investment-chart");
 
@@ -1151,40 +1214,40 @@ document.addEventListener("DOMContentLoaded", function () {
     // Get the input date values
     const startDateValue = d3.select("#start-date").property("value");
     const endDateValue = d3.select("#end-date").property("value");
-    
+
     // Parse dates
     const newStartDate = startDateValue ? new Date(startDateValue) : startDate;
     const newEndDate = endDateValue ? new Date(endDateValue) : endDate;
-    
+
     // Validate dates
     if (newStartDate >= newEndDate) {
       alert("Start date must be before end date");
       return;
     }
-    
+
     // Update dates
     startDate = newStartDate;
     endDate = newEndDate;
-    
+
     // Update the time scale
     timeScale.domain([startDate, endDate]);
-    
+
     // Redraw the chart
     updateInvestmentVisualization();
   }
 
   // Add event listeners for date range controls
   d3.select("#apply-dates").on("click", updateDateRange);
-  
+
   // Handle keypress events on the inputs
-  d3.select("#start-date").on("keypress", function(event) {
+  d3.select("#start-date").on("keypress", function (event) {
     if (event.key === "Enter") {
       updateDateRange();
       event.preventDefault();
     }
   });
-  
-  d3.select("#end-date").on("keypress", function(event) {
+
+  d3.select("#end-date").on("keypress", function (event) {
     if (event.key === "Enter") {
       updateDateRange();
       event.preventDefault();
@@ -1196,22 +1259,24 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       // Show loading indicator
       const investmentChart = d3.select("#investment-chart");
-      investmentChart.html('<div class="loading-indicator">Loading investment data...</div>');
-      
+      investmentChart.html(
+        '<div class="loading-indicator">Loading investment data...</div>'
+      );
+
       // Initialize IndexedDB
       if (!db) {
         await initDatabase();
         await seedDatabaseIfEmpty();
       }
-      
+
       // Fetch data from IndexedDB
       await fetchChartData();
-      
+
       // Initialize the visualization with the fetched data
       updateDateRange();
     } catch (error) {
-      console.error('Error initializing investment chart:', error);
-      
+      console.error("Error initializing investment chart:", error);
+
       // Show error message
       const investmentChart = d3.select("#investment-chart");
       investmentChart.html(`
@@ -1220,7 +1285,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <button id="retry-load-btn">Retry</button>
         </div>
       `);
-      
+
       // Add retry button event listener
       d3.select("#retry-load-btn").on("click", () => {
         initInvestmentChart();
@@ -1271,8 +1336,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Filter transactions based on selected date range
-    const visibleTransactions = transactionData.filter(transaction => 
-      transaction.date >= startDate && transaction.date <= endDate
+    const visibleTransactions = transactionData.filter(
+      (transaction) =>
+        transaction.date >= startDate && transaction.date <= endDate
     );
 
     // Process the transaction data for display
@@ -1308,12 +1374,12 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("y2", investmentTimelineY)
       .attr("stroke", "#ddd")
       .attr("stroke-width", 1);
-    
+
     // Add "Today" indicator if current date is within the visible range
     const today = new Date();
     if (today >= startDate && today <= endDate) {
       const todayX = timeScale(today);
-      
+
       // Add vertical line for today
       investmentSvg
         .append("line")
@@ -1325,7 +1391,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("stroke", "#FF5722")
         .attr("stroke-width", 1.5)
         .attr("stroke-dasharray", "4,3");
-      
+
       // Add "Today" label
       investmentSvg
         .append("text")
@@ -1337,7 +1403,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("font-weight", "bold")
         .attr("fill", "#FF5722")
         .text("Today");
-      
+
       // Add dot on timeline
       investmentSvg
         .append("circle")
@@ -1348,18 +1414,15 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("fill", "#FF5722")
         .attr("stroke", "white")
         .attr("stroke-width", 1)
-        .on("mouseover", function(event) {
-          tooltip.transition()
-            .duration(200)
-            .style("opacity", 0.9);
-          tooltip.html(`Today: ${dateFormat(today)}`)
-            .style("left", (event.pageX + 10) + "px")
-            .style("top", (event.pageY - 28) + "px");
+        .on("mouseover", function (event) {
+          tooltip.transition().duration(200).style("opacity", 0.9);
+          tooltip
+            .html(`Today: ${dateFormat(today)}`)
+            .style("left", event.pageX + 10 + "px")
+            .style("top", event.pageY - 28 + "px");
         })
-        .on("mouseout", function() {
-          tooltip.transition()
-            .duration(500)
-            .style("opacity", 0);
+        .on("mouseout", function () {
+          tooltip.transition().duration(500).style("opacity", 0);
         });
     }
 
@@ -1391,21 +1454,10 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("font-size", "10px")
       .attr("dy", "1em");
 
-    // Add date range information
-    investmentSvg
-      .append("text")
-      .attr("class", "date-range-info")
-      .attr("x", timelineStart)
-      .attr("y", 15)
-      .attr("text-anchor", "start")
-      .attr("font-size", "12px")
-      .attr("fill", "#666")
-      .text(`Date Range: ${dateFormat(startDate)} - ${dateFormat(endDate)}`);
-
     // Add year labels (dynamically based on date range)
     const startYear = startDate.getFullYear();
     const endYear = endDate.getFullYear();
-    
+
     // Add start year label
     investmentSvg
       .append("text")
@@ -1426,14 +1478,14 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("text-anchor", "middle")
         .attr("font-size", "12px")
         .text(endYear);
-        
+
       // Add intermediate year labels if the range spans multiple years
       for (let year = startYear + 1; year < endYear; year++) {
         const yearDate = new Date(year, 0, 1);
         // Only add label if the year falls within our visible range
         if (yearDate >= startDate && yearDate <= endDate) {
           const xPos = timeScale(yearDate);
-          
+
           investmentSvg
             .append("text")
             .attr("class", "year-label")
@@ -1528,7 +1580,9 @@ document.addEventListener("DOMContentLoaded", function () {
           .append("g")
           .attr(
             "data-id",
-            transaction.id ? Number(transaction.id) : transactionData.indexOf(transaction)
+            transaction.id
+              ? Number(transaction.id)
+              : transactionData.indexOf(transaction)
           )
           .attr(
             "transform",
@@ -1616,7 +1670,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // For simplicity, just open it with the first item in this group
             if (items.length > 0) {
               // Ensure we're working with a transaction that has a numeric ID
-              const transactionCopy = {...items[0]};
+              const transactionCopy = { ...items[0] };
               if (transactionCopy.id) {
                 transactionCopy.id = Number(transactionCopy.id);
               }
@@ -1935,7 +1989,7 @@ document.addEventListener("DOMContentLoaded", function () {
               // For simplicity, just open it with the first item in this group
               if (items.length > 0) {
                 // Ensure we're working with a transaction that has a numeric ID
-                const transactionCopy = {...items[0]};
+                const transactionCopy = { ...items[0] };
                 if (transactionCopy.id) {
                   transactionCopy.id = Number(transactionCopy.id);
                 }
@@ -1962,7 +2016,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("text")
         .attr("text-anchor", "middle")
         .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left + 15)
+        .attr("y", -margin.left)
         .attr("x", -height / 2)
         .text("Amount ($)")
         .style("font-size", "12px");
@@ -1975,7 +2029,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!document.getElementById("transaction-form")) {
       initTransactionModal();
     }
-    
+
     // Reset form
     document.getElementById("transaction-form").reset();
     document.getElementById("transaction-id").value = "";
@@ -1986,51 +2040,63 @@ document.addEventListener("DOMContentLoaded", function () {
     if (transaction) {
       // Find the correct investment option in the dropdown
       let foundOption = false;
-      
+
       // First try to find by name
       if (transaction.name) {
-        const options = Array.from(document.getElementById("investment-name").options);
-        const matchingOption = options.find(option => 
-          option.textContent === transaction.name && !option.disabled
+        const options = Array.from(
+          document.getElementById("investment-name").options
         );
-        
+        const matchingOption = options.find(
+          (option) =>
+            option.textContent === transaction.name && !option.disabled
+        );
+
         if (matchingOption) {
-          document.getElementById("investment-name").value = matchingOption.value;
+          document.getElementById("investment-name").value =
+            matchingOption.value;
           foundOption = true;
         }
       }
-      
+
       // If not found by name and we have an ID, try by ID
       if (!foundOption && transaction.id) {
         const investmentSelect = document.getElementById("investment-name");
-        
+
         // Ensure we're comparing numeric IDs
         const transactionId = Number(transaction.id);
-        const entityId = transaction.entity_id ? Number(transaction.entity_id) : null;
-        
+        const entityId = transaction.entity_id
+          ? Number(transaction.entity_id)
+          : null;
+
         // Look for matching investment in our data
-        const matchingInvestment = investmentData.find(inv => 
-          Number(inv.id) === transactionId || 
-          (entityId && Number(inv.id) === entityId)
+        const matchingInvestment = investmentData.find(
+          (inv) =>
+            Number(inv.id) === transactionId ||
+            (entityId && Number(inv.id) === entityId)
         );
-        
+
         if (matchingInvestment) {
           // Find the option with this ID
           const options = Array.from(investmentSelect.options);
-          const matchingOption = options.find(option => 
-            Number(option.value) === Number(matchingInvestment.id) && !option.disabled
+          const matchingOption = options.find(
+            (option) =>
+              Number(option.value) === Number(matchingInvestment.id) &&
+              !option.disabled
           );
-          
+
           if (matchingOption) {
             investmentSelect.value = matchingOption.value;
             foundOption = true;
           }
         }
       }
-      
-      document.getElementById("transaction-type").value = transaction.transactionType;
-      document.getElementById("transaction-amount").value = Math.abs(transaction.amount);
-      
+
+      document.getElementById("transaction-type").value =
+        transaction.transactionType;
+      document.getElementById("transaction-amount").value = Math.abs(
+        transaction.amount
+      );
+
       // Add notes if available
       if (transaction.notes) {
         document.getElementById("transaction-notes").value = transaction.notes;
@@ -2056,10 +2122,14 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Initialize the IndexedDB when the page loads
-  initDatabase().then(() => {
-    console.log('Database initialized, checking if data needs to be seeded...');
-    return seedDatabaseIfEmpty();
-  }).catch(error => {
-    console.error('Error initializing database:', error);
-  });
+  initDatabase()
+    .then(() => {
+      console.log(
+        "Database initialized, checking if data needs to be seeded..."
+      );
+      return seedDatabaseIfEmpty();
+    })
+    .catch((error) => {
+      console.error("Error initializing database:", error);
+    });
 });
