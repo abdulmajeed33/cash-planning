@@ -608,8 +608,13 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Function to update a transaction
     updateTransaction: async function(transaction) {
-      // Find the transaction in our array
-      const index = transactionData.findIndex(t => t.id === transaction.id);
+      // Ensure transaction.id is a number
+      if (transaction.id) {
+        transaction.id = Number(transaction.id);
+      }
+      
+      // Find the transaction in our array - ensure we compare as numbers
+      const index = transactionData.findIndex(t => Number(t.id) === Number(transaction.id));
       
       if (index >= 0) {
         // Process date if it's a string
@@ -636,6 +641,8 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Refresh visualization
         updateInvestmentVisualization();
+      } else {
+        console.warn("Transaction with ID", transaction.id, "not found in local data");
       }
       
       return this; // For chaining
@@ -646,11 +653,11 @@ document.addEventListener("DOMContentLoaded", function () {
       let id, index;
       
       if (typeof idOrIndex === 'object' && idOrIndex.id) {
-        id = idOrIndex.id;
-        index = transactionData.findIndex(t => t.id === id);
+        id = Number(idOrIndex.id);
+        index = transactionData.findIndex(t => Number(t.id) === id);
       } else if (typeof idOrIndex === 'number') {
         index = idOrIndex;
-        id = transactionData[index]?.id;
+        id = transactionData[index]?.id ? Number(transactionData[index].id) : null;
       }
       
       if (index >= 0 && index < transactionData.length && id) {
@@ -662,6 +669,8 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Refresh visualization
         updateInvestmentVisualization();
+      } else {
+        console.warn("Failed to remove transaction:", idOrIndex);
       }
       
       return this; // For chaining
@@ -947,7 +956,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Get form values
         const formData = {
-          id: document.getElementById("transaction-id").value || undefined,
+          id: document.getElementById("transaction-id").value ? parseInt(document.getElementById("transaction-id").value) : undefined,
           entity_id: parseInt(document.getElementById("investment-name").value),
           transactionType: document.getElementById("transaction-type").value,
           amount: parseFloat(document.getElementById("transaction-amount").value),
@@ -981,7 +990,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (id) {
           // Confirm deletion
           if (confirm("Are you sure you want to delete this transaction?")) {
-            await window.investmentChart.removeTransaction({ id: parseInt(id) });
+            await window.investmentChart.removeTransaction({ id: Number(id) });
             
             // Close the modal
             investmentModal.style("display", "none");
@@ -1519,7 +1528,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .append("g")
           .attr(
             "data-id",
-            transaction.id || transactionData.indexOf(transaction)
+            transaction.id ? Number(transaction.id) : transactionData.indexOf(transaction)
           )
           .attr(
             "transform",
@@ -1603,7 +1612,16 @@ document.addEventListener("DOMContentLoaded", function () {
               .style("transform", "scale(0.95)");
           })
           .on("click", function () {
-            showTransactionModal(transaction.date, transaction);
+            // When clicked, open the modal to edit the transaction
+            // For simplicity, just open it with the first item in this group
+            if (items.length > 0) {
+              // Ensure we're working with a transaction that has a numeric ID
+              const transactionCopy = {...items[0]};
+              if (transactionCopy.id) {
+                transactionCopy.id = Number(transactionCopy.id);
+              }
+              showTransactionModal(items[0].date, transactionCopy);
+            }
           });
 
         // Make transaction draggable
@@ -1916,7 +1934,12 @@ document.addEventListener("DOMContentLoaded", function () {
               // When clicked, open the modal to edit the transaction
               // For simplicity, just open it with the first item in this group
               if (items.length > 0) {
-                showTransactionModal(items[0].date, items[0]);
+                // Ensure we're working with a transaction that has a numeric ID
+                const transactionCopy = {...items[0]};
+                if (transactionCopy.id) {
+                  transactionCopy.id = Number(transactionCopy.id);
+                }
+                showTransactionModal(items[0].date, transactionCopy);
               }
             });
 
@@ -1981,17 +2004,21 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!foundOption && transaction.id) {
         const investmentSelect = document.getElementById("investment-name");
         
+        // Ensure we're comparing numeric IDs
+        const transactionId = Number(transaction.id);
+        const entityId = transaction.entity_id ? Number(transaction.entity_id) : null;
+        
         // Look for matching investment in our data
         const matchingInvestment = investmentData.find(inv => 
-          inv.id === transaction.id || 
-          (transaction.entity_id && inv.id === transaction.entity_id)
+          Number(inv.id) === transactionId || 
+          (entityId && Number(inv.id) === entityId)
         );
         
         if (matchingInvestment) {
           // Find the option with this ID
           const options = Array.from(investmentSelect.options);
           const matchingOption = options.find(option => 
-            option.value == matchingInvestment.id && !option.disabled
+            Number(option.value) === Number(matchingInvestment.id) && !option.disabled
           );
           
           if (matchingOption) {
@@ -2012,7 +2039,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // Format date for the input field (YYYY-MM-DD)
       const dateStr = transaction.date.toISOString().split("T")[0];
       document.getElementById("transaction-date").value = dateStr;
-      document.getElementById("transaction-id").value = transaction.id;
+      document.getElementById("transaction-id").value = Number(transaction.id);
     } else {
       // Set default values for new transaction
       const dateStr = date.toISOString().split("T")[0];
