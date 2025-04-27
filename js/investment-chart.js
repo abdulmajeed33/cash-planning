@@ -1668,13 +1668,13 @@ document.addEventListener("DOMContentLoaded", function () {
           .on("click", function () {
             // When clicked, open the modal to edit the transaction
             // For simplicity, just open it with the first item in this group
-            if (items.length > 0) {
+            if (group.transactions.length > 0) {
               // Ensure we're working with a transaction that has a numeric ID
-              const transactionCopy = { ...items[0] };
+              const transactionCopy = { ...transaction };
               if (transactionCopy.id) {
                 transactionCopy.id = Number(transactionCopy.id);
               }
-              showTransactionModal(items[0].date, transactionCopy);
+              showTransactionModal(transaction.date, transactionCopy);
             }
           });
 
@@ -1847,20 +1847,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Now draw the bar chart below the timeline - only if we have transactions
     if (visibleTransactions.length > 0) {
-      // Sort transactions by date
-      const sortedTransactions = [...visibleTransactions].sort(
-        (a, b) => a.date - b.date
-      );
-
-      // Group transactions by date
-      const transactions = d3.groups(sortedTransactions, (d) => {
-        const date = d.date;
-        return `${date.getMonth() + 1}/${date.getDate()}/${date
-          .getFullYear()
-          .toString()
-          .substr(-2)}`;
-      });
-
       // Set chart dimensions
       const margin = { top: 20, right: 50, bottom: 80, left: 60 };
       const width = 1000 - margin.left - margin.right;
@@ -1882,17 +1868,50 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      // Create scales
+      // Group transactions by entity (fund/land name)
+      const transactionsByEntity = d3.groups(visibleTransactions, d => d.name);
+      
+      // Calculate total buy and sale amounts for each entity
+      const entityData = transactionsByEntity.map(group => {
+        const name = group[0];
+        const transactions = group[1];
+        
+        // Get investment type (fund or land)
+        const investmentType = transactions[0].investmentType;
+        
+        // Calculate buy and sale totals
+        const buyTotal = d3.sum(
+          transactions.filter(t => t.transactionType === "buy"),
+          d => Math.abs(d.amount)
+        );
+        
+        const saleTotal = d3.sum(
+          transactions.filter(t => t.transactionType === "sale"),
+          d => Math.abs(d.amount)
+        );
+        
+        return {
+          name,
+          investmentType,
+          buyTotal,
+          saleTotal,
+          total: buyTotal + saleTotal,
+          transactions
+        };
+      });
+      
+      // Sort by total amount descending
+      entityData.sort((a, b) => b.total - a.total);
+
+      // Create x scale based on entity names
       const x = d3
         .scaleBand()
-        .domain(transactions.map((d) => d[0]))
+        .domain(entityData.map(d => d.name))
         .range([0, width])
         .padding(0.3);
 
       // Get max value for y axis
-      const maxValue = d3.max(transactions, (d) => {
-        return d3.sum(d[1], (t) => Math.abs(t.amount));
-      });
+      const maxValue = d3.max(entityData, d => d.total);
 
       const y = d3
         .scaleLinear()
@@ -1911,95 +1930,129 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("transform", "rotate(-45)");
 
       // Add Y axis
-      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d}`));
+      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat(d => `$${d}`));
 
-      // Draw stacked bars
-      transactions.forEach((transaction) => {
-        const date = transaction[0];
-        const entries = transaction[1];
-
-        let yPos = height;
-
-        // Group by investment type and transaction type
-        const byType = d3.groups(
-          entries,
-          (d) => `${d.investmentType}-${d.transactionType}`
-        );
-
-        byType.forEach((group) => {
-          const type = group[0];
-          const items = group[1];
-
-          // Get total amount for this group
-          const totalAmount = d3.sum(items, (d) => Math.abs(d.amount));
-          const barHeight = height - y(totalAmount);
-
-          // Create group for each bar segment
-          const barGroup = barChartSvg
-            .append("g")
-            .attr("class", "investment-bar")
-            .attr("data-date", date)
-            .attr("data-type", type);
-
-          // Draw the bar segment
+      // Draw stacked bars for each entity
+      entityData.forEach(entity => {
+        const barGroup = barChartSvg
+          .append("g")
+          .attr("class", "investment-entity-group");
+        
+        // Base position for the bar
+        const barX = x(entity.name);
+        const barWidth = x.bandwidth();
+        
+        // First draw the buy amount (bottom part of stack)
+        if (entity.buyTotal > 0) {
+          const buyHeight = height - y(entity.buyTotal);
+          const buyY = height - buyHeight;
+          
           barGroup
             .append("rect")
-            .attr("x", x(date))
-            .attr("y", yPos - barHeight)
-            .attr("width", x.bandwidth())
-            .attr("height", barHeight)
-            .attr("fill", color(type))
+            .attr("class", "buy-bar")
+            .attr("x", barX)
+            .attr("y", buyY)
+            .attr("width", barWidth)
+            .attr("height", buyHeight)
+            .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Green for fund buys, blue for land buys
             .attr("opacity", 0.8)
-            .on("mouseenter", function (event) {
+            .on("mouseenter", function(event) {
               // Show tooltip
               tooltip.transition().duration(200).style("opacity", 0.9);
-
-              // Format the items for display
-              const itemsList = items
-                .map(
-                  (item) =>
-                    `${item.name}: ${
-                      item.transactionType === "buy" ? "+" : "-"
-                    }$${Math.abs(item.amount)}`
-                )
+              
+              // Get all buy transactions for this entity
+              const buyTransactions = entity.transactions.filter(t => t.transactionType === "buy");
+              
+              // Format transactions for display
+              const transactionsList = buyTransactions
+                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
                 .join("<br>");
-
+              
               tooltip
-                .html(
-                  `
-                <strong>${date}</strong><br>
-                <strong>${
-                  type.split("-")[0].charAt(0).toUpperCase() +
-                  type.split("-")[0].slice(1)
-                } 
-                ${type.split("-")[1]}</strong><br>
-                Total: $${totalAmount}<br>
-                <hr style="margin: 5px 0; opacity: 0.3">
-                ${itemsList}
-              `
-                )
+                .html(`
+                  <strong>${entity.name}</strong><br>
+                  <strong>Total Purchases: $${entity.buyTotal.toLocaleString()}</strong><br>
+                  <hr style="margin: 5px 0; opacity: 0.3">
+                  ${transactionsList}
+                `)
                 .style("left", event.pageX + 10 + "px")
                 .style("top", event.pageY - 28 + "px");
             })
-            .on("mouseleave", function () {
+            .on("mouseleave", function() {
               tooltip.transition().duration(500).style("opacity", 0);
             })
-            .on("click", function () {
-              // When clicked, open the modal to edit the transaction
-              // For simplicity, just open it with the first item in this group
-              if (items.length > 0) {
-                // Ensure we're working with a transaction that has a numeric ID
-                const transactionCopy = { ...items[0] };
-                if (transactionCopy.id) {
-                  transactionCopy.id = Number(transactionCopy.id);
-                }
-                showTransactionModal(items[0].date, transactionCopy);
+            .on("click", function() {
+              const buyTransactions = entity.transactions.filter(t => t.transactionType === "buy");
+              if (buyTransactions.length > 0) {
+                showTransactionModal(new Date(), buyTransactions[0]);
               }
             });
-
-          // Update position for next segment
-          yPos -= barHeight;
-        });
+        }
+        
+        // Then draw the sale amount (top part of stack)
+        if (entity.saleTotal > 0) {
+          // Position the sale bar on top of the buy bar
+          const saleY = height - (y(0) - y(entity.saleTotal)) - (entity.buyTotal > 0 ? (height - y(entity.buyTotal)) : 0);
+          const saleHeight = height - y(entity.saleTotal);
+          
+          barGroup
+            .append("rect")
+            .attr("class", "sale-bar")
+            .attr("x", barX)
+            .attr("y", saleY)
+            .attr("width", barWidth)
+            .attr("height", saleHeight)
+            .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Red for fund sales, orange for land sales
+            .attr("opacity", 0.8)
+            .on("mouseenter", function(event) {
+              // Show tooltip
+              tooltip.transition().duration(200).style("opacity", 0.9);
+              
+              // Get all sale transactions for this entity
+              const saleTransactions = entity.transactions.filter(t => t.transactionType === "sale");
+              
+              // Format transactions for display
+              const transactionsList = saleTransactions
+                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
+                .join("<br>");
+              
+              tooltip
+                .html(`
+                  <strong>${entity.name}</strong><br>
+                  <strong>Total Sales: $${entity.saleTotal.toLocaleString()}</strong><br>
+                  <hr style="margin: 5px 0; opacity: 0.3">
+                  ${transactionsList}
+                `)
+                .style("left", event.pageX + 10 + "px")
+                .style("top", event.pageY - 28 + "px");
+            })
+            .on("mouseleave", function() {
+              tooltip.transition().duration(500).style("opacity", 0);
+            })
+            .on("click", function() {
+              const saleTransactions = entity.transactions.filter(t => t.transactionType === "sale");
+              if (saleTransactions.length > 0) {
+                showTransactionModal(new Date(), saleTransactions[0]);
+              }
+            });
+        }
+        
+        // Add total amount label at the top of the stack
+        const totalLabelY = Math.min(
+          y(entity.buyTotal + entity.saleTotal) - 10,
+          height - 10
+        );
+        
+        barGroup
+          .append("text")
+          .attr("class", "total-label")
+          .attr("x", barX + barWidth / 2)
+          .attr("y", totalLabelY)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#000")
+          .attr("font-size", "10px")
+          .attr("font-weight", "bold")
+          .text(`$${entity.total.toLocaleString()}`);
       });
 
       // Add X axis label
@@ -2008,7 +2061,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("text-anchor", "middle")
         .attr("x", width / 2)
         .attr("y", height + margin.bottom - 5)
-        .text("Transaction Date")
+        .text("Investments")
         .style("font-size", "12px");
 
       // Add Y axis label
