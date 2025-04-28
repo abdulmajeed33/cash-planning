@@ -1248,6 +1248,22 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("span")
         .html(`${item.label} <small>(${positionIndicator})</small>`);
     });
+    
+    // Add divider line explanation to legend
+    const dividerLegendItem = topLegend.append("div")
+      .attr("class", "legend-item")
+      .style("margin-top", "8px");
+      
+    // Create a small line to demonstrate the divider
+    dividerLegendItem
+      .append("div")
+      .attr("class", "color-box")
+      .html(`<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`)
+      .style("background", "transparent");
+      
+    dividerLegendItem
+      .append("span")
+      .html(`<small>Dashed lines separate transactions on different dates</small>`);
 
     // Filter transactions based on selected date range AND amount filter
     const visibleTransactions = filterTransactions(transactionData);
@@ -1890,94 +1906,153 @@ document.addEventListener("DOMContentLoaded", function () {
           const buyHeight = height - y(entity.buyTotal);
           const buyY = height - buyHeight;
           
-          barGroup
-            .append("rect")
-            .attr("class", "buy-bar")
-            .attr("x", barX)
-            .attr("y", buyY)
-            .attr("width", barWidth)
-            .attr("height", buyHeight)
-            .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Green for fund buys, blue for land buys
-            .attr("opacity", 0.8)
-            .on("mouseenter", function(event) {
-              // Show tooltip
-              tooltip.transition().duration(200).style("opacity", 0.9);
+          // Group buy transactions by date
+          const buyTransactionsByDate = d3.groups(
+            entity.transactions.filter(t => t.transactionType === "buy"),
+            d => d.date.toDateString()
+          );
+          
+          let currentBuyHeight = 0;
+          
+          // Draw a segment for each date's transactions
+          buyTransactionsByDate.forEach((dateGroup, i) => {
+            const transactions = dateGroup[1];
+            const dateTotal = d3.sum(transactions, d => Math.abs(d.amount));
+            const segmentHeight = (dateTotal / entity.buyTotal) * buyHeight;
+            
+            barGroup
+              .append("rect")
+              .attr("class", "buy-bar-segment")
+              .attr("x", barX)
+              .attr("y", height - currentBuyHeight - segmentHeight)
+              .attr("width", barWidth)
+              .attr("height", segmentHeight)
+              .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Green for fund buys, blue for land buys
+              .attr("opacity", 0.8)
+              .attr("stroke", "#fff")
+              .attr("stroke-width", 0.5)
+              .on("mouseenter", function(event) {
+                // Show tooltip
+                tooltip.transition().duration(200).style("opacity", 0.9);
+                
+                // Format transactions for display
+                const transactionsList = transactions
+                  .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
+                  .join("<br>");
+                
+                tooltip
+                  .html(`
+                    <strong>${entity.name}</strong><br>
+                    <strong>Purchases on ${dateFormat(transactions[0].date)}</strong><br>
+                    <strong>Total: $${dateTotal.toLocaleString()}</strong><br>
+                    <hr style="margin: 5px 0; opacity: 0.3">
+                    ${transactionsList}
+                  `)
+                  .style("left", event.pageX + 10 + "px")
+                  .style("top", event.pageY - 28 + "px");
+              })
+              .on("mouseleave", function() {
+                tooltip.transition().duration(500).style("opacity", 0);
+              })
+              .on("click", function() {
+                if (transactions.length > 0) {
+                  showTransactionModal(new Date(), transactions[0]);
+                }
+              });
               
-              // Get all buy transactions for this entity
-              const buyTransactions = entity.transactions.filter(t => t.transactionType === "buy");
-              
-              // Format transactions for display
-              const transactionsList = buyTransactions
-                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
-                .join("<br>");
-              
-              tooltip
-                .html(`
-                  <strong>${entity.name}</strong><br>
-                  <strong>Total Purchases: $${entity.buyTotal.toLocaleString()}</strong><br>
-                  <hr style="margin: 5px 0; opacity: 0.3">
-                  ${transactionsList}
-                `)
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 28 + "px");
-            })
-            .on("mouseleave", function() {
-              tooltip.transition().duration(500).style("opacity", 0);
-            })
-            .on("click", function() {
-              const buyTransactions = entity.transactions.filter(t => t.transactionType === "buy");
-              if (buyTransactions.length > 0) {
-                showTransactionModal(new Date(), buyTransactions[0]);
-              }
-            });
+            // Add divider line between date segments (except after the last one)
+            if (i < buyTransactionsByDate.length - 1) {
+              barGroup
+                .append("line")
+                .attr("x1", barX)
+                .attr("x2", barX + barWidth)
+                .attr("y1", height - currentBuyHeight - segmentHeight)
+                .attr("y2", height - currentBuyHeight - segmentHeight)
+                .attr("stroke", "#ffffff")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "2,1");
+            }
+            
+            currentBuyHeight += segmentHeight;
+          });
         }
         
         // Then draw the sale amount (top part of stack)
         if (entity.saleTotal > 0) {
           // Position the sale bar on top of the buy bar
-          const saleY = height - (y(0) - y(entity.saleTotal)) - (entity.buyTotal > 0 ? (height - y(entity.buyTotal)) : 0);
+          const buyHeight = entity.buyTotal > 0 ? (height - y(entity.buyTotal)) : 0;
+          const saleStart = height - buyHeight;
           const saleHeight = height - y(entity.saleTotal);
           
-          barGroup
-            .append("rect")
-            .attr("class", "sale-bar")
-            .attr("x", barX)
-            .attr("y", saleY)
-            .attr("width", barWidth)
-            .attr("height", saleHeight)
-            .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Red for fund sales, orange for land sales
-            .attr("opacity", 0.8)
-            .on("mouseenter", function(event) {
-              // Show tooltip
-              tooltip.transition().duration(200).style("opacity", 0.9);
+          // Group sale transactions by date
+          const saleTransactionsByDate = d3.groups(
+            entity.transactions.filter(t => t.transactionType === "sale"),
+            d => d.date.toDateString()
+          );
+          
+          let currentSaleHeight = 0;
+          
+          // Draw a segment for each date's transactions
+          saleTransactionsByDate.forEach((dateGroup, i) => {
+            const transactions = dateGroup[1];
+            const dateTotal = d3.sum(transactions, d => Math.abs(d.amount));
+            const segmentHeight = (dateTotal / entity.saleTotal) * saleHeight;
+            
+            barGroup
+              .append("rect")
+              .attr("class", "sale-bar-segment")
+              .attr("x", barX)
+              .attr("y", saleStart - currentSaleHeight - segmentHeight)
+              .attr("width", barWidth)
+              .attr("height", segmentHeight)
+              .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Red for fund sales, orange for land sales
+              .attr("opacity", 0.8)
+              .attr("stroke", "#fff")
+              .attr("stroke-width", 0.5)
+              .on("mouseenter", function(event) {
+                // Show tooltip
+                tooltip.transition().duration(200).style("opacity", 0.9);
+                
+                // Format transactions for display
+                const transactionsList = transactions
+                  .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
+                  .join("<br>");
+                
+                tooltip
+                  .html(`
+                    <strong>${entity.name}</strong><br>
+                    <strong>Sales on ${dateFormat(transactions[0].date)}</strong><br>
+                    <strong>Total: $${dateTotal.toLocaleString()}</strong><br>
+                    <hr style="margin: 5px 0; opacity: 0.3">
+                    ${transactionsList}
+                  `)
+                  .style("left", event.pageX + 10 + "px")
+                  .style("top", event.pageY - 28 + "px");
+              })
+              .on("mouseleave", function() {
+                tooltip.transition().duration(500).style("opacity", 0);
+              })
+              .on("click", function() {
+                if (transactions.length > 0) {
+                  showTransactionModal(new Date(), transactions[0]);
+                }
+              });
               
-              // Get all sale transactions for this entity
-              const saleTransactions = entity.transactions.filter(t => t.transactionType === "sale");
-              
-              // Format transactions for display
-              const transactionsList = saleTransactions
-                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
-                .join("<br>");
-              
-              tooltip
-                .html(`
-                  <strong>${entity.name}</strong><br>
-                  <strong>Total Sales: $${entity.saleTotal.toLocaleString()}</strong><br>
-                  <hr style="margin: 5px 0; opacity: 0.3">
-                  ${transactionsList}
-                `)
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 28 + "px");
-            })
-            .on("mouseleave", function() {
-              tooltip.transition().duration(500).style("opacity", 0);
-            })
-            .on("click", function() {
-              const saleTransactions = entity.transactions.filter(t => t.transactionType === "sale");
-              if (saleTransactions.length > 0) {
-                showTransactionModal(new Date(), saleTransactions[0]);
-              }
-            });
+            // Add divider line between date segments (except after the last one)
+            if (i < saleTransactionsByDate.length - 1) {
+              barGroup
+                .append("line")
+                .attr("x1", barX)
+                .attr("x2", barX + barWidth)
+                .attr("y1", saleStart - currentSaleHeight - segmentHeight)
+                .attr("y2", saleStart - currentSaleHeight - segmentHeight)
+                .attr("stroke", "#ffffff")
+                .attr("stroke-width", 1)
+                .attr("stroke-dasharray", "2,1");
+            }
+            
+            currentSaleHeight += segmentHeight;
+          });
         }
         
         // Add total amount label at the top of the stack
