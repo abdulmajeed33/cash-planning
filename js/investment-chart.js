@@ -105,6 +105,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (investments.length === 0 && lands.length === 0) {
         console.log("Database is empty, adding sample data...");
         await seedSampleData();
+        // Refresh the page after seeding data to properly display it
+        console.log("Sample data added, refreshing page to display seeded data...");
+        window.location.reload();
       } else {
         console.log("Database already has data, skipping seed");
       }
