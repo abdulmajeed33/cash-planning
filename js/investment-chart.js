@@ -2231,6 +2231,29 @@ document.addEventListener("DOMContentLoaded", function () {
       // For new transaction, hide delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "none";
+      
+      // For new transactions, select first real investment option (not disabled options)
+      setTimeout(() => {
+        const investmentField = document.getElementById("investment-name");
+        if (investmentField) {
+          // If no value is selected or the first option is disabled, try to select first valid option
+          if (!investmentField.value || investmentField.options[investmentField.selectedIndex].disabled) {
+            // Find first non-disabled option
+            for (let i = 0; i < investmentField.options.length; i++) {
+              if (!investmentField.options[i].disabled) {
+                investmentField.selectedIndex = i;
+                break;
+              }
+            }
+          }
+          
+          // Manually trigger the change event to prefill amount
+          if (investmentField.value) {
+            const event = new Event('change');
+            investmentField.dispatchEvent(event);
+          }
+        }
+      }, 100); // Small delay to ensure the modal is fully initialized
     }
     
     // Show the modal
@@ -2681,6 +2704,17 @@ document.addEventListener("DOMContentLoaded", function () {
     if (typeSelect) {
       typeSelect.addEventListener("change", function() {
         console.log("Type changed to:", this.value);
+        
+        // If changed to "buy", prefill with cash injection value
+        if (this.value === "buy") {
+          const investmentField = document.getElementById("investment-name");
+          if (investmentField && investmentField.value) {
+            // Trigger the change event on the investment field to prefill the amount
+            const event = new Event('change');
+            investmentField.dispatchEvent(event);
+          }
+        }
+        
         validateSaleTransaction();
       });
     } else {
@@ -2688,8 +2722,47 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     if (investmentSelect) {
-      investmentSelect.addEventListener("change", function() {
+      investmentSelect.addEventListener("change", async function() {
         console.log("Investment changed to:", this.value);
+        
+        // Get the selected investment data and prefill the amount field
+        if (this.value) {
+          const entityId = parseInt(this.value);
+          const entityType = this.selectedOptions[0].dataset.type;
+          const amountInput = document.getElementById("transaction-amount");
+          
+          // Fetch the investment details from IndexedDB
+          try {
+            const store = entityType === "investment" ? STORES.investments : STORES.lands;
+            const transaction = db.transaction(store, "readonly");
+            const objectStore = transaction.objectStore(store);
+            const request = objectStore.get(entityId);
+            
+            request.onsuccess = function(event) {
+              const entity = event.target.result;
+              
+              if (entity) {
+                // For investments, use cash_investment, for lands use cash_injection
+                const cashValue = entityType === "investment" ? 
+                  parseFloat(entity.cash_investment) : 
+                  parseFloat(entity.cash_injection);
+                
+                // Update the amount field with the cash value
+                if (amountInput && !isNaN(cashValue)) {
+                  amountInput.value = cashValue;
+                  console.log(`Prefilled amount with ${entityType} cash value: ${cashValue}`);
+                }
+              }
+            };
+            
+            request.onerror = function(event) {
+              console.error("Error fetching entity details:", event.target.error);
+            };
+          } catch (error) {
+            console.error("Error prefilling amount:", error);
+          }
+        }
+        
         // If this is a sale type, immediately validate
         if (typeSelect && typeSelect.value === "sale") {
           // Add a slight delay to ensure the value is properly updated
