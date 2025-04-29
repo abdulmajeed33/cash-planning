@@ -319,10 +319,12 @@ document.addEventListener("DOMContentLoaded", function () {
   async function fetchTransactions() {
     try {
       const transactions = await getAllData(STORES.transactions);
-      // Ensure transaction_date is a Date object
+      // Ensure transaction_date is a Date object and entity_type is properly mapped
       return transactions.map((tx) => ({
         ...tx,
         transaction_date: new Date(tx.transaction_date),
+        // Make sure investmentType is explicitly set based on entity_type
+        investmentType: tx.entity_type === "investment" ? "fund" : "land"
       }));
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -483,10 +485,16 @@ document.addEventListener("DOMContentLoaded", function () {
       const mappedTransactions = transactions.map((tx) => {
         const isInvestmentType = tx.entity_type === "investment";
 
-        // Find the related entity
-        const relatedEntity = isInvestmentType
-          ? combinedInvestmentData.find((inv) => inv.id === tx.entity_id)
-          : combinedInvestmentData.find((land) => land.id === tx.entity_id);
+        // Find the related entity by both ID and type
+        let relatedEntity;
+        
+        if (isInvestmentType) {
+          // Only search among investments when entity_type is investment
+          relatedEntity = mappedInvestments.find((inv) => inv.id === tx.entity_id);
+        } else {
+          // Only search among lands when entity_type is land
+          relatedEntity = mappedLands.find((land) => land.id === tx.entity_id);
+        }
 
         const name = relatedEntity
           ? relatedEntity.name
@@ -638,8 +646,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Format transaction for IndexedDB
         const dbTransaction = {
           entity_id: transaction.entity_id,
-          entity_type:
-            transaction.investmentType === "fund" ? "investment" : "land",
+          // Always ensure entity_type is correctly set based on investmentType
+          entity_type: transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
           amount: transaction.amount.toString(),
           transaction_date: transaction.date,
@@ -685,8 +693,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const dbTransaction = {
           id: transaction.id,
           entity_id: transaction.entity_id,
-          entity_type: 
-            transaction.investmentType === "fund" ? "investment" : "land",
+          // Always ensure entity_type is correctly set based on investmentType
+          entity_type: transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
           amount: transaction.amount.toString(),
           transaction_date: transaction.date,
@@ -2663,6 +2671,17 @@ document.addEventListener("DOMContentLoaded", function () {
         
         console.log("Transaction form submitted");
 
+        // Get investment type from selected option FIRST
+        const selectedOption = document.getElementById("investment-name").selectedOptions[0];
+        if (!selectedOption || !selectedOption.dataset.type) {
+          console.error("Selected option doesn't have a data-type attribute");
+          alert("Error: Invalid investment selection. Please select a valid investment.");
+          return; // Prevent submission without proper type information
+        }
+        
+        const entityType = selectedOption.dataset.type;
+        const investmentType = entityType === "investment" ? "fund" : "land";
+        
         // Get form values
         const formData = {
           id: document.getElementById("transaction-id").value
@@ -2675,16 +2694,15 @@ document.addEventListener("DOMContentLoaded", function () {
           ),
           date: new Date(document.getElementById("transaction-date").value),
           notes: document.getElementById("transaction-notes").value,
+          // Add investmentType explicitly 
+          investmentType: investmentType,
+          name: selectedOption.textContent
         };
 
         console.log("Form data:", formData);
         
-        // Get investment type from selected option
-        const selectedOption =
-          document.getElementById("investment-name").selectedOptions[0];
-        const entityType = selectedOption.dataset.type;
-        formData.investmentType = entityType === "investment" ? "fund" : "land";
-        formData.name = selectedOption.textContent;
+        // Log explicitly for debugging
+        console.log(`Transaction type info: entity_type=${entityType}, investmentType=${investmentType}`);
         
         // ALWAYS validate before submission
         // For sale transactions, we need special validation
@@ -2722,6 +2740,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         try {
+          // Log transaction data before saving
+          console.log("Saving transaction with data:", {
+            id: formData.id,
+            entity_id: formData.entity_id,
+            investmentType: formData.investmentType,
+            entity_type: formData.investmentType === "fund" ? "investment" : "land",
+            transactionType: formData.transactionType,
+            amount: formData.amount,
+            date: formData.date,
+          });
+          
           // Save to IndexedDB via the investmentChart object
           if (formData.id) {
             console.log("Updating existing transaction ID:", formData.id);
@@ -2912,7 +2941,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const option = document.createElement("option");
         option.value = fund.id;
         option.textContent = fund.name;
-        option.dataset.type = fund.type;
+        option.dataset.type = "investment"; // Ensure correct data-type is set
         select.appendChild(option);
       });
     }
@@ -2929,7 +2958,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const option = document.createElement("option");
         option.value = land.id;
         option.textContent = land.name;
-        option.dataset.type = land.type;
+        option.dataset.type = "land"; // Ensure correct data-type is set
         select.appendChild(option);
       });
     }
