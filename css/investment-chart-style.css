@@ -885,3 +885,27 @@ svg {
         width: 100%;
     }
 }
+
+/* Add CSS to hide form fields in edit mode */
+.modal-content form.edit-mode .form-group {
+  display: none;
+}
+
+.modal-content form.edit-mode .btn-submit {
+  display: none !important;
+}
+
+/* Display a message in edit mode */
+.modal-content form.edit-mode::before {
+  content: "This transaction can only be deleted, not edited.";
+  display: block;
+  margin-bottom: 20px;
+  color: #555;
+  font-style: italic;
+}
+
+/* Keep delete button visible */
+.modal-content form.edit-mode .btn-delete {
+  display: inline-block !important;
+  margin-top: 10px;
+}

@@ -2175,6 +2175,9 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // If editing a transaction, populate the fields
     if (transaction) {
+      // Add a class to the form to hide all fields except delete button
+      if (form) form.classList.add("edit-mode");
+      
       // Set investment selector
       const investmentField = document.getElementById("investment-name");
       if (investmentField) {
@@ -2213,10 +2216,21 @@ document.addEventListener("DOMContentLoaded", function () {
       // Show delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "inline-block";
+      
+      // Hide submit button
+      const submitBtn = document.querySelector(".btn-submit");
+      if (submitBtn) submitBtn.style.display = "none";
     } else {
+      // For new transaction, remove edit-mode class if it exists
+      if (form) form.classList.remove("edit-mode");
+      
       // For new transaction, hide delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "none";
+      
+      // Show submit button
+      const submitBtn = document.querySelector(".btn-submit");
+      if (submitBtn) submitBtn.style.display = "inline-block";
       
       // Ensure amount field is readonly
       const amountField = document.getElementById("transaction-amount");
