@@ -886,26 +886,61 @@ svg {
     }
 }
 
-/* Add CSS to hide form fields in edit mode */
-.modal-content form.edit-mode .form-group {
+/* Sorting controls */
+.sorting-control {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+}
+
+.sorting-control label {
+  margin-right: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.sorting-control label:hover {
+  opacity: 0.8;
+}
+
+.sorting-control input[type="radio"] {
+  margin-right: 6px;
+}
+
+/* Hide edit fields in transaction modal only when editing */
+.modal.editing-transaction #transaction-form .form-group {
   display: none;
 }
 
-.modal-content form.edit-mode .btn-submit {
-  display: none !important;
+/* Modify modal title to reflect functionality only when editing */
+.modal.editing-transaction #transaction-modal-title::after {
+  content: " (Delete Only)";
+  font-size: 0.8em;
+  color: #e53935;
 }
 
-/* Display a message in edit mode */
-.modal-content form.edit-mode::before {
-  content: "This transaction can only be deleted, not edited.";
+/* Display only the delete button when editing */
+.modal.editing-transaction #transaction-form .btn-submit {
+  display: none;
+}
+
+.modal.editing-transaction #transaction-form .btn-delete {
+  margin-left: 0;
+  width: 100%;
+}
+
+/* Display a message explaining restricted functionality when editing */
+.modal.editing-transaction #transaction-form::before {
+  content: "Editing functionality has been disabled. You can only delete this transaction.";
   display: block;
   margin-bottom: 20px;
-  color: #555;
-  font-style: italic;
-}
-
-/* Keep delete button visible */
-.modal-content form.edit-mode .btn-delete {
-  display: inline-block !important;
-  margin-top: 10px;
+  padding: 15px;
+  background-color: #fff3e0;
+  border-left: 4px solid #ff9800;
+  color: #e65100;
+  font-size: 14px;
+  line-height: 1.5;
 }

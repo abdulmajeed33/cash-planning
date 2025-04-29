@@ -187,17 +187,9 @@ document.addEventListener("DOMContentLoaded", function () {
         transaction_date: new Date(currentYear, 3, 10),
         notes: "Full investment",
       },
+     
       {
         id: 3,
-        entity_id: 1,
-        entity_type: "land",
-        transaction_type: "buy",
-        amount: "360000", // Full cash_injection from Downtown Land
-        transaction_date: new Date(currentYear, 2, 8),
-        notes: "Full land acquisition",
-      },
-      {
-        id: 4,
         entity_id: 1,
         entity_type: "investment",
         transaction_type: "sale",
@@ -493,8 +485,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Find the related entity
         const relatedEntity = isInvestmentType
-          ? mappedInvestments.find((inv) => inv.id === tx.entity_id)
-          : mappedLands.find((land) => land.id === tx.entity_id);
+          ? combinedInvestmentData.find((inv) => inv.id === tx.entity_id)
+          : combinedInvestmentData.find((land) => land.id === tx.entity_id);
 
         const name = relatedEntity
           ? relatedEntity.name
@@ -1284,11 +1276,70 @@ document.addEventListener("DOMContentLoaded", function () {
       filterMsg.append("span")
         .text(` (Showing ${visibleTransactions.length} transactions)`);
     }
-
+    
+    // Add sorting control above the chart
+    const sortingControl = investmentChart
+      .append("div")
+      .attr("class", "sorting-control")
+      .style("margin-bottom", "20px")
+      .style("display", "flex")
+      .style("justify-content", "flex-end")
+      .style("align-items", "center");
+      
+    sortingControl.append("span")
+      .text("Sort by: ")
+      .style("margin-right", "10px")
+      .style("font-size", "14px");
+      
+    // Create radio button for date sorting
+    const dateSortLabel = sortingControl.append("label")
+      .style("margin-right", "15px")
+      .style("display", "inline-flex")
+      .style("align-items", "center")
+      .style("cursor", "pointer");
+      
+    dateSortLabel.append("input")
+      .attr("type", "radio")
+      .attr("name", "chart-sort")
+      .attr("value", "date")
+      .property("checked", sortBarsByDate)
+      .style("margin-right", "5px")
+      .on("change", function() {
+        if (this.checked) {
+          updateBarSorting(true);
+        }
+      });
+      
+    dateSortLabel.append("span")
+      .text("Date (Oldest First)")
+      .style("font-size", "14px");
+      
+    // Create radio button for amount sorting
+    const amountSortLabel = sortingControl.append("label")
+      .style("display", "inline-flex")
+      .style("align-items", "center")
+      .style("cursor", "pointer");
+      
+    amountSortLabel.append("input")
+      .attr("type", "radio")
+      .attr("name", "chart-sort")
+      .attr("value", "amount")
+      .property("checked", !sortBarsByDate)
+      .style("margin-right", "5px")
+      .on("change", function() {
+        if (this.checked) {
+          updateBarSorting(false);
+        }
+      });
+      
+    amountSortLabel.append("span")
+      .text("Amount (Highest First)")
+      .style("font-size", "14px");
+    
     // Process the transaction data for display
     if (visibleTransactions.length === 0) {
       investmentChart
-        .append("div")
+      .append("div")
         .attr("class", "no-data-message")
         .text(
           "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
@@ -1532,8 +1583,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "transform",
             `translate(${position + offsetX}, ${verticalPosition})`
           )
-          .style("cursor", "pointer");
-
+      .style("cursor", "pointer");
+      
         // Add invisible circle for better hover area
         transactionGroup
           .append("circle")
@@ -1834,18 +1885,29 @@ document.addEventListener("DOMContentLoaded", function () {
           d => Math.abs(d.amount)
         );
         
+        // Find earliest transaction date for sorting
+        const dates = transactions.map(t => new Date(t.date));
+        const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
+        
         return {
           name,
           investmentType,
           buyTotal,
           saleTotal,
           total: buyTotal + saleTotal,
+          earliestDate,
           transactions
         };
       });
       
-      // Sort by total amount descending
-      entityData.sort((a, b) => b.total - a.total);
+      // Sort based on user preference - either by date or by amount
+      if (sortBarsByDate) {
+        // Sort by earliest transaction date (chronological order)
+        entityData.sort((a, b) => a.earliestDate - b.earliestDate);
+      } else {
+        // Sort by total amount descending
+        entityData.sort((a, b) => b.total - a.total);
+      }
 
       // Create x scale based on entity names
       const x = d3
@@ -2161,6 +2223,13 @@ document.addEventListener("DOMContentLoaded", function () {
         : "Add Investment Transaction";
     }
     
+    // Add or remove a class on the modal based on whether we're editing
+    if (transaction) {
+      investmentModal.classed("editing-transaction", true);
+    } else {
+      investmentModal.classed("editing-transaction", false);
+    }
+    
     // Reset form
     const form = document.getElementById("transaction-form");
     if (form) form.reset();
@@ -2175,9 +2244,6 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // If editing a transaction, populate the fields
     if (transaction) {
-      // Add a class to the form to hide all fields except delete button
-      if (form) form.classList.add("edit-mode");
-      
       // Set investment selector
       const investmentField = document.getElementById("investment-name");
       if (investmentField) {
@@ -2216,21 +2282,10 @@ document.addEventListener("DOMContentLoaded", function () {
       // Show delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "inline-block";
-      
-      // Hide submit button
-      const submitBtn = document.querySelector(".btn-submit");
-      if (submitBtn) submitBtn.style.display = "none";
     } else {
-      // For new transaction, remove edit-mode class if it exists
-      if (form) form.classList.remove("edit-mode");
-      
       // For new transaction, hide delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "none";
-      
-      // Show submit button
-      const submitBtn = document.querySelector(".btn-submit");
-      if (submitBtn) submitBtn.style.display = "inline-block";
       
       // Ensure amount field is readonly
       const amountField = document.getElementById("transaction-amount");
@@ -2493,7 +2548,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // // Create tooltip container with enhanced styling
   const tooltip = d3
     .select("body")
-    .append("div")
+        .append("div")
     .attr("class", "tooltip")
     .style("opacity", 0)
     .style("transform", "scale(0.95)");
@@ -2979,5 +3034,14 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // If we get here, the sale is valid
     return true;
+  }
+
+  // Add global sorting preference variable - default to date-based sorting
+  let sortBarsByDate = true;
+
+  // Function to update bar chart sorting
+  function updateBarSorting(byDate) {
+    sortBarsByDate = byDate;
+    updateInvestmentVisualization();
   }
 });
