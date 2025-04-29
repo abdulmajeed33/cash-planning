@@ -174,54 +174,36 @@ document.addEventListener("DOMContentLoaded", function () {
         entity_id: 1,
         entity_type: "investment",
         transaction_type: "buy",
-        amount: "30000",
+        amount: "60000", // Full cash_investment from Tech Growth Fund
         transaction_date: new Date(currentYear, 0, 15),
-        notes: "Initial investment",
+        notes: "Full investment",
       },
       {
         id: 2,
-        entity_id: 1,
-        entity_type: "investment",
-        transaction_type: "buy",
-        amount: "20000",
-        transaction_date: new Date(currentYear, 3, 10),
-        notes: "Additional investment",
-      },
-      {
-        id: 3,
         entity_id: 2,
         entity_type: "investment",
         transaction_type: "buy",
-        amount: "50000",
-        transaction_date: new Date(currentYear, 5, 20),
-        notes: "Initial investment",
+        amount: "52500", // Full cash_investment from Renewable Energy Fund
+        transaction_date: new Date(currentYear, 3, 10),
+        notes: "Full investment",
+      },
+      {
+        id: 3,
+        entity_id: 1,
+        entity_type: "land",
+        transaction_type: "buy",
+        amount: "360000", // Full cash_injection from Downtown Land
+        transaction_date: new Date(currentYear, 2, 8),
+        notes: "Full land acquisition",
       },
       {
         id: 4,
         entity_id: 1,
-        entity_type: "land",
-        transaction_type: "buy",
-        amount: "120000",
-        transaction_date: new Date(currentYear, 2, 8),
-        notes: "Land acquisition",
-      },
-      {
-        id: 5,
-        entity_id: 1,
-        entity_type: "land",
-        transaction_type: "sale",
-        amount: "50000",
-        transaction_date: new Date(currentYear, 2, 8),
-        notes: "Land acquisition",
-      },
-      {
-        id: 6,
-        entity_id: 1,
         entity_type: "investment",
         transaction_type: "sale",
-        amount: "15000",
+        amount: "60000", // Full sale of Tech Growth Fund
         transaction_date: new Date(currentYear, 7, 12),
-        notes: "Partial exit",
+        notes: "Full exit",
       },
     ];
 
@@ -2219,7 +2201,11 @@ document.addEventListener("DOMContentLoaded", function () {
       
       // Set amount and notes
       const amountField = document.getElementById("transaction-amount");
-      if (amountField) amountField.value = Math.abs(transaction.amount);
+      if (amountField) {
+        amountField.value = Math.abs(transaction.amount);
+        // Ensure amount is always readonly (non-editable)
+        amountField.setAttribute("readonly", true);
+      }
       
       const notesField = document.getElementById("transaction-notes");
       if (notesField) notesField.value = transaction.notes || "";
@@ -2231,6 +2217,12 @@ document.addEventListener("DOMContentLoaded", function () {
       // For new transaction, hide delete button
       const deleteBtn = document.querySelector(".btn-delete");
       if (deleteBtn) deleteBtn.style.display = "none";
+      
+      // Ensure amount field is readonly
+      const amountField = document.getElementById("transaction-amount");
+      if (amountField) {
+        amountField.setAttribute("readonly", true);
+      }
       
       // For new transactions, select first real investment option (not disabled options)
       setTimeout(() => {
@@ -2247,7 +2239,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           }
           
-          // Manually trigger the change event to prefill amount
+          // Manually trigger the change event to set amount
           if (investmentField.value) {
             const event = new Event('change');
             investmentField.dispatchEvent(event);
@@ -2322,9 +2314,9 @@ document.addEventListener("DOMContentLoaded", function () {
       // Calculate available amount to sell
       const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
       const totalSold = d3.sum(saleTransactions, d => Math.abs(d.amount));
-      const availableToSell = totalBought - totalSold;
+      // const availableToSell = totalBought - totalSold;
       
-      console.log(`Total bought: ${totalBought}, Total sold: ${totalSold}, Available to sell: ${availableToSell}`);
+      // console.log(`Total bought: ${totalBought}, Total sold: ${totalSold}, Available to sell: ${availableToSell}`);
       
       // Debug logging
       console.log('Sale Validation Summary:', {
@@ -2336,7 +2328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         saleTransactions: saleTransactions.length,
         totalBought,
         totalSold,
-        availableToSell,
+        // availableToSell,
         currentTransactionId
       });
       
@@ -2365,8 +2357,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       
       // Check if all purchased amount has already been sold
-      if (availableToSell <= 0) {
-        const errorText = `Error: All purchased amount of ${investmentName} has already been sold.`;
+      if (totalSold > 0) {
+        const errorText = `Error: ${investmentName} has already been sold.`;
         console.error(errorText);
         errorMsg.textContent = errorText;
         errorMsg.style.display = "block";
@@ -2375,6 +2367,8 @@ document.addEventListener("DOMContentLoaded", function () {
         return false;
       }
       
+      /* 
+      // Comment out partial transaction logic since we only support full transactions
       // Set maximum sale amount to remaining balance
       amountInput.max = availableToSell;
       
@@ -2389,22 +2383,26 @@ document.addEventListener("DOMContentLoaded", function () {
         errorMsg.style.display = "block";
         submitButton.disabled = true;
         return false;
-      } else {
-        console.log("Sale validation passed");
-        errorMsg.style.display = "none";
-        submitButton.disabled = false;
-        return true;
       }
+      */
+      
+      console.log("Sale validation passed");
+      errorMsg.style.display = "none";
+      submitButton.disabled = false;
+      return true;
     } else {
       // For buy transactions, remove any validation messages
       if (document.getElementById("sale-validation-error")) {
         document.getElementById("sale-validation-error").style.display = "none";
       }
       
+      /* 
+      // Comment out partial transaction logic
       // Reset any max value constraint for buy transactions
       if (amountInput) {
         amountInput.removeAttribute("max");
       }
+      */
       
       // Enable submit button for buy transactions
       if (submitButton) {
@@ -2570,7 +2568,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
                 <div class="form-group">
                     <label for="transaction-amount">Amount</label>
-                    <input type="number" id="transaction-amount" min="1" required>
+                    <input type="number" id="transaction-amount" min="1" required readonly>
                 </div>
                 <div class="form-group">
                     <label for="transaction-date">Date</label>
@@ -2725,11 +2723,12 @@ document.addEventListener("DOMContentLoaded", function () {
       investmentSelect.addEventListener("change", async function() {
         console.log("Investment changed to:", this.value);
         
-        // Get the selected investment data and prefill the amount field
+        // Always set the full cash value for the selected investment
         if (this.value) {
           const entityId = parseInt(this.value);
           const entityType = this.selectedOptions[0].dataset.type;
           const amountInput = document.getElementById("transaction-amount");
+          const transactionType = document.getElementById("transaction-type").value;
           
           // Fetch the investment details from IndexedDB
           try {
@@ -2747,10 +2746,10 @@ document.addEventListener("DOMContentLoaded", function () {
                   parseFloat(entity.cash_investment) : 
                   parseFloat(entity.cash_injection);
                 
-                // Update the amount field with the cash value
+                // Always set the exact cash value - no partial transactions
                 if (amountInput && !isNaN(cashValue)) {
                   amountInput.value = cashValue;
-                  console.log(`Prefilled amount with ${entityType} cash value: ${cashValue}`);
+                  console.log(`Set amount to exact ${entityType} cash value: ${cashValue}`);
                 }
               }
             };
@@ -2759,7 +2758,7 @@ document.addEventListener("DOMContentLoaded", function () {
               console.error("Error fetching entity details:", event.target.error);
             };
           } catch (error) {
-            console.error("Error prefilling amount:", error);
+            console.error("Error setting amount:", error);
           }
         }
         
