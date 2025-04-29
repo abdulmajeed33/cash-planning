@@ -1391,8 +1391,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Create time axis with ticks every month
     const timeAxis = d3
       .axisBottom(timeScale)
-      .ticks(d3.timeMonth.every(1))
-      .tickFormat(d3.timeFormat("%b"))
+      .ticks(10) // Use fixed number of ticks instead of month-based ticks
+      .tickFormat(d3.timeFormat("%b %d")) // Show date with month
       .tickSize(5);
 
     // Add time axis
@@ -1880,21 +1880,86 @@ document.addEventListener("DOMContentLoaded", function () {
         .domain([0, maxValue * 1.1]) // Add 10% padding
         .range([height, 0]);
 
-      // Add X axis
+      // Replace with time axis for x-axis
+      // Create a time-based x scale instead of entity names
+      const xTime = d3
+        .scaleTime()
+        .domain([startDate, endDate])
+        .range([0, width]);
+
+      // Create time axis with appropriate ticks
+      const timeAxis = d3
+        .axisBottom(xTime)
+        .ticks(10)
+        .tickFormat(d3.timeFormat("%b %d"))
+        .tickSize(5);
+
+      // Add X axis with time scale
       barChartSvg
         .append("g")
+        .attr("class", "time-axis")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", "rotate(-45)");
+        .call(timeAxis);
+        
+      // Style tick lines
+      barChartSvg
+        .selectAll(".time-axis line")
+        .attr("stroke", "#ccc")
+        .attr("stroke-dasharray", "2,2");
 
+      // Style tick text
+      barChartSvg
+        .selectAll(".time-axis text")
+        .attr("font-size", "10px")
+        .attr("dy", "1em");
+        
       // Add Y axis
       barChartSvg.append("g").call(d3.axisLeft(y).tickFormat(d => `$${d}`));
-
-      // Draw stacked bars for each entity
+        
+      // Add year labels if the range spans multiple years
+      const startYear = startDate.getFullYear();
+      const endYear = endDate.getFullYear();
+      
+      if (startYear !== endYear) {
+        // Add start year label
+        barChartSvg
+          .append("text")
+          .attr("class", "year-label")
+          .attr("x", 0)
+          .attr("y", height + 50)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .text(startYear);
+          
+        // Add end year label
+        barChartSvg
+          .append("text")
+          .attr("class", "year-label")
+          .attr("x", width)
+          .attr("y", height + 50)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .text(endYear);
+          
+        // Add intermediate year labels
+        for (let year = startYear + 1; year < endYear; year++) {
+          const yearDate = new Date(year, 0, 1);
+          if (yearDate >= startDate && yearDate <= endDate) {
+            const xPos = xTime(yearDate);
+            
+            barChartSvg
+              .append("text")
+              .attr("class", "year-label")
+              .attr("x", xPos)
+              .attr("y", height + 50)
+              .attr("text-anchor", "middle")
+              .attr("font-size", "12px")
+              .text(year);
+          }
+        }
+      }
+      
+      // Continue using the original x scale for the bars
       entityData.forEach(entity => {
         const barGroup = barChartSvg
           .append("g")
@@ -2076,14 +2141,6 @@ document.addEventListener("DOMContentLoaded", function () {
           .text(`$${entity.total.toLocaleString()}`);
       });
 
-      // Add X axis label
-      barChartSvg
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("x", width / 2)
-        .attr("y", height + margin.bottom - 5)
-        .text("Investments")
-        .style("font-size", "12px");
 
       // Add Y axis label
       barChartSvg
