@@ -1290,7 +1290,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const color = d3
       .scaleOrdinal()
       .domain(["fund-buy", "fund-sale", "land-buy", "land-sale"])
-      .range(["#4CAF50", "#F44336", "#2196F3", "#FF9800"]);
+      .range(["#F44336","#4CAF50", "#FF9800","#2196F3"]);
 
     // Populate the legend at the top
     const topLegend = d3.select("#investment-legend");
@@ -2121,7 +2121,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("y", barY) // Position at zero line
             .attr("width", barWidth)
             .attr("height", Math.abs(barHeight)) // Use absolute height value
-            .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Green for fund buys, blue for land buys
+            .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Green for fund buys, blue for land buys
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
             .attr("stroke-width", 0.5)
@@ -2195,7 +2195,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("y", y(saleTotal)) // Position bars above zero line
             .attr("width", barWidth)
             .attr("height", barHeight)
-            .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Red for fund sales, orange for land sales
+            .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Red for fund sales, orange for land sales
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
             .attr("stroke-width", 0.5)
