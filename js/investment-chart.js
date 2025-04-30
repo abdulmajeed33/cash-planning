@@ -652,13 +652,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const entity = investmentData.find(inv => Number(inv.id) === entityId);
           const entityName = entity ? entity.name : "this investment";
           
-          // Check if any purchases have been made for this specific entity
-          if (totalBought <= 0) {
-            const errorMsg = `Error: You must purchase ${entityName} before selling it.`;
-            console.error(errorMsg);
-            alert(errorMsg);
-            return this;
-          }
+          // Purchase no longer mandatory to sell - removed validation check
           
           console.log("Sale transaction validation passed");
         }
@@ -748,13 +742,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const entity = investmentData.find(inv => Number(inv.id) === entityId);
           const entityName = entity ? entity.name : "this investment";
           
-          // Check if any purchases have been made for this specific entity
-          if (totalBought <= 0) {
-            const errorMsg = `Error: You must purchase ${entityName} before selling it.`;
-            console.error(errorMsg);
-            alert(errorMsg);
-            return this;
-          }
+          // Purchase no longer mandatory to sell - removed validation check
         }
         
         // Update amount sign based on transaction type - FIX: Ensure correct sign
@@ -2415,16 +2403,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // Get the investment name for better error messages
       const investmentName = document.getElementById("investment-name").selectedOptions[0]?.textContent || "this investment";
       
-      // Check if any purchases have been made for this specific entity
-      if (totalBought <= 0) {
-        const errorText = `Error: You must purchase ${investmentName} before selling it.`;
-        console.error(errorText);
-        errorMsg.textContent = errorText;
-        errorMsg.style.display = "block";
-        amountInput.max = 0;
-        submitButton.disabled = true;
-        return false;
-      }
+      // Purchase is not mandatory to sell - remove check
       
       // Check if all purchased amount has already been sold
       if (totalSold > 0) {
@@ -2724,13 +2703,7 @@ document.addEventListener("DOMContentLoaded", function () {
           
           const totalBought = d3.sum(buyTransactions, d => -d.amount);
           
-          // Only check if any purchase exists, not checking amount
-          if (totalBought <= 0) {
-            const errorMsg = `Error: You must purchase ${formData.name} before selling it.`;
-            console.error("Sale validation failed:", errorMsg);
-            alert(errorMsg);
-            return; // Prevent submission
-          }
+          // Purchase no longer mandatory to sell - removed validation check
         }
 
         try {
@@ -3052,12 +3025,7 @@ document.addEventListener("DOMContentLoaded", function () {
       totalBought
     });
     
-    // Only check if any purchases exist, not the amount
-    if (totalBought <= 0) {
-      // Show an error message
-      alert(`Error: You must purchase ${selectedOption.textContent} before selling it.`);
-      return false;
-    }
+    // No need to check if purchases exist - purchase is no longer mandatory to sell
     
     // If we get here, the sale is valid
     return true;
