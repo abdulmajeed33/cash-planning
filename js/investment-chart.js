@@ -601,7 +601,7 @@ document.addEventListener("DOMContentLoaded", function () {
           console.log(`Buy transactions: ${buyTransactions.length}`);
           
           // Calculate total amount bought
-          const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+          const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive sum
           
           console.log(`Total bought: ${totalBought}`);
           
@@ -620,13 +620,22 @@ document.addEventListener("DOMContentLoaded", function () {
           console.log("Sale transaction validation passed");
         }
 
+        // Apply correct sign based on transaction type - FIX: Ensure correct sign
+        let amountValue = parseFloat(transaction.amount);
+        // Make buy transactions negative and sale transactions positive
+        if (transaction.transactionType === "buy" && amountValue > 0) {
+          amountValue = -amountValue;
+        } else if (transaction.transactionType === "sale" && amountValue < 0) {
+          amountValue = Math.abs(amountValue);
+        }
+
         // Format transaction for IndexedDB
         const dbTransaction = {
           entity_id: transaction.entity_id,
           // Always ensure entity_type is correctly set based on investmentType
           entity_type: transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
-          amount: transaction.amount.toString(),
+          amount: amountValue.toString(),
           transaction_date: transaction.date,
           notes: transaction.notes || "",
         };
@@ -641,6 +650,9 @@ document.addEventListener("DOMContentLoaded", function () {
           transaction.id = newId;
         }
 
+        // Update amount in local object
+        transaction.amount = amountValue;
+        
         // Add to local array
         transactionData.push(transaction);
 
@@ -687,7 +699,7 @@ document.addEventListener("DOMContentLoaded", function () {
           );
           
           // Calculate total amount bought
-          const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+          const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive sum
           
           // Find entity name for better error messages
           const entity = investmentData.find(inv => Number(inv.id) === entityId);
@@ -702,6 +714,15 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         
+        // Update amount sign based on transaction type - FIX: Ensure correct sign
+        let amountValue = parseFloat(transaction.amount);
+        // Make buy transactions negative and sale transactions positive
+        if (transaction.transactionType === "buy" && amountValue > 0) {
+          amountValue = -amountValue;
+        } else if (transaction.transactionType === "sale" && amountValue < 0) {
+          amountValue = Math.abs(amountValue);
+        }
+        
         // Format transaction for IndexedDB
         const dbTransaction = {
           id: transaction.id,
@@ -709,7 +730,7 @@ document.addEventListener("DOMContentLoaded", function () {
           // Always ensure entity_type is correctly set based on investmentType
           entity_type: transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
-          amount: transaction.amount.toString(),
+          amount: amountValue.toString(),
           transaction_date: transaction.date,
           notes: transaction.notes || "",
         };
@@ -720,9 +741,12 @@ document.addEventListener("DOMContentLoaded", function () {
         // Update in local array
         const index = transactionData.findIndex(t => Number(t.id) === Number(transaction.id));
         if (index !== -1) {
+          // Update with proper sign
+          transaction.amount = amountValue;
           transactionData[index] = {...transaction};
         } else {
-          // If not found, just add it
+          // If not found, just add it with proper sign
+          transaction.amount = amountValue;
           transactionData.push(transaction);
         }
         
@@ -1764,6 +1788,9 @@ document.addEventListener("DOMContentLoaded", function () {
                   amount: transaction.amount
                 };
 
+                // Save the transaction to the database - FIX: Add this call to persist changes
+                window.investmentChart.updateTransaction(transaction);
+
                 // Force complete redraw with a small delay to ensure animations complete
                 window.investmentUpdateTimeout = setTimeout(() => {
                   updateInvestmentVisualization();
@@ -1842,15 +1869,15 @@ document.addEventListener("DOMContentLoaded", function () {
         // Get investment type (fund or land)
         const investmentType = transactions[0].investmentType;
         
-        // Calculate buy and sale totals
+        // Calculate buy and sale totals - FIX: Use signed values
         const buyTotal = d3.sum(
           transactions.filter(t => t.transactionType === "buy"),
-          d => Math.abs(d.amount)
+          d => -d.amount // Buy is negative, so negate to get positive value for display
         );
         
         const saleTotal = d3.sum(
           transactions.filter(t => t.transactionType === "sale"),
-          d => Math.abs(d.amount)
+          d => d.amount // Sale is already positive
         );
         
         // Find earliest transaction date for sorting
@@ -1999,7 +2026,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const barWidth = calculateMonthWidth(transactionDate);
           
           // Calculate heights
-          const dateTotal = d3.sum(transactions, d => Math.abs(d.amount));
+          const dateTotal = d3.sum(transactions, d => -d.amount); // Buy is negative, use negative sign to get positive value
           const segmentHeight = height - y(dateTotal);
           
           barGroup
@@ -2074,7 +2101,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const barWidth = calculateMonthWidth(transactionDate);
           
           // Calculate heights
-          const dateTotal = d3.sum(transactions, d => Math.abs(d.amount));
+          const dateTotal = d3.sum(transactions, d => d.amount); // Sale is already positive
           const segmentHeight = height - y(dateTotal);
           
           // Find if there are buy transactions on the same date
@@ -2085,7 +2112,7 @@ document.addEventListener("DOMContentLoaded", function () {
           // Calculate y position - if there is a buy segment on same date, place this on top
           let yPosition = height - segmentHeight;
           if (matchingBuyGroup) {
-            const buyTotal = d3.sum(matchingBuyGroup[1], d => Math.abs(d.amount));
+            const buyTotal = d3.sum(matchingBuyGroup[1], d => -d.amount); // Buy is negative, use negative sign to get positive value
             const buyHeight = height - y(buyTotal);
             yPosition = height - buyHeight - segmentHeight;
           }
@@ -2283,8 +2310,8 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log(`Sale transactions: ${saleTransactions.length}`, saleTransactions);
       
       // Calculate available amount to sell
-      const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
-      const totalSold = d3.sum(saleTransactions, d => Math.abs(d.amount));
+      const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive value
+      const totalSold = d3.sum(saleTransactions, d => d.amount); // Sale is already positive
       // const availableToSell = totalBought - totalSold;
       
       // console.log(`Total bought: ${totalBought}, Total sold: ${totalSold}, Available to sell: ${availableToSell}`);
@@ -2613,7 +2640,7 @@ document.addEventListener("DOMContentLoaded", function () {
             t => t.transactionType === "buy" && t.date <= formData.date
           );
           
-          const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+          const totalBought = d3.sum(buyTransactions, d => -d.amount);
           
           // Only check if any purchase exists, not checking amount
           if (totalBought <= 0) {
@@ -2916,7 +2943,7 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     
     // Calculate total amount bought
-    const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+    const totalBought = d3.sum(buyTransactions, d => -d.amount);
     
     console.log("Sale validation details:", {
       buyTransactions: buyTransactions.length,
@@ -2987,7 +3014,7 @@ document.addEventListener("DOMContentLoaded", function () {
     );
     
     // Calculate total amount bought
-    const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+    const totalBought = d3.sum(buyTransactions, d => -d.amount);
     
     console.log("Sale validation details:", {
       buyTransactions: buyTransactions.length,
@@ -3030,7 +3057,7 @@ document.addEventListener("DOMContentLoaded", function () {
       t => t.transactionType === "buy" && t.date <= formData.date
     );
     
-    const totalBought = d3.sum(buyTransactions, d => Math.abs(d.amount));
+    const totalBought = d3.sum(buyTransactions, d => -d.amount);
     
     if (totalBought <= 0) {
       const errorMsg = `Error: You must purchase ${formData.name} before selling it.`;
