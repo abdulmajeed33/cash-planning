@@ -96,11 +96,49 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Function to reset the database (clear all data)
+  async function resetDatabase() {
+    return new Promise((resolve, reject) => {
+      console.log("Resetting database...");
+      
+      // Delete the database completely
+      const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+      
+      deleteRequest.onsuccess = () => {
+        console.log("Database deleted successfully");
+        
+        // Re-initialize the database
+        db = null;
+        initDatabase().then(() => {
+          console.log("Database re-initialized after reset");
+          resolve();
+        }).catch(err => {
+          console.error("Error re-initializing database:", err);
+          reject(err);
+        });
+      };
+      
+      deleteRequest.onerror = (event) => {
+        console.error("Error deleting database:", event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+
   // Check if database is empty and add sample data if needed
   async function seedDatabaseIfEmpty() {
     try {
       const investments = await getAllData(STORES.investments);
       const lands = await getAllData(STORES.lands);
+      const transactions = await getAllData(STORES.transactions);
+      
+      // Check if we have proper transactions with correct sign convention
+      const hasIncorrectTransactions = transactions.some(tx => {
+        // Buy transactions should be negative, sale transactions should be positive
+        const amount = parseFloat(tx.amount);
+        return (tx.transaction_type === "buy" && amount > 0) || 
+               (tx.transaction_type === "sale" && amount < 0);
+      });
 
       if (investments.length === 0 && lands.length === 0) {
         console.log("Database is empty, adding sample data...");
@@ -108,8 +146,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // Refresh the page after seeding data to properly display it
         console.log("Sample data added, refreshing page to display seeded data...");
         window.location.reload();
+      } else if (hasIncorrectTransactions) {
+        console.log("Found transactions with incorrect sign convention, resetting database...");
+        await resetDatabase();
+        await seedSampleData();
+        console.log("Database reset and reseeded with correct data, refreshing page...");
+        window.location.reload();
       } else {
-        console.log("Database already has data, skipping seed");
+        console.log("Database already has correctly formatted data, skipping seed");
       }
     } catch (error) {
       console.error("Error checking database:", error);
@@ -174,28 +218,27 @@ document.addEventListener("DOMContentLoaded", function () {
         entity_id: 1,
         entity_type: "investment",
         transaction_type: "buy",
-        amount: "60000", // Full cash_investment from Tech Growth Fund
-        transaction_date: new Date(currentYear, 0, 15),
-        notes: "Full investment",
+        amount: "-60000", // IMPORTANT: Buy transactions should be negative
+        transaction_date: new Date(currentYear, 1, 15), // February 15th
+        notes: "Full investment in Tech Growth Fund",
       },
       {
         id: 2,
         entity_id: 2,
         entity_type: "investment",
         transaction_type: "buy",
-        amount: "52500", // Full cash_investment from Renewable Energy Fund
-        transaction_date: new Date(currentYear, 3, 10),
-        notes: "Full investment",
+        amount: "-52500", // IMPORTANT: Buy transactions should be negative
+        transaction_date: new Date(currentYear, 3, 10), // April 10th
+        notes: "Full investment in Renewable Energy Fund",
       },
-     
       {
         id: 3,
         entity_id: 1,
         entity_type: "investment",
         transaction_type: "sale",
-        amount: "60000", // Full sale of Tech Growth Fund
-        transaction_date: new Date(currentYear, 7, 12),
-        notes: "Full exit",
+        amount: "60000", // IMPORTANT: Sale transactions should be positive
+        transaction_date: new Date(currentYear, 7, 12), // August 12th
+        notes: "Full exit from Tech Growth Fund",
       },
     ];
 
@@ -1898,13 +1941,23 @@ document.addEventListener("DOMContentLoaded", function () {
       // Sort by earliest transaction date (chronological order)
       entityData.sort((a, b) => a.earliestDate - b.earliestDate);
 
-      // Get max value for y axis
-      const maxValue = d3.max(entityData, d => d.total);
-
+      // Calculate the min and max values for the y-axis
+      const maxValue = d3.max(entityData, d => d.saleTotal) * 1.1; // Add 10% padding for sales
+      
+      // For buys, we want the actual negative values
+      const minValue = d3.min(
+        visibleTransactions.filter(t => t.transactionType === "buy"),
+        d => d.amount // Buy amounts are already negative
+      ) * 1.1; // Add 10% padding for buys
+      
+      // Create y scale that includes negative values for buys
       const y = d3
         .scaleLinear()
-        .domain([0, maxValue * 1.1]) // Add 10% padding
+        .domain([minValue, maxValue]) // Range from min (negative) to max (positive)
         .range([height, 0]);
+        
+      // Calculate the position of the zero line
+      const zeroLineY = y(0);
 
       // Create a time-based x scale
       const xTime = d3
@@ -1959,6 +2012,37 @@ document.addEventListener("DOMContentLoaded", function () {
         
       // Add Y axis
       barChartSvg.append("g").call(d3.axisLeft(y).tickFormat(d => `$${d}`));
+      
+      // Add a horizontal line at y=0 to separate buy and sale transactions
+      barChartSvg
+        .append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", zeroLineY)
+        .attr("y2", zeroLineY)
+        .attr("stroke", "#000")
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "4,4");
+        
+      // Add a small label at the zero line
+      barChartSvg
+        .append("text")
+        .attr("x", -25)
+        .attr("y", zeroLineY + 4)
+        .attr("text-anchor", "end")
+        .attr("font-size", "10px")
+        .attr("fill", "#666")
+        .text("$0");
+        
+      // Add Y axis label
+      barChartSvg
+        .append("text")
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left)
+        .attr("x", -height / 2)
+        .text("Amount ($)")
+        .style("font-size", "12px");
         
       // Add year labels if the range spans multiple years
       const startYear = startDate.getFullYear();
@@ -2025,17 +2109,18 @@ document.addEventListener("DOMContentLoaded", function () {
           const barX = xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
           const barWidth = calculateMonthWidth(transactionDate);
           
-          // Calculate heights
-          const dateTotal = d3.sum(transactions, d => -d.amount); // Buy is negative, use negative sign to get positive value
-          const segmentHeight = height - y(dateTotal);
+          // Calculate bar position and height for negative values (buys)
+          const buyTotal = d3.sum(transactions, d => d.amount); // Use actual negative amount
+          const barY = y(0); // Start at zero line
+          const barHeight = y(buyTotal) - y(0); // Height going down from zero
           
           barGroup
             .append("rect")
             .attr("class", "buy-bar-segment")
             .attr("x", barX)
-            .attr("y", height - segmentHeight)
+            .attr("y", barY) // Position at zero line
             .attr("width", barWidth)
-            .attr("height", segmentHeight)
+            .attr("height", Math.abs(barHeight)) // Use absolute height value
             .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Green for fund buys, blue for land buys
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
@@ -2048,16 +2133,16 @@ document.addEventListener("DOMContentLoaded", function () {
               // Show tooltip
               tooltip.transition().duration(200).style("opacity", 0.9);
               
-              // Format transactions for display
+              // Format transactions for display, showing negative values
               const transactionsList = transactions
-                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
+                .map(t => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`)
                 .join("<br>");
               
               tooltip
                 .html(`
                   <strong>${entity.name}</strong><br>
                   <strong>Purchases on ${dateFormat(transactions[0].date)}</strong><br>
-                  <strong>Total: $${dateTotal.toLocaleString()}</strong><br>
+                  <strong>Total: $${buyTotal.toLocaleString()}</strong><br>
                   <hr style="margin: 5px 0; opacity: 0.3">
                   ${transactionsList}
                 `)
@@ -2073,19 +2158,17 @@ document.addEventListener("DOMContentLoaded", function () {
               }
             });
             
-          // Add a small label on top of the bar
+          // Add a small label on bottom of the bar (for buy transactions)
           barGroup
             .append("text")
             .attr("class", "bar-label")
             .attr("x", barX + barWidth / 2)
-            .attr("y", height - segmentHeight - 5)
+            .attr("y", barY + Math.abs(barHeight) + 15) // Position below the bar
             .attr("text-anchor", "middle")
             .attr("font-size", "9px")
             .attr("fill", "#333")
             .text(entity.name);
         });
-        
-        // Group sale transactions by date
         const saleTransactionsByDate = d3.groups(
           entity.transactions.filter(t => t.transactionType === "sale"),
           d => d.date.toDateString()
@@ -2100,30 +2183,18 @@ document.addEventListener("DOMContentLoaded", function () {
           const barX = xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
           const barWidth = calculateMonthWidth(transactionDate);
           
-          // Calculate heights
-          const dateTotal = d3.sum(transactions, d => d.amount); // Sale is already positive
-          const segmentHeight = height - y(dateTotal);
+          // Calculate heights for positive values (sales)
+          const saleTotal = d3.sum(transactions, d => d.amount);
+          const barHeight = y(0) - y(saleTotal);
           
-          // Find if there are buy transactions on the same date
-          const matchingBuyGroup = buyTransactionsByDate.find(
-            buyGroup => buyGroup[0] === dateGroup[0]
-          );
-          
-          // Calculate y position - if there is a buy segment on same date, place this on top
-          let yPosition = height - segmentHeight;
-          if (matchingBuyGroup) {
-            const buyTotal = d3.sum(matchingBuyGroup[1], d => -d.amount); // Buy is negative, use negative sign to get positive value
-            const buyHeight = height - y(buyTotal);
-            yPosition = height - buyHeight - segmentHeight;
-          }
-          
+          // For sales, position at y(saleTotal) which will be above zero line
           barGroup
             .append("rect")
             .attr("class", "sale-bar-segment")
             .attr("x", barX)
-            .attr("y", yPosition)
+            .attr("y", y(saleTotal)) // Position bars above zero line
             .attr("width", barWidth)
-            .attr("height", segmentHeight)
+            .attr("height", barHeight)
             .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Red for fund sales, orange for land sales
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
@@ -2136,16 +2207,16 @@ document.addEventListener("DOMContentLoaded", function () {
               // Show tooltip
               tooltip.transition().duration(200).style("opacity", 0.9);
               
-              // Format transactions for display
+              // Format transactions for display, showing positive values
               const transactionsList = transactions
-                .map(t => `${dateFormat(t.date)}: $${Math.abs(t.amount).toLocaleString()}`)
+                .map(t => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`)
                 .join("<br>");
               
               tooltip
                 .html(`
                   <strong>${entity.name}</strong><br>
                   <strong>Sales on ${dateFormat(transactions[0].date)}</strong><br>
-                  <strong>Total: $${dateTotal.toLocaleString()}</strong><br>
+                  <strong>Total: $${saleTotal.toLocaleString()}</strong><br>
                   <hr style="margin: 5px 0; opacity: 0.3">
                   ${transactionsList}
                 `)
@@ -2160,18 +2231,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Modal opening removed
               }
             });
+          
+          // Add a small label on top of the bar (for sale transactions)
+          barGroup
+            .append("text")
+            .attr("class", "bar-label")
+            .attr("x", barX + barWidth / 2)
+            .attr("y", y(saleTotal) - 5) // Position above the bar
+            .attr("text-anchor", "middle")
+            .attr("font-size", "9px")
+            .attr("fill", "#333")
+            .text(entity.name);
         });
       });
-
-      // Add Y axis label
-      barChartSvg
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left)
-        .attr("x", -height / 2)
-        .text("Amount ($)")
-        .style("font-size", "12px");
     }
   }
 
@@ -3033,72 +3105,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Update the form submission handler around line 2680
-  // For sale transactions, remove amount validation but keep existence validation
-  if (formData.transactionType === "sale") {
-    console.log("Sale transaction detected - validating existence only...");
-    
-    // Force validation regardless of any previous checks
-    const isValid = validateSaleExistence();
-    console.log("Validation result:", isValid);
-    
-    if (!isValid) {
-      console.log("Sale validation failed, stopping form submission");
-      return; // Stop if validation fails
-    }
-    
-    // Extra safety check - manually check if there are buy transactions
-    const entityId = Number(formData.entity_id);
-    const existingTransactions = transactionData.filter(
-      t => Number(t.entity_id) === entityId && 
-           t.investmentType === formData.investmentType
-    );
-    
-    const buyTransactions = existingTransactions.filter(
-      t => t.transactionType === "buy" && t.date <= formData.date
-    );
-    
-    const totalBought = d3.sum(buyTransactions, d => -d.amount);
-    
-    if (totalBought <= 0) {
-      const errorMsg = `Error: You must purchase ${formData.name} before selling it.`;
-      console.error("FINAL SAFETY CHECK FAILED:", errorMsg);
-      alert(errorMsg);
-      return; // Prevent submission
-    }
-  }
-
-  // Add the timeline
-  investmentSvg
-    .append("line")
-    .attr("x1", 0)
-    .attr("y1", investmentTimelineY)
-    .attr("x2", width - margin.right)
-    .attr("y2", investmentTimelineY)
-    .attr("stroke", "#999")
-    .attr("stroke-width", 2);
-
-  // Create a container for the x-axis
-  const timelineAxis = investmentSvg
-    .append("g")
-    .attr("class", "time-axis")
-    .attr("transform", `translate(0, ${investmentTimelineY + 1})`)
-    .call(timeAxisGenerator);
-    
-  // Style the axis
-  timelineAxis
-    .selectAll(".domain")
-    .attr("stroke", "#999");
-    
-  timelineAxis
-    .selectAll(".tick line")
-    .attr("stroke", "#ccc")
-    .attr("stroke-dasharray", "2,2");
-    
-  timelineAxis
-    .selectAll(".tick text")
-    .attr("fill", "#666")
-    .attr("font-size", "11px");
-
   // Function to highlight the bar segment corresponding to a dragged transaction
   function highlightBarSegmentForTransaction(transaction) {
     // Find all bar segments
