@@ -2675,13 +2675,23 @@ document.addEventListener("DOMContentLoaded", function () {
         const entityType = selectedOption.dataset.type;
         const investmentType = entityType === "investment" ? "fund" : "land";
         
+        // For sale transactions, perform validation one more time
+        const transactionType = document.getElementById("transaction-type").value;
+        if (transactionType === "sale") {
+          // Force a fresh validation at submission time
+          if (!validateSaleExistence()) {
+            console.log("Sale validation failed at submission time");
+            return; // Stop submission if validation fails
+          }
+        }
+        
         // Get form values
         const formData = {
           id: document.getElementById("transaction-id").value
             ? parseInt(document.getElementById("transaction-id").value)
             : undefined,
           entity_id: parseInt(document.getElementById("investment-name").value),
-          transactionType: document.getElementById("transaction-type").value,
+          transactionType: transactionType,
           amount: parseFloat(
             document.getElementById("transaction-amount").value
           ),
@@ -2819,12 +2829,29 @@ document.addEventListener("DOMContentLoaded", function () {
       investmentSelect.addEventListener("change", async function() {
         console.log("Investment changed to:", this.value);
         
+        // Reset any previous validation errors when selection changes
+        const errorElement = document.getElementById("sale-validation-error");
+        if (errorElement) {
+          errorElement.style.display = "none";
+          errorElement.textContent = "";
+        }
+        
+        // Re-enable submit button which might have been disabled by previous validation
+        const submitButton = document.querySelector("#transaction-form .btn-submit");
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+        
         // Always set the full cash value for the selected investment
         if (this.value) {
           const entityId = parseInt(this.value);
           const entityType = this.selectedOptions[0].dataset.type;
           const amountInput = document.getElementById("transaction-amount");
           const transactionType = document.getElementById("transaction-type").value;
+          
+          // Store the current selection in a data attribute to help track changes
+          this.setAttribute("data-last-selected", entityId);
+          this.setAttribute("data-last-type", entityType);
           
           // Fetch the investment details from IndexedDB
           try {
@@ -2846,6 +2873,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (amountInput && !isNaN(cashValue)) {
                   amountInput.value = cashValue;
                   console.log(`Set amount to exact ${entityType} cash value: ${cashValue}`);
+                  
+                  // Store the cash value in a data attribute for validation
+                  amountInput.setAttribute("data-cash-value", cashValue);
                 }
               }
             };
@@ -3042,11 +3072,78 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInvestmentVisualization();
   }
 
+  // Function to calculate available sale amount for a given entity
+  function getEntityAvailableSaleAmount(entityId, investmentType) {
+    console.log(`Getting available amount for entityId=${entityId}, investmentType=${investmentType}`);
+    
+    // Find the entity to get the cash injection amount
+    const entity = investmentData.find(inv => Number(inv.id) === Number(entityId));
+    
+    if (!entity) {
+      console.error(`Could not find entity with ID ${entityId}`);
+      return { error: "Entity not found", available: 0, cashInjection: 0, sold: 0 };
+    }
+    
+    console.log("Found entity:", entity);
+    
+    // Get the cash injection amount (different property name depending on type)
+    let cashInjection;
+    
+    if (investmentType === "fund") {
+      // For funds, use cash_investment property
+      cashInjection = parseFloat(entity.cash_investment || entity.val6);
+    } else if (investmentType === "land") {
+      // For lands, use cash_injection property
+      cashInjection = parseFloat(entity.cash_injection || entity.val6);
+    } else {
+      console.error(`Invalid investment type: ${investmentType}`);
+      return { error: "Invalid investment type", available: 0, cashInjection: 0, sold: 0 };
+    }
+    
+    console.log(`Cash injection amount determined: ${cashInjection}`);
+    
+    if (isNaN(cashInjection) || cashInjection <= 0) {
+      console.error(`Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`);
+      // Check for mapped fields from fetchChartData
+      if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
+        cashInjection = parseFloat(entity.val6);
+        console.log(`Using val6 (${cashInjection}) as fallback for cash injection amount`);
+      } else {
+        return { error: "Invalid cash injection amount", available: 0, cashInjection: 0, sold: 0 };
+      }
+    }
+    
+    // Get all sale transactions for this entity
+    const entitySales = transactionData.filter(
+      t => Number(t.entity_id) === Number(entityId) && 
+           t.investmentType === investmentType &&
+           t.transactionType === "sale"
+    );
+    
+    console.log(`Found ${entitySales.length} sale transactions for this entity`);
+    
+    // Calculate total sold so far
+    const totalSold = d3.sum(entitySales, d => d.amount); // Sale amounts are positive
+    
+    // Calculate available amount to sell
+    const availableToSell = cashInjection - totalSold;
+    
+    console.log(`Cash injection: ${cashInjection}, Total sold: ${totalSold}, Available: ${availableToSell}`);
+    
+    return {
+      entity: entity,
+      cashInjection: cashInjection, 
+      sold: totalSold,
+      available: availableToSell
+    };
+  }
+
   // Function that only validates that a sale transaction has previous buys
   function validateSaleExistence() {
     const typeSelect = document.getElementById("transaction-type");
     const investmentSelect = document.getElementById("investment-name");
     const dateInput = document.getElementById("transaction-date");
+    const amountField = document.getElementById("transaction-amount");
     
     // If we're not in a sale transaction, no validation needed
     if (!typeSelect || typeSelect.value !== "sale") {
@@ -3054,15 +3151,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     // If any required fields are empty, we can't validate yet
-    if (!investmentSelect || !investmentSelect.value || !dateInput || !dateInput.value) {
+    if (!investmentSelect || !investmentSelect.value || !dateInput || !dateInput.value || !amountField || !amountField.value) {
       return false;
     }
     
-    console.log("Validating sale transaction existence");
+    console.log("Validating sale transaction amount");
     
-    // Get the selected investment id and the date of the transaction
+    // Get the selected investment id, amount, and the date of the transaction
     const entityId = Number(investmentSelect.value);
     const saleDate = new Date(dateInput.value);
+    const saleAmount = parseFloat(amountField.value);
     
     // Get investment type from selected option
     const selectedOption = investmentSelect.selectedOptions[0];
@@ -3074,29 +3172,58 @@ document.addEventListener("DOMContentLoaded", function () {
     const entityType = selectedOption.dataset.type;
     const investmentType = entityType === "investment" ? "fund" : "land";
     
-    // Find all buy transactions for this investment
-    const existingTransactions = transactionData.filter(
-      t => Number(t.entity_id) === entityId && 
-           t.investmentType === investmentType
-    );
+    // Check if there was a change in selection
+    const lastSelected = investmentSelect.getAttribute("data-last-selected");
+    const lastType = investmentSelect.getAttribute("data-last-type");
+    const selectionChanged = lastSelected && (Number(lastSelected) !== entityId || lastType !== entityType);
     
-    // Only count buy transactions that happened before or on the sale date
-    const buyTransactions = existingTransactions.filter(
-      t => t.transactionType === "buy" && t.date <= saleDate
-    );
+    if (selectionChanged) {
+      console.log(`Selection changed from ID=${lastSelected} (${lastType}) to ID=${entityId} (${entityType})`);
+    }
     
-    // Calculate total amount bought
-    const totalBought = d3.sum(buyTransactions, d => -d.amount);
+    // Get entity info and available amount to sell
+    const entityInfo = getEntityAvailableSaleAmount(entityId, investmentType);
+    
+    if (entityInfo.error) {
+      alert(entityInfo.error);
+      return false;
+    }
+    
+    // If we have a saved cash value in the amount field, use it for validation
+    // This helps prevent stale comparisons when changing selections
+    const savedCashValue = amountField.getAttribute("data-cash-value");
+    let cashInjection = entityInfo.cashInjection;
+    
+    if (savedCashValue && !isNaN(parseFloat(savedCashValue))) {
+      // Use the saved cash value from the amount field's data attribute
+      // This is especially important when the selection has changed
+      cashInjection = parseFloat(savedCashValue);
+      console.log(`Using saved cash value for validation: ${cashInjection}`);
+    }
     
     console.log("Sale validation details:", {
-      buyTransactions: buyTransactions.length,
-      totalBought
+      entityId: entityId,
+      investmentType: investmentType,
+      cashInjection: cashInjection,
+      savedCashValue: savedCashValue,
+      entityInfoCashInjection: entityInfo.cashInjection,
+      totalSold: entityInfo.sold,
+      available: entityInfo.available,
+      saleAmount: saleAmount
     });
     
-    // Only check if any purchases exist, not the amount
-    if (totalBought <= 0) {
-      // Show an error message
-      alert(`Error: You must purchase ${selectedOption.textContent} before selling it.`);
+    // Check if amount exceeds cash injection
+    if (saleAmount > cashInjection) {
+      alert(`Error: You can't sell more than the cash injection amount of ${cashInjection}.`);
+      return false;
+    }
+    
+    // For consistency with the saved cash value, calculate available amount
+    const available = cashInjection - entityInfo.sold;
+    
+    // Check if amount exceeds available (cash injection minus already sold)
+    if (saleAmount > available) {
+      alert(`Error: You've already sold ${entityInfo.sold} of this investment. You can only sell up to ${available} more.`);
       return false;
     }
     
