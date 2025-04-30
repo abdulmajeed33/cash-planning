@@ -944,3 +944,30 @@ svg {
   font-size: 14px;
   line-height: 1.5;
 }
+
+.delete-icon {
+    cursor: pointer;
+    font-size: 18px !important;
+    pointer-events: none !important;
+}
+
+.delete-button-group {
+    position: absolute;
+    transition: none;
+    pointer-events: all;
+    opacity: 0;
+    z-index: 100;
+}
+
+
+
+.delete-button-group circle {
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+
+/* Prevent hover effect changes that could cause juggling */
+.transaction-hover-area:hover,
+.transaction-point:hover,
+.delete-button-group:hover ~ .transaction-hover-area {
+    transform: none;
+}

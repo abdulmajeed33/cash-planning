@@ -1553,14 +1553,62 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("text-anchor", "middle")
           .attr("font-size", "10px")
           .text(transaction.name);
+          
+        // Add delete button (only visible on hover)
+        const deleteButton = transactionGroup
+          .append("g")
+          .attr("class", "delete-button-group")
+          .attr("transform", "translate(24, -18)")
+          .style("opacity", 0)
+          .style("pointer-events", "none") // Initially disabled until hover
+          .style("cursor", "pointer")
+          .attr("data-fixed-position", "true") // Mark as fixed position element
+          .raise(); // Ensure delete button stays on top
+          
+        // Add white background circle for the delete icon
+        deleteButton
+          .append("circle")
+          .attr("r", 12)
+          .attr("fill", "white")
+          .attr("stroke", "#E53935")
+          .attr("stroke-width", 1.5);
+          
+        // Add delete icon (X symbol) instead of emoji
+        deleteButton
+          .append("text")
+          .attr("class", "delete-icon")
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("font-size", "14px")
+          .attr("font-weight", "bold")
+          .attr("fill", "#E53935")
+          .text("×")
+          .style("pointer-events", "none");
+          
+        // Add click handler to the delete button group with stopImmediatePropagation
+        deleteButton.on("click", function(event) {
+          event.stopPropagation(); // Prevent triggering parent click events
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          deleteTransaction(transaction.id);
+        });
 
         // Add enhanced tooltip
         transactionGroup
           .on("mouseenter", function (event) {
-            // Prevent rapid hover state changes
+            // Prevent event bubbling
             event.stopPropagation();
+            
+            // Stop any ongoing transitions to prevent juggling
+            deleteButton.interrupt();
+
+            // Show delete button on hover with no animation
+            deleteButton
+              .style("opacity", 1)
+              .style("pointer-events", "all");
 
             tooltip
+              .interrupt() // Stop any ongoing tooltip transitions
               .transition()
               .duration(200)
               .style("opacity", 0.9)
@@ -1581,30 +1629,47 @@ document.addEventListener("DOMContentLoaded", function () {
                   Amount: <strong>$${Math.abs(
                     transaction.amount
                   ).toLocaleString()}</strong>
+                  <br/><span style="font-size: 0.8em; color: #666;">(Click × to delete)</span>
                 `
               )
               .style("left", event.pageX + 30 + "px")
               .style("top", event.pageY - 108 + "px");
           })
           .on("mouseleave", function () {
+            // Stop any ongoing transitions
+            deleteButton.interrupt();
+            
+            // Hide delete button when not hovering with no animation
+            deleteButton
+              .style("opacity", 0)
+              .style("pointer-events", "none");
+              
             tooltip
+              .interrupt() // Stop any ongoing tooltip transitions
               .transition()
               .duration(300)
               .style("opacity", 0)
               .style("transform", "scale(0.95)");
-          })
-          .on("click", function() {
-            // Click handler removed
           });
 
         // Make transaction draggable
         transactionGroup.call(
           d3
             .drag()
+            .filter(function(event) {
+              // Only initiate drag if not clicking on the delete button
+              return !event.target.closest('.delete-button-group') && 
+                     !event.target.closest('.delete-icon');
+            })
             .on("start", function (event) {
               // Prevent browser's default drag behavior
               event.sourceEvent.preventDefault();
               event.sourceEvent.stopPropagation();
+              
+              // Hide all delete buttons during drag to prevent interference
+              d3.selectAll(".delete-button-group")
+                .style("opacity", 0)
+                .style("pointer-events", "none");
 
               d3.select(this)
                 .style("cursor", "grabbing")
@@ -3277,5 +3342,28 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("stroke-width", 0.5);
       }
     });
+  }
+
+  // Function to delete a transaction directly without opening a modal
+  async function deleteTransaction(transactionId) {
+    try {
+      // Confirm deletion with the user
+      if (!confirm("Are you sure you want to delete this transaction?")) {
+        return false;
+      }
+      
+      // Delete the transaction from the database
+      await deleteData(STORES.transactions, Number(transactionId));
+      
+      // Refresh the chart data and redraw
+      await fetchChartData();
+      drawInvestmentChart();
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      alert("Failed to delete transaction: " + error.message);
+      return false;
+    }
   }
 });
