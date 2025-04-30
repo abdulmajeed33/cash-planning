@@ -452,10 +452,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add preset buttons
     const presetButtons = [
       { text: "Current Year", handler: setCurrentYear },
-      { text: "Last 12 Months", handler: setLast12Months },
-      { text: "Next 12 Months", handler: setNext12Months },
-      { text: "2 Years", handler: set2Years },
-      { text: "5 Years", handler: set5Years },
+      { text: "6 Months", handler: set6Months },
+      { text: "12 Months", handler: setLast12Months }
     ];
 
     presetButtons.forEach((btn) => {
@@ -889,6 +887,16 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInputsAndChart();
   }
 
+  function set6Months() {
+    const now = new Date();
+
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 6); // Go back 6 months
+
+    updateInputsAndChart();
+  }
+
   function setLast12Months() {
     const now = new Date();
 
@@ -898,37 +906,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     updateInputsAndChart();
   }
-
-  function setNext12Months() {
-    const now = new Date();
-
-    startDate = new Date(now);
-    endDate = new Date(now);
-    endDate.setFullYear(now.getFullYear() + 1);
-
-    updateInputsAndChart();
-  }
-
-  function set2Years() {
-    const now = new Date();
-    const year = now.getFullYear();
-
-    startDate = new Date(year, 0, 1);
-    endDate = new Date(year + 2, 0, 1);
-
-    updateInputsAndChart();
-  }
-
-  function set5Years() {
-    const now = new Date();
-    const year = now.getFullYear();
-
-    startDate = new Date(year, 0, 1);
-    endDate = new Date(year + 5, 0, 1);
-
-    updateInputsAndChart();
-  }
-
   // Helper function to update inputs and refresh chart
   function updateInputsAndChart() {
     // Update input fields
@@ -2192,7 +2169,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Always set modal title to Add transaction
     const modalTitle = document.getElementById("transaction-modal-title");
     if (modalTitle) {
-      modalTitle.textContent = "Add Investment Transaction";
+      modalTitle.textContent = "Add Transaction";
     }
     
     // Always treat as new transaction
@@ -2530,7 +2507,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Build options HTML
     let optionsHtml =
-      '<option value="" disabled selected>Select an investment</option>';
+      '<option value="" disabled selected>Select a Transaction</option>';
 
     // Get fund and land items
     const fundItems = investmentData.filter(
@@ -2570,7 +2547,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <form id="transaction-form">
                 <input type="hidden" id="transaction-id">
                 <div class="form-group">
-                    <label for="investment-name">Investment</label>
+                    <label for="investment-name">Select Transaction</label>
                     <select id="investment-name" required>
                         ${optionsHtml}
                     </select>
@@ -2917,7 +2894,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add placeholder option
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Select an investment";
+    placeholder.textContent = "Select a transaction";
     placeholder.disabled = true;
     placeholder.selected = true;
     select.appendChild(placeholder);
