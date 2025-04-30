@@ -1298,65 +1298,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .text(` (Showing ${visibleTransactions.length} transactions)`);
     }
     
-    // Add sorting control above the chart
-    const sortingControl = investmentChart
-      .append("div")
-      .attr("class", "sorting-control")
-      .style("margin-bottom", "20px")
-      .style("display", "flex")
-      .style("justify-content", "flex-end")
-      .style("align-items", "center");
-      
-    sortingControl.append("span")
-      .text("Sort by: ")
-      .style("margin-right", "10px")
-      .style("font-size", "14px");
-      
-    // Create radio button for date sorting
-    const dateSortLabel = sortingControl.append("label")
-      .style("margin-right", "15px")
-      .style("display", "inline-flex")
-      .style("align-items", "center")
-      .style("cursor", "pointer");
-      
-    dateSortLabel.append("input")
-      .attr("type", "radio")
-      .attr("name", "chart-sort")
-      .attr("value", "date")
-      .property("checked", sortBarsByDate)
-      .style("margin-right", "5px")
-      .on("change", function() {
-        if (this.checked) {
-          updateBarSorting(true);
-        }
-      });
-      
-    dateSortLabel.append("span")
-      .text("Date (Oldest First)")
-      .style("font-size", "14px");
-      
-    // Create radio button for amount sorting
-    const amountSortLabel = sortingControl.append("label")
-      .style("display", "inline-flex")
-      .style("align-items", "center")
-      .style("cursor", "pointer");
-      
-    amountSortLabel.append("input")
-      .attr("type", "radio")
-      .attr("name", "chart-sort")
-      .attr("value", "amount")
-      .property("checked", !sortBarsByDate)
-      .style("margin-right", "5px")
-      .on("change", function() {
-        if (this.checked) {
-          updateBarSorting(false);
-        }
-      });
-      
-    amountSortLabel.append("span")
-      .text("Amount (Highest First)")
-      .style("font-size", "14px");
-    
     // Process the transaction data for display
     if (visibleTransactions.length === 0) {
       investmentChart
@@ -1667,8 +1608,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   Date: <strong>${dateFormat(transaction.date)}</strong><br/>
                   Amount: <strong>$${Math.abs(
                     transaction.amount
-                  ).toLocaleString()}</strong><br/>
-                  <small>(Click to edit)</small>
+                  ).toLocaleString()}</strong>
                 `
               )
               .style("left", event.pageX + 30 + "px")
@@ -1681,17 +1621,8 @@ document.addEventListener("DOMContentLoaded", function () {
               .style("opacity", 0)
               .style("transform", "scale(0.95)");
           })
-          .on("click", function () {
-            // When clicked, open the modal to edit the transaction
-            // For simplicity, just open it with the first item in this group
-            if (group.transactions.length > 0) {
-              // Ensure we're working with a transaction that has a numeric ID
-              const transactionCopy = { ...transaction };
-              if (transactionCopy.id) {
-                transactionCopy.id = Number(transactionCopy.id);
-              }
-              showTransactionModal(transaction.date, transactionCopy);
-            }
+          .on("click", function() {
+            // Click handler removed
           });
 
         // Make transaction draggable
@@ -1921,14 +1852,8 @@ document.addEventListener("DOMContentLoaded", function () {
         };
       });
       
-      // Sort based on user preference - either by date or by amount
-      if (sortBarsByDate) {
-        // Sort by earliest transaction date (chronological order)
-        entityData.sort((a, b) => a.earliestDate - b.earliestDate);
-      } else {
-        // Sort by total amount descending
-        entityData.sort((a, b) => b.total - a.total);
-      }
+      // Sort by earliest transaction date (chronological order)
+      entityData.sort((a, b) => a.earliestDate - b.earliestDate);
 
       // Create x scale based on entity names
       const x = d3
@@ -2089,7 +2014,7 @@ document.addEventListener("DOMContentLoaded", function () {
               })
               .on("click", function() {
                 if (transactions.length > 0) {
-                  showTransactionModal(new Date(), transactions[0]);
+                  // Modal opening removed
                 }
               });
               
@@ -2167,7 +2092,7 @@ document.addEventListener("DOMContentLoaded", function () {
               })
               .on("click", function() {
                 if (transactions.length > 0) {
-                  showTransactionModal(new Date(), transactions[0]);
+                  // Modal opening removed
                 }
               });
               
@@ -2236,113 +2161,59 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
     
-    // Set modal title based on whether we're adding or editing
+    // Always set modal title to Add transaction
     const modalTitle = document.getElementById("transaction-modal-title");
     if (modalTitle) {
-      modalTitle.textContent = transaction 
-        ? "Edit Investment Transaction" 
-        : "Add Investment Transaction";
+      modalTitle.textContent = "Add Investment Transaction";
     }
     
-    // Add or remove a class on the modal based on whether we're editing
-    if (transaction) {
-      investmentModal.classed("editing-transaction", true);
-    } else {
-      investmentModal.classed("editing-transaction", false);
-    }
+    // Always treat as new transaction
+    investmentModal.classed("editing-transaction", false);
     
     // Reset form
     const form = document.getElementById("transaction-form");
     if (form) form.reset();
     
-    // Set the transaction ID field (hidden)
+    // Clear the transaction ID field (hidden)
     const idField = document.getElementById("transaction-id");
-    if (idField) idField.value = transaction ? transaction.id : "";
+    if (idField) idField.value = "";
     
     // Set the date field
     const dateField = document.getElementById("transaction-date");
     if (dateField) dateField.value = formattedDate;
     
-    // If editing a transaction, populate the fields
-    if (transaction) {
-      // Set investment selector
+    // For new transaction, hide delete button
+    const deleteBtn = document.querySelector(".btn-delete");
+    if (deleteBtn) deleteBtn.style.display = "none";
+    
+    // Ensure amount field is readonly
+    const amountField = document.getElementById("transaction-amount");
+    if (amountField) {
+      amountField.setAttribute("readonly", true);
+    }
+    
+    // For new transactions, select first real investment option (not disabled options)
+    setTimeout(() => {
       const investmentField = document.getElementById("investment-name");
       if (investmentField) {
-        // Find option with matching entity_id and set it as selected
-        for (let i = 0; i < investmentField.options.length; i++) {
-          if (investmentField.options[i].value == transaction.entity_id) {
-            investmentField.selectedIndex = i;
-            break;
-          }
-        }
-      }
-      
-      // Set transaction type
-      const typeField = document.getElementById("transaction-type");
-      if (typeField) {
-        // Find the option that matches the transaction type and select it
-        for (let i = 0; i < typeField.options.length; i++) {
-          if (typeField.options[i].value === transaction.transactionType) {
-            typeField.selectedIndex = i;
-            break;
-          }
-        }
-      }
-      
-      // Set amount and notes
-      const amountField = document.getElementById("transaction-amount");
-      if (amountField) {
-        amountField.value = Math.abs(transaction.amount);
-        
-        // Make readonly only if transaction type is 'buy'
-        const typeField = document.getElementById("transaction-type");
-        if (typeField && typeField.value === 'buy') {
-          amountField.setAttribute("readonly", true);
-        } else {
-          amountField.removeAttribute("readonly");
-        }
-      }
-      
-      const notesField = document.getElementById("transaction-notes");
-      if (notesField) notesField.value = transaction.notes || "";
-      
-      // Show delete button
-      const deleteBtn = document.querySelector(".btn-delete");
-      if (deleteBtn) deleteBtn.style.display = "inline-block";
-    } else {
-      // For new transaction, hide delete button
-      const deleteBtn = document.querySelector(".btn-delete");
-      if (deleteBtn) deleteBtn.style.display = "none";
-      
-      // Ensure amount field is readonly
-      const amountField = document.getElementById("transaction-amount");
-      if (amountField) {
-        amountField.setAttribute("readonly", true);
-      }
-      
-      // For new transactions, select first real investment option (not disabled options)
-      setTimeout(() => {
-        const investmentField = document.getElementById("investment-name");
-        if (investmentField) {
-          // If no value is selected or the first option is disabled, try to select first valid option
-          if (!investmentField.value || investmentField.options[investmentField.selectedIndex].disabled) {
-            // Find first non-disabled option
-            for (let i = 0; i < investmentField.options.length; i++) {
-              if (!investmentField.options[i].disabled) {
-                investmentField.selectedIndex = i;
-                break;
-              }
+        // If no value is selected or the first option is disabled, try to select first valid option
+        if (!investmentField.value || investmentField.options[investmentField.selectedIndex].disabled) {
+          // Find first non-disabled option
+          for (let i = 0; i < investmentField.options.length; i++) {
+            if (!investmentField.options[i].disabled) {
+              investmentField.selectedIndex = i;
+              break;
             }
           }
-          
-          // Manually trigger the change event to set amount
-          if (investmentField.value) {
-            const event = new Event('change');
-            investmentField.dispatchEvent(event);
-          }
         }
-      }, 100); // Small delay to ensure the modal is fully initialized
-    }
+        
+        // Manually trigger the change event to set amount
+        if (investmentField.value) {
+          const event = new Event('change');
+          investmentField.dispatchEvent(event);
+        }
+      }
+    }, 100); // Small delay to ensure the modal is fully initialized
     
     // Show the modal
     investmentModal.style("display", "block");
@@ -3164,4 +3035,36 @@ document.addEventListener("DOMContentLoaded", function () {
       return; // Prevent submission
     }
   }
+
+  // Add the timeline
+  investmentSvg
+    .append("line")
+    .attr("x1", 0)
+    .attr("y1", investmentTimelineY)
+    .attr("x2", width - margin.right)
+    .attr("y2", investmentTimelineY)
+    .attr("stroke", "#999")
+    .attr("stroke-width", 2);
+
+  // Create a container for the x-axis
+  const timelineAxis = investmentSvg
+    .append("g")
+    .attr("class", "time-axis")
+    .attr("transform", `translate(0, ${investmentTimelineY + 1})`)
+    .call(timeAxisGenerator);
+    
+  // Style the axis
+  timelineAxis
+    .selectAll(".domain")
+    .attr("stroke", "#999");
+    
+  timelineAxis
+    .selectAll(".tick line")
+    .attr("stroke", "#ccc")
+    .attr("stroke-dasharray", "2,2");
+    
+  timelineAxis
+    .selectAll(".tick text")
+    .attr("fill", "#666")
+    .attr("font-size", "11px");
 });
