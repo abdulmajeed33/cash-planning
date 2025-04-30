@@ -618,6 +618,30 @@ document.addEventListener("DOMContentLoaded", function () {
             transactionDateParse(transaction.date) || new Date(transaction.date);
         }
 
+        // Validate buy transactions - ensure each entity can only be purchased once
+        if (transaction.transactionType === "buy") {
+          const entityId = Number(transaction.entity_id);
+          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
+          
+          // Filter for existing buy transactions for this entity
+          const existingBuyTransactions = transactionData.filter(
+            t => Number(t.entity_id) === entityId && 
+                 t.investmentType === transaction.investmentType &&
+                 t.transactionType === "buy"
+          );
+          
+          if (existingBuyTransactions.length > 0) {
+            // Get entity name for better error messages
+            const entity = investmentData.find(inv => Number(inv.id) === entityId);
+            const entityName = entity ? entity.name : `this ${transaction.investmentType}`;
+            
+            const errorMsg = `Error: ${entityName} has already been purchased. Each ${transaction.investmentType} can only be purchased once.`;
+            console.error(errorMsg);
+            alert(errorMsg);
+            return this;
+          }
+        }
+
         // Validate if this is a sale transaction - only check if buys exist
         if (transaction.transactionType === "sale") {
           // Get the entity ID and type
@@ -713,6 +737,31 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typeof transaction.date === "string") {
           transaction.date = 
             transactionDateParse(transaction.date) || new Date(transaction.date);
+        }
+        
+        // For buy transactions, check if entity already purchased (exclude current transaction)
+        if (transaction.transactionType === "buy") {
+          const entityId = Number(transaction.entity_id);
+          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
+          
+          // Filter for existing buy transactions for this entity (excluding this one)
+          const existingBuyTransactions = transactionData.filter(
+            t => Number(t.entity_id) === entityId && 
+                 t.investmentType === transaction.investmentType &&
+                 t.transactionType === "buy" &&
+                 Number(t.id) !== Number(transaction.id)
+          );
+          
+          if (existingBuyTransactions.length > 0) {
+            // Get entity name for better error messages
+            const entity = investmentData.find(inv => Number(inv.id) === entityId);
+            const entityName = entity ? entity.name : `this ${transaction.investmentType}`;
+            
+            const errorMsg = `Error: ${entityName} has already been purchased by another transaction. Each ${transaction.investmentType} can only be purchased once.`;
+            console.error(errorMsg);
+            alert(errorMsg);
+            return this;
+          }
         }
         
         // Validate if this is a sale transaction - only check if buys exist
@@ -2661,6 +2710,26 @@ document.addEventListener("DOMContentLoaded", function () {
           if (!validateSaleExistence()) {
             console.log("Sale validation failed at submission time");
             return; // Stop submission if validation fails
+          }
+        }
+        
+        // For buy transactions, check if this entity has already been purchased
+        if (transactionType === "buy") {
+          const entityId = parseInt(document.getElementById("investment-name").value);
+          const investmentType = entityType === "investment" ? "fund" : "land";
+          
+          // Check if there are any existing buy transactions for this entity
+          const existingBuyTransactions = transactionData.filter(
+            t => Number(t.entity_id) === entityId && 
+                 t.investmentType === investmentType &&
+                 t.transactionType === "buy"
+          );
+          
+          if (existingBuyTransactions.length > 0) {
+            const errorMsg = `Error: This ${investmentType} has already been purchased. Each ${investmentType} can only be purchased once.`;
+            console.error(errorMsg);
+            alert(errorMsg);
+            return; // Prevent submission
           }
         }
         
