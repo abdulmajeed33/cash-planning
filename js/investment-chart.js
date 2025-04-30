@@ -618,68 +618,8 @@ document.addEventListener("DOMContentLoaded", function () {
             transactionDateParse(transaction.date) || new Date(transaction.date);
         }
 
-        // Validate buy transactions - ensure each entity can only be purchased once
-        if (transaction.transactionType === "buy") {
-          const entityId = Number(transaction.entity_id);
-          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
-          
-          // Filter for existing buy transactions for this entity
-          const existingBuyTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === transaction.investmentType &&
-                 t.transactionType === "buy"
-          );
-          
-          if (existingBuyTransactions.length > 0) {
-            // Get entity name for better error messages
-            const entity = investmentData.find(inv => Number(inv.id) === entityId);
-            const entityName = entity ? entity.name : `this ${transaction.investmentType}`;
-            
-            const errorMsg = `Error: ${entityName} has already been purchased. Each ${transaction.investmentType} can only be purchased once.`;
-            console.error(errorMsg);
-            alert(errorMsg);
-            return this;
-          }
-        }
-
-        // Validate if this is a sale transaction - only check if buys exist
-        if (transaction.transactionType === "sale") {
-          // Get the entity ID and type
-          const entityId = Number(transaction.entity_id);
-          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
-          
-          console.log(`Validating sale transaction for entity ID ${entityId}, type: ${entityType}`);
-          
-          // Filter all transactions for this specific entity (excluding this one being updated)
-          // IMPORTANT: Check both entity_id AND entity_type to prevent mix-ups between funds and lands
-          const entityTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === transaction.investmentType &&
-                 Number(t.id) !== Number(transaction.id)
-          );
-          
-          console.log(`Found ${entityTransactions.length} existing transactions for this entity`);
-          
-          // Get buy transactions before this sale date
-          const buyTransactions = entityTransactions.filter(
-            t => t.transactionType === "buy" && t.date <= transaction.date
-          );
-          
-          console.log(`Buy transactions: ${buyTransactions.length}`);
-          
-          // Calculate total amount bought
-          const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive sum
-          
-          console.log(`Total bought: ${totalBought}`);
-          
-          // Find entity name for better error messages
-          const entity = investmentData.find(inv => Number(inv.id) === entityId);
-          const entityName = entity ? entity.name : "this investment";
-          
-          // Purchase no longer mandatory to sell - removed validation check
-          
-          console.log("Sale transaction validation passed");
-        }
+        // Validation is now done at form submission time
+        // No validation checks here
 
         // Apply correct sign based on transaction type - FIX: Ensure correct sign
         let amountValue = parseFloat(transaction.amount);
@@ -739,60 +679,8 @@ document.addEventListener("DOMContentLoaded", function () {
             transactionDateParse(transaction.date) || new Date(transaction.date);
         }
         
-        // For buy transactions, check if entity already purchased (exclude current transaction)
-        if (transaction.transactionType === "buy") {
-          const entityId = Number(transaction.entity_id);
-          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
-          
-          // Filter for existing buy transactions for this entity (excluding this one)
-          const existingBuyTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === transaction.investmentType &&
-                 t.transactionType === "buy" &&
-                 Number(t.id) !== Number(transaction.id)
-          );
-          
-          if (existingBuyTransactions.length > 0) {
-            // Get entity name for better error messages
-            const entity = investmentData.find(inv => Number(inv.id) === entityId);
-            const entityName = entity ? entity.name : `this ${transaction.investmentType}`;
-            
-            const errorMsg = `Error: ${entityName} has already been purchased by another transaction. Each ${transaction.investmentType} can only be purchased once.`;
-            console.error(errorMsg);
-            alert(errorMsg);
-            return this;
-          }
-        }
-        
-        // Validate if this is a sale transaction - only check if buys exist
-        if (transaction.transactionType === "sale") {
-          // Get the entity ID and type
-          const entityId = Number(transaction.entity_id);
-          const entityType = transaction.investmentType === "fund" ? "investment" : "land";
-          
-          console.log(`Validating sale update for entity ID ${entityId}, type: ${entityType}`);
-          
-          // Filter all transactions for this specific entity (excluding this one being updated)
-          const entityTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === transaction.investmentType &&
-                 Number(t.id) !== Number(transaction.id)
-          );
-          
-          // Get buy transactions before this sale date
-          const buyTransactions = entityTransactions.filter(
-            t => t.transactionType === "buy" && t.date <= transaction.date
-          );
-          
-          // Calculate total amount bought
-          const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive sum
-          
-          // Find entity name for better error messages
-          const entity = investmentData.find(inv => Number(inv.id) === entityId);
-          const entityName = entity ? entity.name : "this investment";
-          
-          // Purchase no longer mandatory to sell - removed validation check
-        }
+        // Validation is now done at form submission time
+        // No validation checks here
         
         // Update amount sign based on transaction type - FIX: Ensure correct sign
         let amountValue = parseFloat(transaction.amount);
@@ -2454,20 +2342,11 @@ document.addEventListener("DOMContentLoaded", function () {
       
       // Purchase is not mandatory to sell - remove check
       
-      // Check if all purchased amount has already been sold
-      if (totalSold > 0) {
-        const errorText = `Error: ${investmentName} has already been sold.`;
-        console.error(errorText);
-        errorMsg.textContent = errorText;
-        errorMsg.style.display = "block";
-        amountInput.max = 0;
-        submitButton.disabled = true;
-        return false;
-      }
+      // Enable partial sales - remove block on already sold investments
+      // Instead, uncomment the partial transaction logic to validate sale amounts
       
-      /* 
-      // Comment out partial transaction logic since we only support full transactions
       // Set maximum sale amount to remaining balance
+      const availableToSell = cashInjection - totalSold;
       amountInput.max = availableToSell;
       
       // Check current input value against available amount
@@ -2482,7 +2361,6 @@ document.addEventListener("DOMContentLoaded", function () {
         submitButton.disabled = true;
         return false;
       }
-      */
       
       console.log("Sale validation passed");
       errorMsg.style.display = "none";
@@ -2494,13 +2372,10 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("sale-validation-error").style.display = "none";
       }
       
-      /* 
-      // Comment out partial transaction logic
-      // Reset any max value constraint for buy transactions
+      // Reset max value constraint for buy transactions
       if (amountInput) {
         amountInput.removeAttribute("max");
       }
-      */
       
       // Enable submit button for buy transactions
       if (submitButton) {
@@ -2703,43 +2578,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const entityType = selectedOption.dataset.type;
         const investmentType = entityType === "investment" ? "fund" : "land";
         
-        // For sale transactions, perform validation one more time
-        const transactionType = document.getElementById("transaction-type").value;
-        if (transactionType === "sale") {
-          // Force a fresh validation at submission time
-          if (!validateSaleExistence()) {
-            console.log("Sale validation failed at submission time");
-            return; // Stop submission if validation fails
-          }
-        }
-        
-        // For buy transactions, check if this entity has already been purchased
-        if (transactionType === "buy") {
-          const entityId = parseInt(document.getElementById("investment-name").value);
-          const investmentType = entityType === "investment" ? "fund" : "land";
-          
-          // Check if there are any existing buy transactions for this entity
-          const existingBuyTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === investmentType &&
-                 t.transactionType === "buy"
-          );
-          
-          if (existingBuyTransactions.length > 0) {
-            const errorMsg = `Error: This ${investmentType} has already been purchased. Each ${investmentType} can only be purchased once.`;
-            console.error(errorMsg);
-            alert(errorMsg);
-            return; // Prevent submission
-          }
-        }
-        
         // Get form values
         const formData = {
           id: document.getElementById("transaction-id").value
             ? parseInt(document.getElementById("transaction-id").value)
             : undefined,
           entity_id: parseInt(document.getElementById("investment-name").value),
-          transactionType: transactionType,
+          transactionType: document.getElementById("transaction-type").value,
           amount: parseFloat(
             document.getElementById("transaction-amount").value
           ),
@@ -2752,28 +2597,85 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log("Form data:", formData);
         
-        // Log explicitly for debugging
-        console.log(`Transaction type info: entity_type=${entityType}, investmentType=${investmentType}`);
+        // CENTRALIZED VALIDATION - All validation happens here at form submission time
+        const transactionType = formData.transactionType;
+        const entityId = formData.entity_id;
         
-        // For sale transactions, only check if there are any buys, no amount validation
-        if (formData.transactionType === "sale") {
-          console.log("Sale transaction detected - validating existence only...");
+        // Validation for BUY transactions - ensure each entity can only be purchased once
+        if (transactionType === "buy") {
+          // Check if there are any existing buy transactions for this entity
+          const existingBuyTransactions = transactionData.filter(
+            t => Number(t.entity_id) === entityId && 
+                 t.investmentType === investmentType &&
+                 t.transactionType === "buy" && 
+                 (!formData.id || Number(t.id) !== Number(formData.id)) // Exclude current transaction if editing
+          );
           
-          // Check if there are any buy transactions for this investment
-          const entityId = Number(formData.entity_id);
+          if (existingBuyTransactions.length > 0) {
+            const errorMsg = `Error: This ${investmentType} has already been purchased. Each ${investmentType} can only be purchased once.`;
+            console.error(errorMsg);
+            alert(errorMsg);
+            return; // Prevent submission
+          }
+        }
+        
+        // Validation for SALE transactions
+        if (transactionType === "sale") {
+          // 1. Get all transactions for this investment (excluding current if editing)
           const existingTransactions = transactionData.filter(
             t => Number(t.entity_id) === entityId && 
-                 t.investmentType === formData.investmentType
+                 t.investmentType === investmentType &&
+                 (!formData.id || Number(t.id) !== Number(formData.id))
           );
           
-          const buyTransactions = existingTransactions.filter(
-            t => t.transactionType === "buy" && t.date <= formData.date
+          // 2. Check sale amount validations
+          const saleAmount = formData.amount;
+          
+          // Get entity info
+          const entity = investmentData.find(inv => Number(inv.id) === entityId);
+          if (!entity) {
+            alert("Error: Could not find investment details.");
+            return; // Prevent submission
+          }
+          
+          // Get cash injection value based on entity type
+          const cashInjection = entityType === "investment" ? 
+            parseFloat(entity.cash_investment || entity.val6) : 
+            parseFloat(entity.cash_injection || entity.val6);
+            
+          if (isNaN(cashInjection) || cashInjection <= 0) {
+            alert("Error: Invalid cash injection amount for this investment.");
+            return;
+          }
+          
+          // Get existing sales
+          const saleTransactions = existingTransactions.filter(
+            t => t.transactionType === "sale" && t.date <= formData.date
           );
           
-          const totalBought = d3.sum(buyTransactions, d => -d.amount);
+          // Calculate total sold
+          const totalSold = d3.sum(saleTransactions, d => d.amount);
           
-          // Purchase no longer mandatory to sell - removed validation check
+          // Do NOT block if entity has already been sold - allow partial sales
+          
+          // Check if amount exceeds cash injection
+          if (saleAmount > cashInjection) {
+            alert(`Error: You can't sell more than the cash injection amount of ${cashInjection}.`);
+            return;
+          }
+          
+          // For consistency with the saved cash value, calculate available amount
+          const available = cashInjection - totalSold;
+          
+          // Check if amount exceeds available (cash injection minus already sold)
+          if (saleAmount > available) {
+            alert(`Error: You've already sold ${totalSold} of this investment. You can only sell up to ${available} more.`);
+            return;
+          }
         }
+        
+        // If we got here, validation passed
+        console.log("All validation passed, proceeding with save");
 
         try {
           // Log transaction data before saving
@@ -2858,10 +2760,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         
-        // Only run validation for existence of buys, not amount validation
-        if (this.value === "sale") {
-          validateSaleExistence();
-        }
+        // No validation on change - only validate on form submission
       });
     } else {
       console.error("Transaction type select not found!");
@@ -2930,24 +2829,20 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         
-        // If this is a sale type, immediately validate
-        if (typeSelect && typeSelect.value === "sale") {
-          // Add a slight delay to ensure the value is properly updated
-          setTimeout(validateSaleExistence, 50);
-        }
+        // No validation on change - only validate on form submission
       });
     } else {
       console.error("Investment select not found!");
     }
     
     if (amountInput) {
-      amountInput.addEventListener("input", validateSaleExistence);
+      // No validation on input change - only validate on form submission
     } else {
       console.error("Amount input not found!");
     }
     
     if (dateInput) {
-      dateInput.addEventListener("change", validateSaleExistence);
+      // No validation on date change - only validate on form submission
     } else {
       console.error("Date input not found!");
     }
