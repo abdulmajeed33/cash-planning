@@ -1510,7 +1510,10 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("cx", position)
         .attr("cy", investmentTimelineY)
         .attr("r", 5)
-        .attr("fill", dotColor);
+        .attr("fill", dotColor)
+        .attr("data-entity-name", group.transactions[0].name)
+        .attr("data-date", group.date.toISOString())
+        .attr("data-id", group.transactions[0].id);
 
       // Add transaction emojis with proper spacing
       const totalTransactions = group.transactions.length;
@@ -1751,9 +1754,22 @@ document.addEventListener("DOMContentLoaded", function () {
                   clearTimeout(window.investmentUpdateTimeout);
                 }
 
+                // Store the transaction info for highlighting after redraw
+                const transactionToHighlight = {
+                  id: transaction.id,
+                  entityId: transaction.entity_id,
+                  entityName: transaction.name,
+                  transactionType: transaction.transactionType,
+                  date: new Date(newDate),
+                  amount: transaction.amount
+                };
+
                 // Force complete redraw with a small delay to ensure animations complete
                 window.investmentUpdateTimeout = setTimeout(() => {
                   updateInvestmentVisualization();
+                  
+                  // After redraw, highlight the corresponding bar segment
+                  highlightBarSegmentForTransaction(transactionToHighlight);
                 }, 50);
 
                 // Show feedback about change
@@ -1989,6 +2005,10 @@ document.addEventListener("DOMContentLoaded", function () {
               .attr("opacity", 0.8)
               .attr("stroke", "#fff")
               .attr("stroke-width", 0.5)
+              .attr("data-entity-name", entity.name)
+              .attr("data-transaction-type", "buy")
+              .attr("data-date", transactions[0].date.toISOString())
+              .attr("data-transaction-ids", transactions.map(t => t.id).join(","))
               .on("mouseenter", function(event) {
                 // Show tooltip
                 tooltip.transition().duration(200).style("opacity", 0.9);
@@ -2067,6 +2087,10 @@ document.addEventListener("DOMContentLoaded", function () {
               .attr("opacity", 0.8)
               .attr("stroke", "#fff")
               .attr("stroke-width", 0.5)
+              .attr("data-entity-name", entity.name)
+              .attr("data-transaction-type", "sale")
+              .attr("data-date", transactions[0].date.toISOString())
+              .attr("data-transaction-ids", transactions.map(t => t.id).join(","))
               .on("mouseenter", function(event) {
                 // Show tooltip
                 tooltip.transition().duration(200).style("opacity", 0.9);
@@ -3067,4 +3091,73 @@ document.addEventListener("DOMContentLoaded", function () {
     .selectAll(".tick text")
     .attr("fill", "#666")
     .attr("font-size", "11px");
+
+  // Function to highlight the bar segment corresponding to a dragged transaction
+  function highlightBarSegmentForTransaction(transaction) {
+    // Find all bar segments
+    const barSegments = d3.selectAll(".buy-bar-segment, .sale-bar-segment");
+    
+    // Exit if no segments found
+    if (barSegments.empty()) return;
+    
+    // Convert transaction date to string format for comparison
+    const transactionDateStr = transaction.date.toISOString();
+    const transactionId = transaction.id;
+    
+    // Find the corresponding bar segment using data attributes
+    barSegments.each(function() {
+      const segment = d3.select(this);
+      
+      // Get segment data from attributes
+      const entityName = segment.attr("data-entity-name");
+      const transactionType = segment.attr("data-transaction-type");
+      const segmentDate = segment.attr("data-date");
+      const transactionIds = segment.attr("data-transaction-ids");
+      
+      // Skip if no data attributes found
+      if (!entityName || !transactionType || !segmentDate) return;
+      
+      // Check if this is the matching segment
+      const matchesName = entityName === transaction.entityName;
+      const matchesType = (transaction.transactionType === transactionType);
+      
+      // Match either by direct date comparison or by ID inclusion in the segment
+      const matchesDate = segmentDate === transactionDateStr;
+      const matchesId = transactionId && transactionIds && transactionIds.split(",").includes(String(transactionId));
+      
+      // If we have a match
+      if (matchesName && matchesType && (matchesDate || matchesId)) {
+        // Store original color
+        const originalFill = segment.attr("fill");
+        const originalOpacity = segment.attr("opacity");
+        
+        // Highlight with pulsing animation
+        segment
+          .transition()
+          .duration(300)
+          .attr("fill", "#FFD700") // Gold
+          .attr("opacity", 1)
+          .attr("stroke", "#FF5722") // Accent color
+          .attr("stroke-width", 2)
+          .transition()
+          .duration(300)
+          .attr("fill", originalFill)
+          .attr("opacity", originalOpacity)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0.5)
+          .transition()
+          .duration(300)
+          .attr("fill", "#FFD700")
+          .attr("opacity", 1)
+          .attr("stroke", "#FF5722")
+          .attr("stroke-width", 2)
+          .transition()
+          .duration(300)
+          .attr("fill", originalFill)
+          .attr("opacity", originalOpacity)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0.5);
+      }
+    });
+  }
 });
