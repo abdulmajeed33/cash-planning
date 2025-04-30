@@ -2309,21 +2309,64 @@ document.addEventListener("DOMContentLoaded", function () {
       // Calculate available amount to sell
       const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive value
       const totalSold = d3.sum(saleTransactions, d => d.amount); // Sale is already positive
-      // const availableToSell = totalBought - totalSold;
       
-      // console.log(`Total bought: ${totalBought}, Total sold: ${totalSold}, Available to sell: ${availableToSell}`);
+      // Get the entity info to determine cash injection amount based on investment type
+      // Ensure we find the correct entity by filtering on both ID and type
+      const entity = investmentData.find(inv => {
+        // First check if IDs match
+        const idMatches = Number(inv.id) === entityId;
+        
+        // Then check if the type matches based on investment name
+        // Funds have "Fund" in their name, Lands have "Land" in their name
+        const isCorrectType = investmentType === "fund" ? 
+          inv.name && inv.name.includes("Fund") : 
+          inv.name && inv.name.includes("Land");
+        
+        return idMatches && isCorrectType;
+      });
+      
+      if (!entity) {
+        console.error(`Could not find entity with ID ${entityId} and type ${investmentType}`);
+        return false;
+      }
+      
+      // Get cash injection amount based on entity type
+      let cashInjection;
+      if (investmentType === "fund") {
+        // For funds, use cash_investment property
+        cashInjection = parseFloat(entity.cash_investment || entity.val6);
+      } else if (investmentType === "land") {
+        // For lands, use cash_injection property
+        cashInjection = parseFloat(entity.cash_injection || entity.val6);
+      } else {
+        console.error(`Invalid investment type: ${investmentType}`);
+        return false;
+      }
+      
+      if (isNaN(cashInjection) || cashInjection <= 0) {
+        console.error(`Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`);
+        // Check for mapped fields from fetchChartData
+        if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
+          cashInjection = parseFloat(entity.val6);
+          console.log(`Using val6 (${cashInjection}) as fallback for cash injection amount`);
+        } else {
+          return false;
+        }
+      }
       
       // Debug logging
       console.log('Sale Validation Summary:', {
         entityId,
         entityType,
         investmentType,
+        entity: entity.name,
+        cashInjection,
         entityTransactions: entityTransactions.length,
         buyTransactions: buyTransactions.length,
         saleTransactions: saleTransactions.length,
         totalBought,
         totalSold,
-        // availableToSell,
+        availableToSell: cashInjection - totalSold,
         currentTransactionId
       });
       
@@ -2632,9 +2675,17 @@ document.addEventListener("DOMContentLoaded", function () {
           const saleAmount = formData.amount;
           
           // Get entity info
-          const entity = investmentData.find(inv => Number(inv.id) === entityId);
+          const entity = investmentData.find(inv => {
+            // Match by ID and type to avoid confusion between funds and lands
+            const idMatches = Number(inv.id) === entityId;
+            const typeMatches = entityType === "investment" ? 
+              inv.name && inv.name.includes("Fund") : 
+              inv.name && inv.name.includes("Land");
+            return idMatches && typeMatches;
+          });
+          
           if (!entity) {
-            alert("Error: Could not find investment details.");
+            alert(`Error: Could not find ${investmentType} with ID ${entityId}.`);
             return; // Prevent submission
           }
           
@@ -2644,7 +2695,7 @@ document.addEventListener("DOMContentLoaded", function () {
             parseFloat(entity.cash_injection || entity.val6);
             
           if (isNaN(cashInjection) || cashInjection <= 0) {
-            alert("Error: Invalid cash injection amount for this investment.");
+            alert(`Error: Invalid cash injection amount for this ${investmentType}.`);
             return;
           }
           
@@ -2939,7 +2990,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Function to validate that a sale transaction has previous buys only (no amount validation)
-  function validateSaleTransaction() {
+  function validateSaleExistenceOnly() {
     const typeSelect = document.getElementById("transaction-type");
     const investmentSelect = document.getElementById("investment-name");
     const dateInput = document.getElementById("transaction-date");
@@ -2970,7 +3021,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const entityType = selectedOption.dataset.type;
     const investmentType = entityType === "investment" ? "fund" : "land";
     
-    // Find all buy transactions for this investment
+    // Log entity information for debugging
+    console.log(`Validating existence for entity ID=${entityId}, type=${entityType}, investmentType=${investmentType}`);
+    
+    // Find all transactions for this investment (with correct investment type)
     const existingTransactions = transactionData.filter(
       t => Number(t.entity_id) === entityId && 
            t.investmentType === investmentType
@@ -2985,6 +3039,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const totalBought = d3.sum(buyTransactions, d => -d.amount);
     
     console.log("Sale validation details:", {
+      entityId: entityId,
+      entityType: entityType,
+      investmentType: investmentType,
       buyTransactions: buyTransactions.length,
       totalBought
     });
@@ -3009,10 +3066,22 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log(`Getting available amount for entityId=${entityId}, investmentType=${investmentType}`);
     
     // Find the entity to get the cash injection amount
-    const entity = investmentData.find(inv => Number(inv.id) === Number(entityId));
+    // Ensure we filter by both ID and the correct type to avoid confusion between funds and lands
+    const entity = investmentData.find(inv => {
+      // First check if IDs match
+      const idMatches = Number(inv.id) === Number(entityId);
+      
+      // Then check if the type matches based on investment name
+      // Funds have "Fund" in their name, Lands have "Land" in their name
+      const isCorrectType = investmentType === "fund" ? 
+        inv.name && inv.name.includes("Fund") : 
+        inv.name && inv.name.includes("Land");
+      
+      return idMatches && isCorrectType;
+    });
     
     if (!entity) {
-      console.error(`Could not find entity with ID ${entityId}`);
+      console.error(`Could not find entity with ID ${entityId} and type ${investmentType}`);
       return { error: "Entity not found", available: 0, cashInjection: 0, sold: 0 };
     }
     
@@ -3117,7 +3186,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const entityInfo = getEntityAvailableSaleAmount(entityId, investmentType);
     
     if (entityInfo.error) {
-      alert(entityInfo.error);
+      alert(`${entityInfo.error} for ${investmentType} with ID ${entityId}`);
       return false;
     }
     
