@@ -425,9 +425,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Investment transaction emojis
   const transactionEmojis = {
     "fund-buy": "📈",
-    "fund-sale": "💹",
+    "fund-sale": "📈",
     "land-buy": "🏞️",
-    "land-sale": "🏙️",
+    "land-sale": "🏞️",
   };
 
   // Initialize date inputs with current year dates
@@ -461,9 +461,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Add preset buttons
     const presetButtons = [
-      { text: "Current Year", handler: setCurrentYear },
+      { text: "1 Month", handler: set1Month },
+      { text: "3 Months", handler: set3Months },
       { text: "6 Months", handler: set6Months },
-      { text: "12 Months", handler: setLast12Months },
+      { text: "1 Year", handler: set1Year },
     ];
 
     presetButtons.forEach((btn) => {
@@ -903,12 +904,22 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Date preset handler functions
-  function setCurrentYear() {
+  function set1Month() {
     const now = new Date();
-    const year = now.getFullYear();
 
-    startDate = new Date(year, 0, 1); // Jan 1 of current year
-    endDate = new Date(year + 1, 0, 1); // Jan 1 of next year
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 1); // Go back 1 month
+
+    updateInputsAndChart();
+  }
+
+  function set3Months() {
+    const now = new Date();
+
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 3); // Go back 3 months
 
     updateInputsAndChart();
   }
@@ -923,15 +934,16 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInputsAndChart();
   }
 
-  function setLast12Months() {
+  function set1Year() {
     const now = new Date();
 
     endDate = new Date(now);
     startDate = new Date(now);
-    startDate.setFullYear(now.getFullYear() - 1);
+    startDate.setFullYear(now.getFullYear() - 1); // Go back 1 year
 
     updateInputsAndChart();
   }
+
   // Helper function to update inputs and refresh chart
   function updateInputsAndChart() {
     // Update input fields
