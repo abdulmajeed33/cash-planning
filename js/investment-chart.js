@@ -100,24 +100,26 @@ document.addEventListener("DOMContentLoaded", function () {
   async function resetDatabase() {
     return new Promise((resolve, reject) => {
       console.log("Resetting database...");
-      
+
       // Delete the database completely
       const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-      
+
       deleteRequest.onsuccess = () => {
         console.log("Database deleted successfully");
-        
+
         // Re-initialize the database
         db = null;
-        initDatabase().then(() => {
-          console.log("Database re-initialized after reset");
-          resolve();
-        }).catch(err => {
-          console.error("Error re-initializing database:", err);
-          reject(err);
-        });
+        initDatabase()
+          .then(() => {
+            console.log("Database re-initialized after reset");
+            resolve();
+          })
+          .catch((err) => {
+            console.error("Error re-initializing database:", err);
+            reject(err);
+          });
       };
-      
+
       deleteRequest.onerror = (event) => {
         console.error("Error deleting database:", event.target.error);
         reject(event.target.error);
@@ -131,29 +133,39 @@ document.addEventListener("DOMContentLoaded", function () {
       const investments = await getAllData(STORES.investments);
       const lands = await getAllData(STORES.lands);
       const transactions = await getAllData(STORES.transactions);
-      
+
       // Check if we have proper transactions with correct sign convention
-      const hasIncorrectTransactions = transactions.some(tx => {
+      const hasIncorrectTransactions = transactions.some((tx) => {
         // Buy transactions should be negative, sale transactions should be positive
         const amount = parseFloat(tx.amount);
-        return (tx.transaction_type === "buy" && amount > 0) || 
-               (tx.transaction_type === "sale" && amount < 0);
+        return (
+          (tx.transaction_type === "buy" && amount > 0) ||
+          (tx.transaction_type === "sale" && amount < 0)
+        );
       });
 
       if (investments.length === 0 && lands.length === 0) {
         console.log("Database is empty, adding sample data...");
         await seedSampleData();
         // Refresh the page after seeding data to properly display it
-        console.log("Sample data added, refreshing page to display seeded data...");
+        console.log(
+          "Sample data added, refreshing page to display seeded data..."
+        );
         window.location.reload();
       } else if (hasIncorrectTransactions) {
-        console.log("Found transactions with incorrect sign convention, resetting database...");
+        console.log(
+          "Found transactions with incorrect sign convention, resetting database..."
+        );
         await resetDatabase();
         await seedSampleData();
-        console.log("Database reset and reseeded with correct data, refreshing page...");
+        console.log(
+          "Database reset and reseeded with correct data, refreshing page..."
+        );
         window.location.reload();
       } else {
-        console.log("Database already has correctly formatted data, skipping seed");
+        console.log(
+          "Database already has correctly formatted data, skipping seed"
+        );
       }
     } catch (error) {
       console.error("Error checking database:", error);
@@ -219,7 +231,7 @@ document.addEventListener("DOMContentLoaded", function () {
         entity_type: "investment",
         transaction_type: "buy",
         amount: "-60000", // IMPORTANT: Buy transactions should be negative
-        transaction_date: new Date(currentYear, 1, 15), // February 15th
+        transaction_date: new Date(currentYear, currentMonth, currentDay + 60), // 60 days after current date
         notes: "Full investment in Tech Growth Fund",
       },
       {
@@ -228,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
         entity_type: "investment",
         transaction_type: "buy",
         amount: "-52500", // IMPORTANT: Buy transactions should be negative
-        transaction_date: new Date(currentYear, 3, 10), // April 10th
+        transaction_date: new Date(currentYear, currentMonth, currentDay + 120), // 120 days after current date
         notes: "Full investment in Renewable Energy Fund",
       },
       {
@@ -237,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
         entity_type: "investment",
         transaction_type: "sale",
         amount: "60000", // IMPORTANT: Sale transactions should be positive
-        transaction_date: new Date(currentYear, 7, 12), // August 12th
+        transaction_date: new Date(currentYear, currentMonth, currentDay + 180), // 180 days after current date
         notes: "Full exit from Tech Growth Fund",
       },
     ];
@@ -367,7 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ...tx,
         transaction_date: new Date(tx.transaction_date),
         // Make sure investmentType is explicitly set based on entity_type
-        investmentType: tx.entity_type === "investment" ? "fund" : "land"
+        investmentType: tx.entity_type === "investment" ? "fund" : "land",
       }));
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -382,10 +394,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Get current year's date range
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const currentDay = new Date().getDate();
 
   // Define initial date range for the timeline (current year by default)
-  let startDate = new Date(currentYear, 0, 1); // Jan 1, current year
-  let endDate = new Date(currentYear + 1, 0, 1); // Jan 1, next year
+  let startDate = new Date(currentYear, currentMonth, currentDay); // Jan 1, current year
+  let endDate = new Date(currentYear + 1, currentMonth, currentDay); // Jan 1, next year
 
   // Define initial amount range filter (initially inactive)
   let minAmount = 0;
@@ -411,9 +425,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Investment transaction emojis
   const transactionEmojis = {
     "fund-buy": "📈",
-    "fund-sale": "💹",
+    "fund-sale": "📈",
     "land-buy": "🏞️",
-    "land-sale": "🏙️",
+    "land-sale": "🏞️",
   };
 
   // Initialize date inputs with current year dates
@@ -427,10 +441,8 @@ document.addEventListener("DOMContentLoaded", function () {
   let datePresets;
   try {
     // Instead of using insert, append the element and move it to the first position
-    datePresets = dateRangeControl
-      .append("div")
-      .attr("class", "date-presets");
-    
+    datePresets = dateRangeControl.append("div").attr("class", "date-presets");
+
     // If the parent element has children, move our element to the first position
     const parent = dateRangeControl.node();
     if (parent && parent.firstChild && datePresets.node()) {
@@ -439,29 +451,46 @@ document.addEventListener("DOMContentLoaded", function () {
   } catch (e) {
     console.error("Error creating date presets:", e);
     // Fallback - just append if insertion fails
-    datePresets = dateRangeControl
-      .append("div")
-      .attr("class", "date-presets");
+    datePresets = dateRangeControl.append("div").attr("class", "date-presets");
   }
 
   // Only proceed if datePresets was successfully created
   if (datePresets) {
     // Add title
-    datePresets.append("h4").text("Quick Select:");
+    datePresets.append("h4")
+      .text("Quick Select:")
+      .style("margin", "50 0 5px 0") // Reduce margin
+      .style("font-size", "14px"); // Smaller font size
+
+    // Add compact styling to the date presets container
+    datePresets
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("display", "inline-block") // Make it only as wide as needed
+      .style("margin-bottom", "10px");
 
     // Add preset buttons
     const presetButtons = [
-      { text: "Current Year", handler: setCurrentYear },
+      { text: "1 Month", handler: set1Month },
+      { text: "3 Months", handler: set3Months },
       { text: "6 Months", handler: set6Months },
-      { text: "12 Months", handler: setLast12Months }
+      { text: "1 Year", handler: set1Year },
     ];
 
+    // Create a flex container for buttons
+    const buttonContainer = datePresets
+      .append("div")
+      .style("display", "flex")
+      .style("gap", "5px"); // Small gap between buttons
+
     presetButtons.forEach((btn) => {
-      datePresets
+      buttonContainer
         .append("button")
         .attr("type", "button")
         .attr("class", "date-preset-btn")
         .text(btn.text)
+        .style("padding", "4px 8px") // Smaller padding
+        .style("font-size", "12px") // Smaller font size 
         .on("click", btn.handler);
     });
   }
@@ -528,10 +557,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Find the related entity by both ID and type
         let relatedEntity;
-        
+
         if (isInvestmentType) {
           // Only search among investments when entity_type is investment
-          relatedEntity = mappedInvestments.find((inv) => inv.id === tx.entity_id);
+          relatedEntity = mappedInvestments.find(
+            (inv) => inv.id === tx.entity_id
+          );
         } else {
           // Only search among lands when entity_type is land
           relatedEntity = mappedLands.find((land) => land.id === tx.entity_id);
@@ -558,9 +589,9 @@ document.addEventListener("DOMContentLoaded", function () {
       // Update the internal arrays directly (safer approach)
       investmentData = combinedInvestmentData;
       transactionData = mappedTransactions;
-      
+
       // Also update modal options if needed
-      if (typeof updateModalInvestmentOptions === 'function') {
+      if (typeof updateModalInvestmentOptions === "function") {
         updateModalInvestmentOptions();
       }
 
@@ -580,7 +611,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setInvestmentData: function (newData) {
       investmentData = newData;
       // If modal exists, update its investment options
-      if (typeof updateModalInvestmentOptions === 'function') {
+      if (typeof updateModalInvestmentOptions === "function") {
         updateModalInvestmentOptions();
       }
       return this; // For chaining
@@ -609,11 +640,12 @@ document.addEventListener("DOMContentLoaded", function () {
     addTransaction: async function (transaction) {
       try {
         console.log("Adding transaction:", transaction);
-        
+
         // Process date if it's a string
         if (typeof transaction.date === "string") {
           transaction.date =
-            transactionDateParse(transaction.date) || new Date(transaction.date);
+            transactionDateParse(transaction.date) ||
+            new Date(transaction.date);
         }
 
         // Validation is now done at form submission time
@@ -632,7 +664,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const dbTransaction = {
           entity_id: transaction.entity_id,
           // Always ensure entity_type is correctly set based on investmentType
-          entity_type: transaction.investmentType === "fund" ? "investment" : "land",
+          entity_type:
+            transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
           amount: amountValue.toString(),
           transaction_date: transaction.date,
@@ -651,7 +684,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Update amount in local object
         transaction.amount = amountValue;
-        
+
         // Add to local array
         transactionData.push(transaction);
 
@@ -665,21 +698,22 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       return this; // For chaining
     },
-    
+
     // Function to update a transaction
-    updateTransaction: async function(transaction) {
+    updateTransaction: async function (transaction) {
       try {
         console.log("Updating transaction:", transaction);
-        
+
         // Process date if it's a string
         if (typeof transaction.date === "string") {
-          transaction.date = 
-            transactionDateParse(transaction.date) || new Date(transaction.date);
+          transaction.date =
+            transactionDateParse(transaction.date) ||
+            new Date(transaction.date);
         }
-        
+
         // Validation is now done at form submission time
         // No validation checks here
-        
+
         // Update amount sign based on transaction type - FIX: Ensure correct sign
         let amountValue = parseFloat(transaction.amount);
         // Make buy transactions negative and sale transactions positive
@@ -688,34 +722,37 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (transaction.transactionType === "sale" && amountValue < 0) {
           amountValue = Math.abs(amountValue);
         }
-        
+
         // Format transaction for IndexedDB
         const dbTransaction = {
           id: transaction.id,
           entity_id: transaction.entity_id,
           // Always ensure entity_type is correctly set based on investmentType
-          entity_type: transaction.investmentType === "fund" ? "investment" : "land",
+          entity_type:
+            transaction.investmentType === "fund" ? "investment" : "land",
           transaction_type: transaction.transactionType,
           amount: amountValue.toString(),
           transaction_date: transaction.date,
           notes: transaction.notes || "",
         };
-        
+
         // Update in database
         await updateData(STORES.transactions, dbTransaction);
-        
+
         // Update in local array
-        const index = transactionData.findIndex(t => Number(t.id) === Number(transaction.id));
+        const index = transactionData.findIndex(
+          (t) => Number(t.id) === Number(transaction.id)
+        );
         if (index !== -1) {
           // Update with proper sign
           transaction.amount = amountValue;
-          transactionData[index] = {...transaction};
+          transactionData[index] = { ...transaction };
         } else {
           // If not found, just add it with proper sign
           transaction.amount = amountValue;
           transactionData.push(transaction);
         }
-        
+
         // Refresh visualization
         updateInvestmentVisualization();
       } catch (error) {
@@ -724,23 +761,25 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       return this; // For chaining
     },
-    
+
     // Function to remove a transaction
-    removeTransaction: async function(transaction) {
+    removeTransaction: async function (transaction) {
       try {
         console.log("Removing transaction:", transaction);
-        
+
         if (!transaction.id) {
           console.error("Cannot remove transaction without ID");
           return this;
         }
-        
+
         // Delete from database
         await deleteData(STORES.transactions, transaction.id);
-        
+
         // Remove from local array
-        transactionData = transactionData.filter(t => Number(t.id) !== Number(transaction.id));
-        
+        transactionData = transactionData.filter(
+          (t) => Number(t.id) !== Number(transaction.id)
+        );
+
         // Refresh visualization
         updateInvestmentVisualization();
         console.log("Transaction removed successfully");
@@ -776,7 +815,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Create amount range filter container - only if element exists, using safer methods
   const timelineEl = d3.select("#investment-timeline");
   const dateRangeSelector = ".date-range-control";
-  
+
   // Only add the filter controls if the timeline element exists
   let filterControls;
   if (timelineEl.node()) {
@@ -790,12 +829,16 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("padding", "15px")
         .style("background", "#f5f5f5")
         .style("border-radius", "8px")
-        .style("border", "1px solid #ddd");
-      
+        .style("border", "1px solid #ddd")
+        .style("display", "none"); // Hide the amount filter for now
+
       // Move it after the date range control if possible
       const dateRangeEl = document.querySelector(dateRangeSelector);
       if (dateRangeEl && dateRangeEl.nextSibling && filterControls.node()) {
-        dateRangeEl.parentNode.insertBefore(filterControls.node(), dateRangeEl.nextSibling);
+        dateRangeEl.parentNode.insertBefore(
+          filterControls.node(),
+          dateRangeEl.nextSibling
+        );
       }
     } catch (e) {
       console.error("Error creating amount filter controls:", e);
@@ -809,67 +852,70 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("border-radius", "8px")
         .style("border", "1px solid #ddd");
     }
-    
+
     // Only proceed if filterControls was successfully created
     if (filterControls) {
       // Add title
-      filterControls.append("h4")
+      filterControls
+        .append("h4")
         .text("Filter by Transaction Amount:")
         .style("margin-top", "0");
 
       // Create amount filter row
-      const amountFilterRow = filterControls.append("div")
+      const amountFilterRow = filterControls
+        .append("div")
         .style("display", "flex")
         .style("align-items", "center")
         .style("gap", "10px")
         .style("margin-bottom", "10px");
 
       // Add checkbox to enable/disable filter
-      amountFilterRow.append("input")
+      amountFilterRow
+        .append("input")
         .attr("type", "checkbox")
         .attr("id", "enable-amount-filter")
         .style("margin", "0");
 
-      amountFilterRow.append("label")
+      amountFilterRow
+        .append("label")
         .attr("for", "enable-amount-filter")
         .text("Enable Amount Filter")
         .style("margin", "0");
 
       // Create amount inputs row
-      const amountInputsRow = filterControls.append("div")
+      const amountInputsRow = filterControls
+        .append("div")
         .style("display", "flex")
         .style("gap", "10px")
         .style("margin-bottom", "10px");
 
       // Add min amount input
-      amountInputsRow.append("div")
-        .style("flex", "1")
-        .html(`
+      amountInputsRow.append("div").style("flex", "1").html(`
           <label for="min-amount">Min Amount ($)</label>
           <input type="number" id="min-amount" min="0" value="0" class="form-control" style="width: 100%">
         `);
 
       // Add max amount input
-      amountInputsRow.append("div")
-        .style("flex", "1")
-        .html(`
+      amountInputsRow.append("div").style("flex", "1").html(`
           <label for="max-amount">Max Amount ($)</label>
           <input type="number" id="max-amount" min="0" value="" placeholder="No maximum" class="form-control" style="width: 100%">
         `);
 
       // Add apply button
-      filterControls.append("button")
+      filterControls
+        .append("button")
         .attr("id", "apply-amount-filter")
         .attr("class", "btn btn-primary")
         .text("Apply Amount Filter")
         .style("margin-right", "10px");
 
       // Add reset button
-      filterControls.append("button")
+      filterControls
+        .append("button")
         .attr("id", "reset-amount-filter")
         .attr("class", "btn btn-secondary")
         .text("Reset");
-        
+
       // Add event listeners for amount filter controls
       d3.select("#apply-amount-filter").on("click", updateAmountFilter);
       d3.select("#reset-amount-filter").on("click", resetAmountFilter);
@@ -877,12 +923,22 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Date preset handler functions
-  function setCurrentYear() {
+  function set1Month() {
     const now = new Date();
-    const year = now.getFullYear();
 
-    startDate = new Date(year, 0, 1); // Jan 1 of current year
-    endDate = new Date(year + 1, 0, 1); // Jan 1 of next year
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 1); // Go back 1 month
+
+    updateInputsAndChart();
+  }
+
+  function set3Months() {
+    const now = new Date();
+
+    endDate = new Date(now);
+    startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 3); // Go back 3 months
 
     updateInputsAndChart();
   }
@@ -897,15 +953,16 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInputsAndChart();
   }
 
-  function setLast12Months() {
+  function set1Year() {
     const now = new Date();
 
     endDate = new Date(now);
     startDate = new Date(now);
-    startDate.setFullYear(now.getFullYear() - 1);
+    startDate.setFullYear(now.getFullYear() - 1); // Go back 1 year
 
     updateInputsAndChart();
   }
+
   // Helper function to update inputs and refresh chart
   function updateInputsAndChart() {
     // Update input fields
@@ -1036,18 +1093,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to update amount range filter
   function updateAmountFilter() {
     // Get values from inputs
-    amountFilterActive = document.getElementById("enable-amount-filter").checked;
+    amountFilterActive = document.getElementById(
+      "enable-amount-filter"
+    ).checked;
     minAmount = parseFloat(document.getElementById("min-amount").value) || 0;
-    
+
     const maxInput = document.getElementById("max-amount");
-    maxAmount = maxInput && maxInput.value ? parseFloat(maxInput.value) : Infinity;
-    
+    maxAmount =
+      maxInput && maxInput.value ? parseFloat(maxInput.value) : Infinity;
+
     // Ensure min <= max
     if (minAmount > maxAmount && maxAmount !== Infinity) {
       alert("Minimum amount must be less than or equal to maximum amount");
       return;
     }
-    
+
     // Apply filter
     updateInvestmentVisualization();
   }
@@ -1058,12 +1118,12 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("enable-amount-filter").checked = false;
     document.getElementById("min-amount").value = "0";
     document.getElementById("max-amount").value = "";
-    
+
     // Reset internal state
     amountFilterActive = false;
     minAmount = 0;
     maxAmount = Infinity;
-    
+
     // Update visualization
     updateInvestmentVisualization();
   }
@@ -1192,7 +1252,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const color = d3
       .scaleOrdinal()
       .domain(["fund-buy", "fund-sale", "land-buy", "land-sale"])
-      .range(["#F44336","#4CAF50", "#FF9800","#2196F3"]);
+      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3"]);
 
     // Populate the legend at the top
     const topLegend = d3.select("#investment-legend");
@@ -1206,47 +1266,51 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("class", "color-box")
         .style("background-color", color(item.type));
 
-      // Add indicator for position (above/below timeline)
-      const positionIndicator = item.type.includes("-sale")
-        ? "↓ Below"
-        : "↑ Above";
 
       legendItem
         .append("span")
-        .html(`${item.label} <small>(${positionIndicator})</small>`);
+        .html(`${item.label}`);
     });
-    
+
     // Add divider line explanation to legend
-    const dividerLegendItem = topLegend.append("div")
+    const dividerLegendItem = topLegend
+      .append("div")
       .attr("class", "legend-item")
       .style("margin-top", "8px");
-      
+
     // Create a small line to demonstrate the divider
     dividerLegendItem
       .append("div")
       .attr("class", "color-box")
-      .html(`<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`)
+      .html(
+        `<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`
+      )
       .style("background", "transparent");
-      
+
     dividerLegendItem
       .append("span")
-      .html(`<small>Dashed lines separate transactions on different dates</small>`);
+      .html(
+        `<small>Dashed lines separate transactions on different dates</small>`
+      );
 
     // Filter transactions based on selected date range AND amount filter
     const visibleTransactions = filterTransactions(transactionData);
 
     // Create filter status message
     const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox ? filterCheckbox.checked : amountFilterActive;
-    
+    const isFilterActive = filterCheckbox
+      ? filterCheckbox.checked
+      : amountFilterActive;
+
     if (isFilterActive) {
-      const filterMin = document.getElementById("min-amount") ? 
-        parseFloat(document.getElementById("min-amount").value) || 0 : minAmount;
-      
+      const filterMin = document.getElementById("min-amount")
+        ? parseFloat(document.getElementById("min-amount").value) || 0
+        : minAmount;
+
       const maxInput = document.getElementById("max-amount");
-      const filterMax = (maxInput && maxInput.value) ? 
-        parseFloat(maxInput.value) : maxAmount;
-      
+      const filterMax =
+        maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
+
       const filterMsg = investmentChart
         .append("div")
         .attr("class", "filter-status")
@@ -1255,22 +1319,26 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("background", "#e8f5e9")
         .style("border-left", "4px solid #4CAF50")
         .style("border-radius", "2px");
-      
-      filterMsg.append("strong")
-        .text("Amount filter active: ");
-      
-      const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
-      filterMsg.append("span")
+
+      filterMsg.append("strong").text("Amount filter active: ");
+
+      const maxDisplay =
+        filterMax === Infinity
+          ? "No maximum"
+          : `$${filterMax.toLocaleString()}`;
+      filterMsg
+        .append("span")
         .text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
-      
-      filterMsg.append("span")
+
+      filterMsg
+        .append("span")
         .text(` (Showing ${visibleTransactions.length} transactions)`);
     }
-    
+
     // Process the transaction data for display
     if (visibleTransactions.length === 0) {
       investmentChart
-      .append("div")
+        .append("div")
         .attr("class", "no-data-message")
         .text(
           "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
@@ -1303,7 +1371,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Add "Today" indicator if current date is within the visible range
     const today = new Date();
-    if (today >= startDate && today <= endDate) {
+    
+    // Create date-only versions (without time) for comparison
+    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+    
+    if (todayDateOnly >= startDateOnly && todayDateOnly <= endDateOnly) {
       const todayX = timeScale(today);
 
       // Add vertical line for today
@@ -1517,8 +1591,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "transform",
             `translate(${position + offsetX}, ${verticalPosition})`
           )
-      .style("cursor", "pointer");
-      
+          .style("cursor", "pointer");
+
         // Add invisible circle for better hover area
         transactionGroup
           .append("circle")
@@ -1553,7 +1627,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("text-anchor", "middle")
           .attr("font-size", "10px")
           .text(transaction.name);
-          
+
         // Add delete button (only visible on hover)
         const deleteButton = transactionGroup
           .append("g")
@@ -1564,7 +1638,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .style("cursor", "pointer")
           .attr("data-fixed-position", "true") // Mark as fixed position element
           .raise(); // Ensure delete button stays on top
-          
+
         // Add white background circle for the delete icon
         deleteButton
           .append("circle")
@@ -1572,7 +1646,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("fill", "white")
           .attr("stroke", "#E53935")
           .attr("stroke-width", 1.5);
-          
+
         // Add delete icon (X symbol) instead of emoji
         deleteButton
           .append("text")
@@ -1584,9 +1658,9 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("fill", "#E53935")
           .text("×")
           .style("pointer-events", "none");
-          
+
         // Add click handler to the delete button group with stopImmediatePropagation
-        deleteButton.on("click", function(event) {
+        deleteButton.on("click", function (event) {
           event.stopPropagation(); // Prevent triggering parent click events
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -1598,14 +1672,12 @@ document.addEventListener("DOMContentLoaded", function () {
           .on("mouseenter", function (event) {
             // Prevent event bubbling
             event.stopPropagation();
-            
+
             // Stop any ongoing transitions to prevent juggling
             deleteButton.interrupt();
 
             // Show delete button on hover with no animation
-            deleteButton
-              .style("opacity", 1)
-              .style("pointer-events", "all");
+            deleteButton.style("opacity", 1).style("pointer-events", "all");
 
             tooltip
               .interrupt() // Stop any ongoing tooltip transitions
@@ -1638,12 +1710,10 @@ document.addEventListener("DOMContentLoaded", function () {
           .on("mouseleave", function () {
             // Stop any ongoing transitions
             deleteButton.interrupt();
-            
+
             // Hide delete button when not hovering with no animation
-            deleteButton
-              .style("opacity", 0)
-              .style("pointer-events", "none");
-              
+            deleteButton.style("opacity", 0).style("pointer-events", "none");
+
             tooltip
               .interrupt() // Stop any ongoing tooltip transitions
               .transition()
@@ -1656,16 +1726,18 @@ document.addEventListener("DOMContentLoaded", function () {
         transactionGroup.call(
           d3
             .drag()
-            .filter(function(event) {
+            .filter(function (event) {
               // Only initiate drag if not clicking on the delete button
-              return !event.target.closest('.delete-button-group') && 
-                     !event.target.closest('.delete-icon');
+              return (
+                !event.target.closest(".delete-button-group") &&
+                !event.target.closest(".delete-icon")
+              );
             })
             .on("start", function (event) {
               // Prevent browser's default drag behavior
               event.sourceEvent.preventDefault();
               event.sourceEvent.stopPropagation();
-              
+
               // Hide all delete buttons during drag to prevent interference
               d3.selectAll(".delete-button-group")
                 .style("opacity", 0)
@@ -1795,7 +1867,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   entityName: transaction.name,
                   transactionType: transaction.transactionType,
                   date: new Date(newDate),
-                  amount: transaction.amount
+                  amount: transaction.amount,
                 };
 
                 // Save the transaction to the database - FIX: Add this call to persist changes
@@ -1804,7 +1876,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Force complete redraw with a small delay to ensure animations complete
                 window.investmentUpdateTimeout = setTimeout(() => {
                   updateInvestmentVisualization();
-                  
+
                   // After redraw, highlight the corresponding bar segment
                   highlightBarSegmentForTransaction(transactionToHighlight);
                 }, 50);
@@ -1869,31 +1941,36 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
       // Group transactions by entity (fund/land name)
-      const transactionsByEntity = d3.groups(visibleTransactions, d => d.name);
-      
+      const transactionsByEntity = d3.groups(
+        visibleTransactions,
+        (d) => d.name
+      );
+
       // Calculate total buy and sale amounts for each entity
-      const entityData = transactionsByEntity.map(group => {
+      const entityData = transactionsByEntity.map((group) => {
         const name = group[0];
         const transactions = group[1];
-        
+
         // Get investment type (fund or land)
         const investmentType = transactions[0].investmentType;
-        
+
         // Calculate buy and sale totals - FIX: Use signed values
         const buyTotal = d3.sum(
-          transactions.filter(t => t.transactionType === "buy"),
-          d => -d.amount // Buy is negative, so negate to get positive value for display
+          transactions.filter((t) => t.transactionType === "buy"),
+          (d) => -d.amount // Buy is negative, so negate to get positive value for display
         );
-        
+
         const saleTotal = d3.sum(
-          transactions.filter(t => t.transactionType === "sale"),
-          d => d.amount // Sale is already positive
+          transactions.filter((t) => t.transactionType === "sale"),
+          (d) => d.amount // Sale is already positive
         );
-        
+
         // Find earliest transaction date for sorting
-        const dates = transactions.map(t => new Date(t.date));
-        const earliestDate = new Date(Math.min(...dates.map(d => d.getTime())));
-        
+        const dates = transactions.map((t) => new Date(t.date));
+        const earliestDate = new Date(
+          Math.min(...dates.map((d) => d.getTime()))
+        );
+
         return {
           name,
           investmentType,
@@ -1901,28 +1978,29 @@ document.addEventListener("DOMContentLoaded", function () {
           saleTotal,
           total: buyTotal + saleTotal,
           earliestDate,
-          transactions
+          transactions,
         };
       });
-      
+
       // Sort by earliest transaction date (chronological order)
       entityData.sort((a, b) => a.earliestDate - b.earliestDate);
 
       // Calculate the min and max values for the y-axis
-      const maxValue = d3.max(entityData, d => d.saleTotal) * 1.1; // Add 10% padding for sales
-      
+      const maxValue = (d3.max(entityData, d => d.saleTotal) || 0) * 1.1;
+
       // For buys, we want the actual negative values
-      const minValue = d3.min(
+      const minValue = (d3.min(
         visibleTransactions.filter(t => t.transactionType === "buy"),
-        d => d.amount // Buy amounts are already negative
-      ) * 1.1; // Add 10% padding for buys
+        d => d.amount
+      ) || 0) * 1.1;
       
+
       // Create y scale that includes negative values for buys
       const y = d3
         .scaleLinear()
         .domain([minValue, maxValue]) // Range from min (negative) to max (positive)
         .range([height, 0]);
-        
+
       // Calculate the position of the zero line
       const zeroLineY = y(0);
 
@@ -1938,15 +2016,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const currentMonth = new Date(date);
         const nextMonth = new Date(date);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
-        
+
         // Account for date range boundary
         if (nextMonth > endDate) {
           nextMonth.setTime(endDate.getTime());
         }
-        
+
         // Calculate width based on time scale
         const monthWidth = xTime(nextMonth) - xTime(currentMonth);
-        
+
         // Set a reasonable width - not too narrow and not too wide
         return Math.min(Math.max(monthWidth * 0.6, 15), 60);
       };
@@ -1964,7 +2042,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("class", "time-axis")
         .attr("transform", `translate(0,${height})`)
         .call(timeAxis);
-        
+
       // Style tick lines
       barChartSvg
         .selectAll(".time-axis line")
@@ -1976,11 +2054,12 @@ document.addEventListener("DOMContentLoaded", function () {
         .selectAll(".time-axis text")
         .attr("font-size", "10px")
         .attr("dy", "1em");
-        
+
       // Add Y axis
-      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat(d => `$${d}`));
-      
+      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d}`));
+
       // Add a horizontal line at y=0 to separate buy and sale transactions
+
       barChartSvg
         .append("line")
         .attr("x1", 0)
@@ -1990,7 +2069,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("stroke", "#000")
         .attr("stroke-width", 1)
         .attr("stroke-dasharray", "4,4");
-        
+
       // Add a small label at the zero line
       barChartSvg
         .append("text")
@@ -2000,7 +2079,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("font-size", "10px")
         .attr("fill", "#666")
         .text("$0");
-        
+
       // Add Y axis label
       barChartSvg
         .append("text")
@@ -2010,11 +2089,11 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("x", -height / 2)
         .text("Amount ($)")
         .style("font-size", "12px");
-        
+
       // Add year labels if the range spans multiple years
       const startYear = startDate.getFullYear();
       const endYear = endDate.getFullYear();
-      
+
       if (startYear !== endYear) {
         // Add start year label
         barChartSvg
@@ -2025,7 +2104,7 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("text-anchor", "middle")
           .attr("font-size", "12px")
           .text(startYear);
-          
+
         // Add end year label
         barChartSvg
           .append("text")
@@ -2035,13 +2114,13 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("text-anchor", "middle")
           .attr("font-size", "12px")
           .text(endYear);
-          
+
         // Add intermediate year labels
         for (let year = startYear + 1; year < endYear; year++) {
           const yearDate = new Date(year, 0, 1);
           if (yearDate >= startDate && yearDate <= endDate) {
             const xPos = xTime(yearDate);
-            
+
             barChartSvg
               .append("text")
               .attr("class", "year-label")
@@ -2053,34 +2132,35 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
       }
-      
+
       // Draw bars for each entity
-      entityData.forEach(entity => {
+      entityData.forEach((entity) => {
         const barGroup = barChartSvg
           .append("g")
           .attr("class", "investment-entity-group")
           .datum(entity);
-        
+
         // Group buy transactions by date
         const buyTransactionsByDate = d3.groups(
-          entity.transactions.filter(t => t.transactionType === "buy"),
-          d => d.date.toDateString()
+          entity.transactions.filter((t) => t.transactionType === "buy"),
+          (d) => d.date.toDateString()
         );
-        
+
         // Draw buy transaction segments
         buyTransactionsByDate.forEach((dateGroup, i) => {
           const transactions = dateGroup[1];
           const transactionDate = transactions[0].date;
-          
+
           // Calculate bar position and width based on date
-          const barX = xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
+          const barX =
+            xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
           const barWidth = calculateMonthWidth(transactionDate);
-          
+
           // Calculate bar position and height for negative values (buys)
-          const buyTotal = d3.sum(transactions, d => d.amount); // Use actual negative amount
+          const buyTotal = d3.sum(transactions, (d) => d.amount); // Use actual negative amount
           const barY = y(0); // Start at zero line
           const barHeight = y(buyTotal) - y(0); // Height going down from zero
-          
+
           barGroup
             .append("rect")
             .attr("class", "buy-bar-segment")
@@ -2088,43 +2168,55 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("y", barY) // Position at zero line
             .attr("width", barWidth)
             .attr("height", Math.abs(barHeight)) // Use absolute height value
-            .attr("fill", entity.investmentType === "fund" ? "#F44336" : "#FF9800") // Green for fund buys, blue for land buys
+            .attr(
+              "fill",
+              entity.investmentType === "fund" ? "#F44336" : "#FF9800"
+            ) // Green for fund buys, blue for land buys
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
             .attr("stroke-width", 0.5)
             .attr("data-entity-name", entity.name)
             .attr("data-transaction-type", "buy")
             .attr("data-date", transactions[0].date.toISOString())
-            .attr("data-transaction-ids", transactions.map(t => t.id).join(","))
-            .on("mouseenter", function(event) {
+            .attr(
+              "data-transaction-ids",
+              transactions.map((t) => t.id).join(",")
+            )
+            .on("mouseenter", function (event) {
               // Show tooltip
               tooltip.transition().duration(200).style("opacity", 0.9);
-              
+
               // Format transactions for display, showing negative values
               const transactionsList = transactions
-                .map(t => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`)
+                .map(
+                  (t) => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`
+                )
                 .join("<br>");
-              
+
               tooltip
-                .html(`
+                .html(
+                  `
                   <strong>${entity.name}</strong><br>
-                  <strong>Purchases on ${dateFormat(transactions[0].date)}</strong><br>
+                  <strong>Purchases on ${dateFormat(
+                    transactions[0].date
+                  )}</strong><br>
                   <strong>Total: $${buyTotal.toLocaleString()}</strong><br>
                   <hr style="margin: 5px 0; opacity: 0.3">
                   ${transactionsList}
-                `)
+                `
+                )
                 .style("left", event.pageX + 10 + "px")
                 .style("top", event.pageY - 28 + "px");
             })
-            .on("mouseleave", function() {
+            .on("mouseleave", function () {
               tooltip.transition().duration(500).style("opacity", 0);
             })
-            .on("click", function() {
+            .on("click", function () {
               if (transactions.length > 0) {
                 // Modal opening removed
               }
             });
-            
+
           // Add a small label on bottom of the bar (for buy transactions)
           barGroup
             .append("text")
@@ -2137,23 +2229,24 @@ document.addEventListener("DOMContentLoaded", function () {
             .text(entity.name);
         });
         const saleTransactionsByDate = d3.groups(
-          entity.transactions.filter(t => t.transactionType === "sale"),
-          d => d.date.toDateString()
+          entity.transactions.filter((t) => t.transactionType === "sale"),
+          (d) => d.date.toDateString()
         );
-        
+
         // Draw sale transaction segments
         saleTransactionsByDate.forEach((dateGroup, i) => {
           const transactions = dateGroup[1];
           const transactionDate = transactions[0].date;
-          
+
           // Calculate bar position and width based on date
-          const barX = xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
+          const barX =
+            xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
           const barWidth = calculateMonthWidth(transactionDate);
-          
+
           // Calculate heights for positive values (sales)
-          const saleTotal = d3.sum(transactions, d => d.amount);
+          const saleTotal = d3.sum(transactions, (d) => d.amount);
           const barHeight = y(0) - y(saleTotal);
-          
+
           // For sales, position at y(saleTotal) which will be above zero line
           barGroup
             .append("rect")
@@ -2162,43 +2255,55 @@ document.addEventListener("DOMContentLoaded", function () {
             .attr("y", y(saleTotal)) // Position bars above zero line
             .attr("width", barWidth)
             .attr("height", barHeight)
-            .attr("fill", entity.investmentType === "fund" ? "#4CAF50" : "#2196F3") // Red for fund sales, orange for land sales
+            .attr(
+              "fill",
+              entity.investmentType === "fund" ? "#4CAF50" : "#2196F3"
+            ) // Red for fund sales, orange for land sales
             .attr("opacity", 0.8)
             .attr("stroke", "#fff")
             .attr("stroke-width", 0.5)
             .attr("data-entity-name", entity.name)
             .attr("data-transaction-type", "sale")
             .attr("data-date", transactions[0].date.toISOString())
-            .attr("data-transaction-ids", transactions.map(t => t.id).join(","))
-            .on("mouseenter", function(event) {
+            .attr(
+              "data-transaction-ids",
+              transactions.map((t) => t.id).join(",")
+            )
+            .on("mouseenter", function (event) {
               // Show tooltip
               tooltip.transition().duration(200).style("opacity", 0.9);
-              
+
               // Format transactions for display, showing positive values
               const transactionsList = transactions
-                .map(t => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`)
+                .map(
+                  (t) => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`
+                )
                 .join("<br>");
-              
+
               tooltip
-                .html(`
+                .html(
+                  `
                   <strong>${entity.name}</strong><br>
-                  <strong>Sales on ${dateFormat(transactions[0].date)}</strong><br>
+                  <strong>Sales on ${dateFormat(
+                    transactions[0].date
+                  )}</strong><br>
                   <strong>Total: $${saleTotal.toLocaleString()}</strong><br>
                   <hr style="margin: 5px 0; opacity: 0.3">
                   ${transactionsList}
-                `)
+                `
+                )
                 .style("left", event.pageX + 10 + "px")
                 .style("top", event.pageY - 28 + "px");
             })
-            .on("mouseleave", function() {
+            .on("mouseleave", function () {
               tooltip.transition().duration(500).style("opacity", 0);
             })
-            .on("click", function() {
+            .on("click", function () {
               if (transactions.length > 0) {
                 // Modal opening removed
               }
             });
-          
+
           // Add a small label on top of the bar (for sale transactions)
           barGroup
             .append("text")
@@ -2217,57 +2322,60 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to show transaction modal for a specific date
   function showTransactionModal(date, transaction = null) {
     console.log("Showing transaction modal for date:", date);
-    
+
     // Format date for the input
     const formattedDate = date.toISOString().split("T")[0];
-    
+
     // Make sure the modal is initialized
     if (!document.getElementById("transaction-form")) {
-      if (typeof initTransactionModal === 'function') {
+      if (typeof initTransactionModal === "function") {
         initTransactionModal();
       } else {
         console.error("Transaction modal initialization function not found!");
         return;
       }
     }
-    
+
     // Always set modal title to Add transaction
     const modalTitle = document.getElementById("transaction-modal-title");
     if (modalTitle) {
       modalTitle.textContent = "Add Transaction";
     }
-    
+
     // Always treat as new transaction
     investmentModal.classed("editing-transaction", false);
-    
+
     // Reset form
     const form = document.getElementById("transaction-form");
     if (form) form.reset();
-    
+
     // Clear the transaction ID field (hidden)
     const idField = document.getElementById("transaction-id");
     if (idField) idField.value = "";
-    
+
     // Set the date field
     const dateField = document.getElementById("transaction-date");
     if (dateField) dateField.value = formattedDate;
-    
+
     // For new transaction, hide delete button
     const deleteBtn = document.querySelector(".btn-delete");
     if (deleteBtn) deleteBtn.style.display = "none";
-    
+
     // Ensure amount field is readonly
     const amountField = document.getElementById("transaction-amount");
     if (amountField) {
       amountField.setAttribute("readonly", true);
     }
-    
+
     // For new transactions, select first real investment option (not disabled options)
     setTimeout(() => {
       const investmentField = document.getElementById("investment-name");
       if (investmentField) {
         // If no value is selected or the first option is disabled, try to select first valid option
-        if (!investmentField.value || investmentField.options[investmentField.selectedIndex].disabled) {
+        if (
+          !investmentField.value ||
+          investmentField.options[investmentField.selectedIndex].disabled
+        ) {
           // Find first non-disabled option
           for (let i = 0; i < investmentField.options.length; i++) {
             if (!investmentField.options[i].disabled) {
@@ -2276,18 +2384,18 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           }
         }
-        
+
         // Manually trigger the change event to set amount
         if (investmentField.value) {
-          const event = new Event('change');
+          const event = new Event("change");
           investmentField.dispatchEvent(event);
         }
       }
     }, 100); // Small delay to ensure the modal is fully initialized
-    
+
     // Show the modal
     investmentModal.style("display", "block");
-    
+
     // Return true to indicate the modal was shown
     return true;
   }
@@ -2295,83 +2403,106 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to validate sale transactions
   function validateSaleTransaction() {
     console.log("Running validateSaleTransaction");
-    
+
     const transactionType = document.getElementById("transaction-type").value;
     const investmentId = document.getElementById("investment-name").value;
     const transactionId = document.getElementById("transaction-id").value;
     const amountInput = document.getElementById("transaction-amount");
-    const submitButton = document.querySelector("#transaction-form .btn-submit");
-    const errorMsg = document.getElementById("sale-validation-error") || 
-                    document.createElement("div");
-    
-    console.log(`Transaction type: ${transactionType}, Investment ID: ${investmentId}, Transaction ID: ${transactionId}`);
-    
+    const submitButton = document.querySelector(
+      "#transaction-form .btn-submit"
+    );
+    const errorMsg =
+      document.getElementById("sale-validation-error") ||
+      document.createElement("div");
+
+    console.log(
+      `Transaction type: ${transactionType}, Investment ID: ${investmentId}, Transaction ID: ${transactionId}`
+    );
+
     // Only validate if this is a sale transaction
     if (transactionType === "sale" && investmentId) {
       // Get all transactions for this investment
       const entityId = Number(investmentId);
       const currentTransactionId = transactionId ? Number(transactionId) : null;
-      
+
       // Get the investment type (fund or land)
-      const selectedOption = document.getElementById("investment-name").selectedOptions[0];
+      const selectedOption =
+        document.getElementById("investment-name").selectedOptions[0];
       const entityType = selectedOption.dataset.type; // "investment" or "land"
       const investmentType = entityType === "investment" ? "fund" : "land";
-      
-      console.log(`Validating sale for entity ID ${entityId}, type: ${investmentType}, current transaction ID: ${currentTransactionId}`);
-      
+
+      console.log(
+        `Validating sale for entity ID ${entityId}, type: ${investmentType}, current transaction ID: ${currentTransactionId}`
+      );
+
       // Filter transactions for this specific entity (excluding this one being updated)
       // IMPORTANT: Check both entity_id AND entity_type to prevent mix-ups between funds and lands
       const entityTransactions = transactionData.filter(
-        t => Number(t.entity_id) === entityId && 
-             t.investmentType === investmentType &&
-             (!currentTransactionId || Number(t.id) !== currentTransactionId)
+        (t) =>
+          Number(t.entity_id) === entityId &&
+          t.investmentType === investmentType &&
+          (!currentTransactionId || Number(t.id) !== currentTransactionId)
       );
-      
-      console.log(`Found ${entityTransactions.length} related transactions (excluding current)`, entityTransactions);
-      
+
+      console.log(
+        `Found ${entityTransactions.length} related transactions (excluding current)`,
+        entityTransactions
+      );
+
       // Calculate total buy amount up to current date
       const dateInput = document.getElementById("transaction-date");
-      const transactionDate = dateInput.value ? new Date(dateInput.value) : new Date();
-      
+      const transactionDate = dateInput.value
+        ? new Date(dateInput.value)
+        : new Date();
+
       console.log(`Transaction date: ${transactionDate.toISOString()}`);
-      
+
       // Get buy transactions that happened before this sale date
       const buyTransactions = entityTransactions.filter(
-        t => t.transactionType === "buy" && t.date <= transactionDate
+        (t) => t.transactionType === "buy" && t.date <= transactionDate
       );
-      
+
       // Get sale transactions that happened before this sale date
       const saleTransactions = entityTransactions.filter(
-        t => t.transactionType === "sale" && t.date <= transactionDate
+        (t) => t.transactionType === "sale" && t.date <= transactionDate
       );
-      
-      console.log(`Buy transactions: ${buyTransactions.length}`, buyTransactions);
-      console.log(`Sale transactions: ${saleTransactions.length}`, saleTransactions);
-      
+
+      console.log(
+        `Buy transactions: ${buyTransactions.length}`,
+        buyTransactions
+      );
+      console.log(
+        `Sale transactions: ${saleTransactions.length}`,
+        saleTransactions
+      );
+
       // Calculate available amount to sell
-      const totalBought = d3.sum(buyTransactions, d => -d.amount); // Buy is negative, use negative sign to get positive value
-      const totalSold = d3.sum(saleTransactions, d => d.amount); // Sale is already positive
-      
+      const totalBought = d3.sum(buyTransactions, (d) => -d.amount); // Buy is negative, use negative sign to get positive value
+      const totalSold = d3.sum(saleTransactions, (d) => d.amount); // Sale is already positive
+
       // Get the entity info to determine cash injection amount based on investment type
       // Ensure we find the correct entity by filtering on both ID and type
-      const entity = investmentData.find(inv => {
+      const entity = investmentData.find((inv) => {
         // First check if IDs match
         const idMatches = Number(inv.id) === entityId;
-        
+
         // Then check if the type matches based on investment name
         // Funds have "Fund" in their name, Lands have "Land" in their name
-        const isCorrectType = investmentType === "fund" ? 
-          inv.name && inv.name.includes("Fund") : 
-          inv.name && inv.name.includes("Land");
-        
+        const isCorrectType =
+          investmentType === "fund"
+            ? inv.name && inv.name.includes("Fund")
+            : inv.name && inv.name.includes("Land");
+
         return idMatches && isCorrectType;
       });
-      
+
       if (!entity) {
-        console.error(`Could not find entity with ID ${entityId} and type ${investmentType}`);
+        console.error(
+          `Could not find entity with ID ${entityId} and type ${investmentType}`
+        );
         return false;
       }
-      
+
       // Get cash injection amount based on entity type
       let cashInjection;
       if (investmentType === "fund") {
@@ -2384,20 +2515,24 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error(`Invalid investment type: ${investmentType}`);
         return false;
       }
-      
+
       if (isNaN(cashInjection) || cashInjection <= 0) {
-        console.error(`Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`);
+        console.error(
+          `Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`
+        );
         // Check for mapped fields from fetchChartData
         if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
           cashInjection = parseFloat(entity.val6);
-          console.log(`Using val6 (${cashInjection}) as fallback for cash injection amount`);
+          console.log(
+            `Using val6 (${cashInjection}) as fallback for cash injection amount`
+          );
         } else {
           return false;
         }
       }
-      
+
       // Debug logging
-      console.log('Sale Validation Summary:', {
+      console.log("Sale Validation Summary:", {
         entityId,
         entityType,
         investmentType,
@@ -2409,35 +2544,41 @@ document.addEventListener("DOMContentLoaded", function () {
         totalBought,
         totalSold,
         availableToSell: cashInjection - totalSold,
-        currentTransactionId
+        currentTransactionId,
       });
-      
+
       // Add or update the error message element
       if (!document.getElementById("sale-validation-error")) {
         errorMsg.id = "sale-validation-error";
         errorMsg.style.color = "red";
         errorMsg.style.marginTop = "5px";
         errorMsg.style.fontSize = "12px";
-        document.getElementById("transaction-amount").parentNode.appendChild(errorMsg);
+        document
+          .getElementById("transaction-amount")
+          .parentNode.appendChild(errorMsg);
         console.log("Created new error message element");
       }
-      
+
       // Get the investment name for better error messages
-      const investmentName = document.getElementById("investment-name").selectedOptions[0]?.textContent || "this investment";
-      
+      const investmentName =
+        document.getElementById("investment-name").selectedOptions[0]
+          ?.textContent || "this investment";
+
       // Purchase is not mandatory to sell - remove check
-      
+
       // Enable partial sales - remove block on already sold investments
       // Instead, uncomment the partial transaction logic to validate sale amounts
-      
+
       // Set maximum sale amount to remaining balance
       const availableToSell = cashInjection - totalSold;
       amountInput.max = availableToSell;
-      
+
       // Check current input value against available amount
       const currentAmount = parseFloat(amountInput.value) || 0;
-      console.log(`Current amount: ${currentAmount}, Max allowed: ${availableToSell}`);
-      
+      console.log(
+        `Current amount: ${currentAmount}, Max allowed: ${availableToSell}`
+      );
+
       if (currentAmount > availableToSell) {
         const errorText = `Warning: You can only sell up to $${availableToSell.toLocaleString()} of ${investmentName} (remaining balance of purchases).`;
         console.error(errorText);
@@ -2446,7 +2587,7 @@ document.addEventListener("DOMContentLoaded", function () {
         submitButton.disabled = true;
         return false;
       }
-      
+
       console.log("Sale validation passed");
       errorMsg.style.display = "none";
       submitButton.disabled = false;
@@ -2456,17 +2597,17 @@ document.addEventListener("DOMContentLoaded", function () {
       if (document.getElementById("sale-validation-error")) {
         document.getElementById("sale-validation-error").style.display = "none";
       }
-      
+
       // Reset max value constraint for buy transactions
       if (amountInput) {
         amountInput.removeAttribute("max");
       }
-      
+
       // Enable submit button for buy transactions
       if (submitButton) {
         submitButton.disabled = false;
       }
-      
+
       console.log("Buy transaction - validation not needed");
       return true;
     }
@@ -2477,43 +2618,47 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!transactions || !Array.isArray(transactions)) {
       return [];
     }
-    
+
     // Check if amount filter is enabled - use the checkbox if it exists,
     // otherwise use the amountFilterActive variable
     const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox ? filterCheckbox.checked : amountFilterActive;
-    
+    const isFilterActive = filterCheckbox
+      ? filterCheckbox.checked
+      : amountFilterActive;
+
     // If filter is active, get current min/max values from inputs if available
     let filterMin = minAmount;
     let filterMax = maxAmount;
-    
+
     if (isFilterActive) {
       const minInput = document.getElementById("min-amount");
       const maxInput = document.getElementById("max-amount");
-      
+
       if (minInput) {
         filterMin = parseFloat(minInput.value) || 0;
       }
-      
+
       if (maxInput && maxInput.value) {
         filterMax = parseFloat(maxInput.value);
       }
     }
-    
-    return transactions.filter(transaction => {
+
+    return transactions.filter((transaction) => {
       // Make sure transaction object is valid
       if (!transaction || !transaction.date) {
         return false;
       }
-      
+
       // Date filter
-      const dateInRange = transaction.date >= startDate && transaction.date <= endDate;
-      
+      const dateInRange =
+        transaction.date >= startDate && transaction.date <= endDate;
+
       // Amount filter (only apply if active)
-      const amountInRange = !isFilterActive || 
-        (Math.abs(transaction.amount) >= filterMin && 
-         Math.abs(transaction.amount) <= filterMax);
-      
+      const amountInRange =
+        !isFilterActive ||
+        (Math.abs(transaction.amount) >= filterMin &&
+          Math.abs(transaction.amount) <= filterMax);
+
       return dateInRange && amountInRange;
     });
   }
@@ -2533,11 +2678,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // Add event listeners for amount filter controls
   d3.select("#apply-amount-filter").on("click", updateAmountFilter);
   d3.select("#reset-amount-filter").on("click", resetAmountFilter);
-  
+
   // // Create tooltip container with enhanced styling
   const tooltip = d3
     .select("body")
-        .append("div")
+    .append("div")
     .attr("class", "tooltip")
     .style("opacity", 0)
     .style("transform", "scale(0.95)");
@@ -2566,8 +2711,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialization function to populate the modal when investmentData is available
   function initTransactionModal() {
-    console.log("Initializing transaction modal with investment data length:", investmentData.length);
-    
+    console.log(
+      "Initializing transaction modal with investment data length:",
+      investmentData.length
+    );
+
     if (!investmentData.length) return;
 
     // Build options HTML
@@ -2581,8 +2729,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const landItems = investmentData.filter(
       (item) => item.name && item.name.includes("Land")
     );
-    
-    console.log(`Available investments: ${fundItems.length} funds, ${landItems.length} lands`);
+
+    console.log(
+      `Available investments: ${fundItems.length} funds, ${landItems.length} lands`
+    );
 
     // Add fund options
     if (fundItems.length > 0) {
@@ -2649,20 +2799,23 @@ document.addEventListener("DOMContentLoaded", function () {
       .getElementById("transaction-form")
       .addEventListener("submit", async function (e) {
         e.preventDefault();
-        
+
         console.log("Transaction form submitted");
 
         // Get investment type from selected option FIRST
-        const selectedOption = document.getElementById("investment-name").selectedOptions[0];
+        const selectedOption =
+          document.getElementById("investment-name").selectedOptions[0];
         if (!selectedOption || !selectedOption.dataset.type) {
           console.error("Selected option doesn't have a data-type attribute");
-          alert("Error: Invalid investment selection. Please select a valid investment.");
+          alert(
+            "Error: Invalid investment selection. Please select a valid investment."
+          );
           return; // Prevent submission without proper type information
         }
-        
+
         const entityType = selectedOption.dataset.type;
         const investmentType = entityType === "investment" ? "fund" : "land";
-        
+
         // Get form values
         const formData = {
           id: document.getElementById("transaction-id").value
@@ -2675,27 +2828,28 @@ document.addEventListener("DOMContentLoaded", function () {
           ),
           date: new Date(document.getElementById("transaction-date").value),
           notes: document.getElementById("transaction-notes").value,
-          // Add investmentType explicitly 
+          // Add investmentType explicitly
           investmentType: investmentType,
-          name: selectedOption.textContent
+          name: selectedOption.textContent,
         };
 
         console.log("Form data:", formData);
-        
+
         // CENTRALIZED VALIDATION - All validation happens here at form submission time
         const transactionType = formData.transactionType;
         const entityId = formData.entity_id;
-        
+
         // Validation for BUY transactions - ensure each entity can only be purchased once
         if (transactionType === "buy") {
           // Check if there are any existing buy transactions for this entity
           const existingBuyTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === investmentType &&
-                 t.transactionType === "buy" && 
-                 (!formData.id || Number(t.id) !== Number(formData.id)) // Exclude current transaction if editing
+            (t) =>
+              Number(t.entity_id) === entityId &&
+              t.investmentType === investmentType &&
+              t.transactionType === "buy" &&
+              (!formData.id || Number(t.id) !== Number(formData.id)) // Exclude current transaction if editing
           );
-          
+
           if (existingBuyTransactions.length > 0) {
             const errorMsg = `Error: This ${investmentType} has already been purchased. Each ${investmentType} can only be purchased once.`;
             console.error(errorMsg);
@@ -2703,70 +2857,81 @@ document.addEventListener("DOMContentLoaded", function () {
             return; // Prevent submission
           }
         }
-        
+
         // Validation for SALE transactions
         if (transactionType === "sale") {
           // 1. Get all transactions for this investment (excluding current if editing)
           const existingTransactions = transactionData.filter(
-            t => Number(t.entity_id) === entityId && 
-                 t.investmentType === investmentType &&
-                 (!formData.id || Number(t.id) !== Number(formData.id))
+            (t) =>
+              Number(t.entity_id) === entityId &&
+              t.investmentType === investmentType &&
+              (!formData.id || Number(t.id) !== Number(formData.id))
           );
-          
+
           // 2. Check sale amount validations
           const saleAmount = formData.amount;
-          
+
           // Get entity info
-          const entity = investmentData.find(inv => {
+          const entity = investmentData.find((inv) => {
             // Match by ID and type to avoid confusion between funds and lands
             const idMatches = Number(inv.id) === entityId;
-            const typeMatches = entityType === "investment" ? 
-              inv.name && inv.name.includes("Fund") : 
-              inv.name && inv.name.includes("Land");
+            const typeMatches =
+              entityType === "investment"
+                ? inv.name && inv.name.includes("Fund")
+                : inv.name && inv.name.includes("Land");
             return idMatches && typeMatches;
           });
-          
+
           if (!entity) {
-            alert(`Error: Could not find ${investmentType} with ID ${entityId}.`);
+            alert(
+              `Error: Could not find ${investmentType} with ID ${entityId}.`
+            );
             return; // Prevent submission
           }
-          
+
           // Get cash injection value based on entity type
-          const cashInjection = entityType === "investment" ? 
-            parseFloat(entity.cash_investment || entity.val6) : 
-            parseFloat(entity.cash_injection || entity.val6);
-            
+          const cashInjection =
+            entityType === "investment"
+              ? parseFloat(entity.cash_investment || entity.val6)
+              : parseFloat(entity.cash_injection || entity.val6);
+
           if (isNaN(cashInjection) || cashInjection <= 0) {
-            alert(`Error: Invalid cash injection amount for this ${investmentType}.`);
+            alert(
+              `Error: Invalid cash injection amount for this ${investmentType}.`
+            );
             return;
           }
-          
+
           // Get existing sales
           const saleTransactions = existingTransactions.filter(
-            t => t.transactionType === "sale" && t.date <= formData.date
+            (t) => t.transactionType === "sale" && t.date <= formData.date
           );
-          
+
           // Calculate total sold
-          const totalSold = d3.sum(saleTransactions, d => d.amount);
-          
+          const totalSold = d3.sum(saleTransactions, (d) => d.amount);
+
           // Do NOT block if entity has already been sold - allow partial sales
-          
+
           // Check if amount exceeds cash injection
           if (saleAmount > cashInjection) {
-            alert(`Error: You can't sell more than the cash injection amount of ${cashInjection}.`);
+            alert(
+              `Error: You can't sell more than the cash injection amount of ${cashInjection}.`
+            );
             return;
           }
-          
+
           // For consistency with the saved cash value, calculate available amount
           const available = cashInjection - totalSold;
-          
+
           // Check if amount exceeds available (cash injection minus already sold)
           if (saleAmount > available) {
-            alert(`Error: You've already sold ${totalSold} of this investment. You can only sell up to ${available} more.`);
+            alert(
+              `Error: You've already sold ${totalSold} of this investment. You can only sell up to ${available} more.`
+            );
             return;
           }
         }
-        
+
         // If we got here, validation passed
         console.log("All validation passed, proceeding with save");
 
@@ -2776,12 +2941,13 @@ document.addEventListener("DOMContentLoaded", function () {
             id: formData.id,
             entity_id: formData.entity_id,
             investmentType: formData.investmentType,
-            entity_type: formData.investmentType === "fund" ? "investment" : "land",
+            entity_type:
+              formData.investmentType === "fund" ? "investment" : "land",
             transactionType: formData.transactionType,
             amount: formData.amount,
             date: formData.date,
           });
-          
+
           // Save to IndexedDB via the investmentChart object
           if (formData.id) {
             console.log("Updating existing transaction ID:", formData.id);
@@ -2790,7 +2956,7 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("Adding new transaction");
             await window.investmentChart.addTransaction(formData);
           }
-          
+
           // Close the modal
           investmentModal.style("display", "none");
         } catch (error) {
@@ -2821,29 +2987,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Add event listeners for form fields to trigger validation
     console.log("Adding validation event listeners");
-    
+
     // We need to be careful to check if elements exist before adding event listeners
     const typeSelect = document.getElementById("transaction-type");
     const investmentSelect = document.getElementById("investment-name");
     const amountInput = document.getElementById("transaction-amount");
     const dateInput = document.getElementById("transaction-date");
-    
+
     if (typeSelect) {
-      typeSelect.addEventListener("change", function() {
+      typeSelect.addEventListener("change", function () {
         console.log("Type changed to:", this.value);
-        
+
         const amountInput = document.getElementById("transaction-amount");
-        
+
         // If changed to "buy", prefill with cash injection value and make readonly
         if (this.value === "buy") {
           if (amountInput) {
             amountInput.setAttribute("readonly", true);
           }
-          
+
           const investmentField = document.getElementById("investment-name");
           if (investmentField && investmentField.value) {
             // Trigger the change event on the investment field to prefill the amount
-            const event = new Event('change');
+            const event = new Event("change");
             investmentField.dispatchEvent(event);
           }
         } else if (this.value === "sale") {
@@ -2852,88 +3018,98 @@ document.addEventListener("DOMContentLoaded", function () {
             amountInput.removeAttribute("readonly");
           }
         }
-        
+
         // No validation on change - only validate on form submission
       });
     } else {
       console.error("Transaction type select not found!");
     }
-    
+
     if (investmentSelect) {
-      investmentSelect.addEventListener("change", async function() {
+      investmentSelect.addEventListener("change", async function () {
         console.log("Investment changed to:", this.value);
-        
+
         // Reset any previous validation errors when selection changes
         const errorElement = document.getElementById("sale-validation-error");
         if (errorElement) {
           errorElement.style.display = "none";
           errorElement.textContent = "";
         }
-        
+
         // Re-enable submit button which might have been disabled by previous validation
-        const submitButton = document.querySelector("#transaction-form .btn-submit");
+        const submitButton = document.querySelector(
+          "#transaction-form .btn-submit"
+        );
         if (submitButton) {
           submitButton.disabled = false;
         }
-        
+
         // Always set the full cash value for the selected investment
         if (this.value) {
           const entityId = parseInt(this.value);
           const entityType = this.selectedOptions[0].dataset.type;
           const amountInput = document.getElementById("transaction-amount");
-          const transactionType = document.getElementById("transaction-type").value;
-          
+          const transactionType =
+            document.getElementById("transaction-type").value;
+
           // Store the current selection in a data attribute to help track changes
           this.setAttribute("data-last-selected", entityId);
           this.setAttribute("data-last-type", entityType);
-          
+
           // Fetch the investment details from IndexedDB
           try {
-            const store = entityType === "investment" ? STORES.investments : STORES.lands;
+            const store =
+              entityType === "investment" ? STORES.investments : STORES.lands;
             const transaction = db.transaction(store, "readonly");
             const objectStore = transaction.objectStore(store);
             const request = objectStore.get(entityId);
-            
-            request.onsuccess = function(event) {
+
+            request.onsuccess = function (event) {
               const entity = event.target.result;
-              
+
               if (entity) {
                 // For investments, use cash_investment, for lands use cash_injection
-                const cashValue = entityType === "investment" ? 
-                  parseFloat(entity.cash_investment) : 
-                  parseFloat(entity.cash_injection);
-                
+                const cashValue =
+                  entityType === "investment"
+                    ? parseFloat(entity.cash_investment)
+                    : parseFloat(entity.cash_injection);
+
                 // Always set the exact cash value - no partial transactions
                 if (amountInput && !isNaN(cashValue)) {
                   amountInput.value = cashValue;
-                  console.log(`Set amount to exact ${entityType} cash value: ${cashValue}`);
-                  
+                  console.log(
+                    `Set amount to exact ${entityType} cash value: ${cashValue}`
+                  );
+
                   // Store the cash value in a data attribute for validation
                   amountInput.setAttribute("data-cash-value", cashValue);
                 }
               }
             };
-            
-            request.onerror = function(event) {
-              console.error("Error fetching entity details:", event.target.error);
+
+            request.onerror = function (event) {
+              console.error(
+                "Error fetching entity details:",
+                event.target.error
+              );
             };
           } catch (error) {
             console.error("Error setting amount:", error);
           }
         }
-        
+
         // No validation on change - only validate on form submission
       });
     } else {
       console.error("Investment select not found!");
     }
-    
+
     if (amountInput) {
       // No validation on input change - only validate on form submission
     } else {
       console.error("Amount input not found!");
     }
-    
+
     if (dateInput) {
       // No validation on date change - only validate on form submission
     } else {
@@ -2944,7 +3120,7 @@ document.addEventListener("DOMContentLoaded", function () {
     investmentModal.select(".close").on("click", function () {
       investmentModal.style("display", "none");
     });
-    
+
     console.log("Transaction modal initialization complete");
   }
 
@@ -3036,60 +3212,67 @@ document.addEventListener("DOMContentLoaded", function () {
     const typeSelect = document.getElementById("transaction-type");
     const investmentSelect = document.getElementById("investment-name");
     const dateInput = document.getElementById("transaction-date");
-    
+
     // If we're not in a sale transaction, no validation needed
     if (!typeSelect || typeSelect.value !== "sale") {
       return true;
     }
-    
+
     // If any required fields are empty, we can't validate yet
-    if (!investmentSelect || !investmentSelect.value || !dateInput || !dateInput.value) {
+    if (
+      !investmentSelect ||
+      !investmentSelect.value ||
+      !dateInput ||
+      !dateInput.value
+    ) {
       return false;
     }
-    
+
     console.log("Validating sale transaction existence");
-    
+
     // Get the selected investment id and the date of the transaction
     const entityId = Number(investmentSelect.value);
     const saleDate = new Date(dateInput.value);
-    
+
     // Get investment type from selected option
     const selectedOption = investmentSelect.selectedOptions[0];
     if (!selectedOption || !selectedOption.dataset.type) {
       console.error("Selected option doesn't have a data-type attribute");
       return false;
     }
-    
+
     const entityType = selectedOption.dataset.type;
     const investmentType = entityType === "investment" ? "fund" : "land";
-    
+
     // Log entity information for debugging
-    console.log(`Validating existence for entity ID=${entityId}, type=${entityType}, investmentType=${investmentType}`);
-    
+    console.log(
+      `Validating existence for entity ID=${entityId}, type=${entityType}, investmentType=${investmentType}`
+    );
+
     // Find all transactions for this investment (with correct investment type)
     const existingTransactions = transactionData.filter(
-      t => Number(t.entity_id) === entityId && 
-           t.investmentType === investmentType
+      (t) =>
+        Number(t.entity_id) === entityId && t.investmentType === investmentType
     );
-    
+
     // Only count buy transactions that happened before or on the sale date
     const buyTransactions = existingTransactions.filter(
-      t => t.transactionType === "buy" && t.date <= saleDate
+      (t) => t.transactionType === "buy" && t.date <= saleDate
     );
-    
+
     // Calculate total amount bought
-    const totalBought = d3.sum(buyTransactions, d => -d.amount);
-    
+    const totalBought = d3.sum(buyTransactions, (d) => -d.amount);
+
     console.log("Sale validation details:", {
       entityId: entityId,
       entityType: entityType,
       investmentType: investmentType,
       buyTransactions: buyTransactions.length,
-      totalBought
+      totalBought,
     });
-    
+
     // No need to check if purchases exist - purchase is no longer mandatory to sell
-    
+
     // If we get here, the sale is valid
     return true;
   }
@@ -3105,33 +3288,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to calculate available sale amount for a given entity
   function getEntityAvailableSaleAmount(entityId, investmentType) {
-    console.log(`Getting available amount for entityId=${entityId}, investmentType=${investmentType}`);
-    
+    console.log(
+      `Getting available amount for entityId=${entityId}, investmentType=${investmentType}`
+    );
+
     // Find the entity to get the cash injection amount
     // Ensure we filter by both ID and the correct type to avoid confusion between funds and lands
-    const entity = investmentData.find(inv => {
+    const entity = investmentData.find((inv) => {
       // First check if IDs match
       const idMatches = Number(inv.id) === Number(entityId);
-      
+
       // Then check if the type matches based on investment name
       // Funds have "Fund" in their name, Lands have "Land" in their name
-      const isCorrectType = investmentType === "fund" ? 
-        inv.name && inv.name.includes("Fund") : 
-        inv.name && inv.name.includes("Land");
-      
+      const isCorrectType =
+        investmentType === "fund"
+          ? inv.name && inv.name.includes("Fund")
+          : inv.name && inv.name.includes("Land");
+
       return idMatches && isCorrectType;
     });
-    
+
     if (!entity) {
-      console.error(`Could not find entity with ID ${entityId} and type ${investmentType}`);
-      return { error: "Entity not found", available: 0, cashInjection: 0, sold: 0 };
+      console.error(
+        `Could not find entity with ID ${entityId} and type ${investmentType}`
+      );
+      return {
+        error: "Entity not found",
+        available: 0,
+        cashInjection: 0,
+        sold: 0,
+      };
     }
-    
+
     console.log("Found entity:", entity);
-    
+
     // Get the cash injection amount (different property name depending on type)
     let cashInjection;
-    
+
     if (investmentType === "fund") {
       // For funds, use cash_investment property
       cashInjection = parseFloat(entity.cash_investment || entity.val6);
@@ -3140,44 +3333,63 @@ document.addEventListener("DOMContentLoaded", function () {
       cashInjection = parseFloat(entity.cash_injection || entity.val6);
     } else {
       console.error(`Invalid investment type: ${investmentType}`);
-      return { error: "Invalid investment type", available: 0, cashInjection: 0, sold: 0 };
+      return {
+        error: "Invalid investment type",
+        available: 0,
+        cashInjection: 0,
+        sold: 0,
+      };
     }
-    
+
     console.log(`Cash injection amount determined: ${cashInjection}`);
-    
+
     if (isNaN(cashInjection) || cashInjection <= 0) {
-      console.error(`Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`);
+      console.error(
+        `Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`
+      );
       // Check for mapped fields from fetchChartData
       if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
         cashInjection = parseFloat(entity.val6);
-        console.log(`Using val6 (${cashInjection}) as fallback for cash injection amount`);
+        console.log(
+          `Using val6 (${cashInjection}) as fallback for cash injection amount`
+        );
       } else {
-        return { error: "Invalid cash injection amount", available: 0, cashInjection: 0, sold: 0 };
+        return {
+          error: "Invalid cash injection amount",
+          available: 0,
+          cashInjection: 0,
+          sold: 0,
+        };
       }
     }
-    
+
     // Get all sale transactions for this entity
     const entitySales = transactionData.filter(
-      t => Number(t.entity_id) === Number(entityId) && 
-           t.investmentType === investmentType &&
-           t.transactionType === "sale"
+      (t) =>
+        Number(t.entity_id) === Number(entityId) &&
+        t.investmentType === investmentType &&
+        t.transactionType === "sale"
     );
-    
-    console.log(`Found ${entitySales.length} sale transactions for this entity`);
-    
+
+    console.log(
+      `Found ${entitySales.length} sale transactions for this entity`
+    );
+
     // Calculate total sold so far
-    const totalSold = d3.sum(entitySales, d => d.amount); // Sale amounts are positive
-    
+    const totalSold = d3.sum(entitySales, (d) => d.amount); // Sale amounts are positive
+
     // Calculate available amount to sell
     const availableToSell = cashInjection - totalSold;
-    
-    console.log(`Cash injection: ${cashInjection}, Total sold: ${totalSold}, Available: ${availableToSell}`);
-    
+
+    console.log(
+      `Cash injection: ${cashInjection}, Total sold: ${totalSold}, Available: ${availableToSell}`
+    );
+
     return {
       entity: entity,
-      cashInjection: cashInjection, 
+      cashInjection: cashInjection,
       sold: totalSold,
-      available: availableToSell
+      available: availableToSell,
     };
   }
 
@@ -3187,63 +3399,74 @@ document.addEventListener("DOMContentLoaded", function () {
     const investmentSelect = document.getElementById("investment-name");
     const dateInput = document.getElementById("transaction-date");
     const amountField = document.getElementById("transaction-amount");
-    
+
     // If we're not in a sale transaction, no validation needed
     if (!typeSelect || typeSelect.value !== "sale") {
       return true;
     }
-    
+
     // If any required fields are empty, we can't validate yet
-    if (!investmentSelect || !investmentSelect.value || !dateInput || !dateInput.value || !amountField || !amountField.value) {
+    if (
+      !investmentSelect ||
+      !investmentSelect.value ||
+      !dateInput ||
+      !dateInput.value ||
+      !amountField ||
+      !amountField.value
+    ) {
       return false;
     }
-    
+
     console.log("Validating sale transaction amount");
-    
+
     // Get the selected investment id, amount, and the date of the transaction
     const entityId = Number(investmentSelect.value);
     const saleDate = new Date(dateInput.value);
     const saleAmount = parseFloat(amountField.value);
-    
+
     // Get investment type from selected option
     const selectedOption = investmentSelect.selectedOptions[0];
     if (!selectedOption || !selectedOption.dataset.type) {
       console.error("Selected option doesn't have a data-type attribute");
       return false;
     }
-    
+
     const entityType = selectedOption.dataset.type;
     const investmentType = entityType === "investment" ? "fund" : "land";
-    
+
     // Check if there was a change in selection
     const lastSelected = investmentSelect.getAttribute("data-last-selected");
     const lastType = investmentSelect.getAttribute("data-last-type");
-    const selectionChanged = lastSelected && (Number(lastSelected) !== entityId || lastType !== entityType);
-    
+    const selectionChanged =
+      lastSelected &&
+      (Number(lastSelected) !== entityId || lastType !== entityType);
+
     if (selectionChanged) {
-      console.log(`Selection changed from ID=${lastSelected} (${lastType}) to ID=${entityId} (${entityType})`);
+      console.log(
+        `Selection changed from ID=${lastSelected} (${lastType}) to ID=${entityId} (${entityType})`
+      );
     }
-    
+
     // Get entity info and available amount to sell
     const entityInfo = getEntityAvailableSaleAmount(entityId, investmentType);
-    
+
     if (entityInfo.error) {
       alert(`${entityInfo.error} for ${investmentType} with ID ${entityId}`);
       return false;
     }
-    
+
     // If we have a saved cash value in the amount field, use it for validation
     // This helps prevent stale comparisons when changing selections
     const savedCashValue = amountField.getAttribute("data-cash-value");
     let cashInjection = entityInfo.cashInjection;
-    
+
     if (savedCashValue && !isNaN(parseFloat(savedCashValue))) {
       // Use the saved cash value from the amount field's data attribute
       // This is especially important when the selection has changed
       cashInjection = parseFloat(savedCashValue);
       console.log(`Using saved cash value for validation: ${cashInjection}`);
     }
-    
+
     console.log("Sale validation details:", {
       entityId: entityId,
       investmentType: investmentType,
@@ -3252,24 +3475,28 @@ document.addEventListener("DOMContentLoaded", function () {
       entityInfoCashInjection: entityInfo.cashInjection,
       totalSold: entityInfo.sold,
       available: entityInfo.available,
-      saleAmount: saleAmount
+      saleAmount: saleAmount,
     });
-    
+
     // Check if amount exceeds cash injection
     if (saleAmount > cashInjection) {
-      alert(`Error: You can't sell more than the cash injection amount of ${cashInjection}.`);
+      alert(
+        `Error: You can't sell more than the cash injection amount of ${cashInjection}.`
+      );
       return false;
     }
-    
+
     // For consistency with the saved cash value, calculate available amount
     const available = cashInjection - entityInfo.sold;
-    
+
     // Check if amount exceeds available (cash injection minus already sold)
     if (saleAmount > available) {
-      alert(`Error: You've already sold ${entityInfo.sold} of this investment. You can only sell up to ${available} more.`);
+      alert(
+        `Error: You've already sold ${entityInfo.sold} of this investment. You can only sell up to ${available} more.`
+      );
       return false;
     }
-    
+
     // If we get here, the sale is valid
     return true;
   }
@@ -3279,41 +3506,44 @@ document.addEventListener("DOMContentLoaded", function () {
   function highlightBarSegmentForTransaction(transaction) {
     // Find all bar segments
     const barSegments = d3.selectAll(".buy-bar-segment, .sale-bar-segment");
-    
+
     // Exit if no segments found
     if (barSegments.empty()) return;
-    
+
     // Convert transaction date to string format for comparison
     const transactionDateStr = transaction.date.toISOString();
     const transactionId = transaction.id;
-    
+
     // Find the corresponding bar segment using data attributes
-    barSegments.each(function() {
+    barSegments.each(function () {
       const segment = d3.select(this);
-      
+
       // Get segment data from attributes
       const entityName = segment.attr("data-entity-name");
       const transactionType = segment.attr("data-transaction-type");
       const segmentDate = segment.attr("data-date");
       const transactionIds = segment.attr("data-transaction-ids");
-      
+
       // Skip if no data attributes found
       if (!entityName || !transactionType || !segmentDate) return;
-      
+
       // Check if this is the matching segment
       const matchesName = entityName === transaction.entityName;
-      const matchesType = (transaction.transactionType === transactionType);
-      
+      const matchesType = transaction.transactionType === transactionType;
+
       // Match either by direct date comparison or by ID inclusion in the segment
       const matchesDate = segmentDate === transactionDateStr;
-      const matchesId = transactionId && transactionIds && transactionIds.split(",").includes(String(transactionId));
-      
+      const matchesId =
+        transactionId &&
+        transactionIds &&
+        transactionIds.split(",").includes(String(transactionId));
+
       // If we have a match
       if (matchesName && matchesType && (matchesDate || matchesId)) {
         // Store original color
         const originalFill = segment.attr("fill");
         const originalOpacity = segment.attr("opacity");
-        
+
         // Highlight with pulsing animation
         segment
           .transition()
@@ -3351,14 +3581,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!confirm("Are you sure you want to delete this transaction?")) {
         return false;
       }
-      
+
       // Delete the transaction from the database
       await deleteData(STORES.transactions, Number(transactionId));
-      
+
       // Refresh the chart data and redraw
       await fetchChartData();
       drawInvestmentChart();
-      
+
       return true;
     } catch (error) {
       console.error("Error deleting transaction:", error);
