@@ -457,7 +457,17 @@ document.addEventListener("DOMContentLoaded", function () {
   // Only proceed if datePresets was successfully created
   if (datePresets) {
     // Add title
-    datePresets.append("h4").text("Quick Select:");
+    datePresets.append("h4")
+      .text("Quick Select:")
+      .style("margin", "50 0 5px 0") // Reduce margin
+      .style("font-size", "14px"); // Smaller font size
+
+    // Add compact styling to the date presets container
+    datePresets
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("display", "inline-block") // Make it only as wide as needed
+      .style("margin-bottom", "10px");
 
     // Add preset buttons
     const presetButtons = [
@@ -467,12 +477,20 @@ document.addEventListener("DOMContentLoaded", function () {
       { text: "1 Year", handler: set1Year },
     ];
 
+    // Create a flex container for buttons
+    const buttonContainer = datePresets
+      .append("div")
+      .style("display", "flex")
+      .style("gap", "5px"); // Small gap between buttons
+
     presetButtons.forEach((btn) => {
-      datePresets
+      buttonContainer
         .append("button")
         .attr("type", "button")
         .attr("class", "date-preset-btn")
         .text(btn.text)
+        .style("padding", "4px 8px") // Smaller padding
+        .style("font-size", "12px") // Smaller font size 
         .on("click", btn.handler);
     });
   }
@@ -811,7 +829,8 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("padding", "15px")
         .style("background", "#f5f5f5")
         .style("border-radius", "8px")
-        .style("border", "1px solid #ddd");
+        .style("border", "1px solid #ddd")
+        .style("display", "none"); // Hide the amount filter for now
 
       // Move it after the date range control if possible
       const dateRangeEl = document.querySelector(dateRangeSelector);
