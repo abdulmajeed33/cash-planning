@@ -2,6 +2,28 @@
 document.addEventListener('DOMContentLoaded', async function() {
     // Tab functionality is now handled in investment-chart.js
     
+    // Set up accordion functionality
+    const accordionHeaders = document.querySelectorAll('.accordion-header');
+    
+    accordionHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            // Toggle active class on the header
+            this.classList.toggle('active');
+            
+            // Toggle active class on the content
+            const content = this.nextElementSibling;
+            content.classList.toggle('active');
+            
+            // Update the toggle icon
+            const toggleIcon = this.querySelector('.toggle-icon');
+            if (content.classList.contains('active')) {
+                toggleIcon.textContent = '▼';
+            } else {
+                toggleIcon.textContent = '▶';
+            }
+        });
+    });
+    
     // Initialize the database before loading data
     await initDatabase();
     

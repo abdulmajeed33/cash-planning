@@ -118,3 +118,45 @@ th {
         flex-direction: column;
     }
 }
+
+/* Accordion Styles */
+.accordion {
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.accordion-header {
+  background-color: #f8f9fa;
+  padding: 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+}
+
+.accordion-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.accordion-header .toggle-icon {
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+.accordion-header.active .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-content.active {
+  max-height: 2000px; /* Large enough to fit content */
+}
