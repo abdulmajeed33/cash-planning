@@ -1266,14 +1266,10 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("class", "color-box")
         .style("background-color", color(item.type));
 
-      // Add indicator for position (above/below timeline)
-      const positionIndicator = item.type.includes("-sale")
-        ? "↓ Below"
-        : "↑ Above";
 
       legendItem
         .append("span")
-        .html(`${item.label} <small>(${positionIndicator})</small>`);
+        .html(`${item.label}`);
     });
 
     // Add divider line explanation to legend
