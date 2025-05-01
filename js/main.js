@@ -5,7 +5,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Set up accordion functionality
     const accordionHeaders = document.querySelectorAll('.accordion-header');
     
+    // Initialize toggle icons based on initial state
     accordionHeaders.forEach(header => {
+        const content = header.nextElementSibling;
+        const toggleIcon = header.querySelector('.toggle-icon');
+        
+        // Set initial icon state
+        if (content.classList.contains('active')) {
+            toggleIcon.textContent = '↑'; // Up arrow for open accordion
+        } else {
+            toggleIcon.textContent = '→'; // Right arrow for closed accordion
+        }
+        
         header.addEventListener('click', function() {
             // Toggle active class on the header
             this.classList.toggle('active');
@@ -14,12 +25,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             const content = this.nextElementSibling;
             content.classList.toggle('active');
             
-            // Update the toggle icon
+            // Update the toggle icon - correct way
             const toggleIcon = this.querySelector('.toggle-icon');
             if (content.classList.contains('active')) {
-                toggleIcon.textContent = '▼';
+                toggleIcon.textContent = '↑'; // Up arrow when open
             } else {
-                toggleIcon.textContent = '▶';
+                toggleIcon.textContent = '→'; // Right arrow when closed
             }
         });
     });
