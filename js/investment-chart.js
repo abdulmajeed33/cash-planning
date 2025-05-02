@@ -32,6 +32,9 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   let db;
+  
+  // Variable for opening cash balance
+  let openingBalance = 50000; // Default opening balance
 
   // Initialize the database
   function initDatabase() {
@@ -1272,6 +1275,20 @@ document.addEventListener("DOMContentLoaded", function () {
         .html(`${item.label}`);
     });
 
+    // Add closing balance to legend
+    const balanceLegendItem = topLegend
+      .append("div")
+      .attr("class", "legend-item balance-legend-item");
+
+    balanceLegendItem
+      .append("div")
+      .attr("class", "color-box")
+      .style("background-color", "#FF9800");
+
+    balanceLegendItem
+      .append("span")
+      .html(`Closing Balance`);
+
     // Add divider line explanation to legend
     const dividerLegendItem = topLegend
       .append("div")
@@ -2316,6 +2333,73 @@ document.addEventListener("DOMContentLoaded", function () {
             .text(entity.name);
         });
       });
+
+      // Calculate running balance for each transaction
+      // First, sort transactions by date
+      const sortedTransactions = [...visibleTransactions].sort((a, b) => 
+        a.date.getTime() - b.date.getTime()
+      );
+      
+      let runningBalance = openingBalance;
+      const balanceData = [];
+      
+      // Add the starting point (first date with opening balance)
+      balanceData.push({
+        date: startDate,
+        balance: runningBalance
+      });
+      
+      // Calculate running balance over time
+      sortedTransactions.forEach(transaction => {
+        // For buy transactions (negative amounts), subtract from balance
+        // For sale transactions (positive amounts), add to balance
+        runningBalance += transaction.amount;
+        
+        balanceData.push({
+          date: transaction.date,
+          balance: runningBalance
+        });
+      });
+      
+      // Add final point (end date with last balance)
+      balanceData.push({
+        date: endDate,
+        balance: runningBalance
+      });
+      
+      // Create a line generator for the balance line
+      const line = d3.line()
+        .x(d => xTime(d.date))
+        .y(d => y(d.balance))
+        .curve(d3.curveMonotoneX);
+      
+      // Calculate the Y domain including the balance data
+      const maxBalance = Math.max(maxValue, d3.max(balanceData, d => d.balance) || 0);
+      const minBalance = Math.min(minValue, d3.min(balanceData, d => d.balance) || 0);
+      
+      // Update the Y scale to include balance data
+      y.domain([minBalance, maxBalance * 1.1]);
+      
+      // Draw the closing balance line
+      barChartSvg.append("path")
+        .datum(balanceData)
+        .attr("class", "closing-balance-line")
+        .attr("d", line);
+      
+      // Add data points on the line
+      barChartSvg.selectAll(".balance-point")
+        .data(balanceData.slice(1, -1)) // Skip first and last point (start and end dates)
+        .enter()
+        .append("circle")
+        .attr("class", "balance-point")
+        .attr("cx", d => xTime(d.date))
+        .attr("cy", d => y(d.balance))
+        .attr("r", 4)
+        .attr("fill", "#FF9800")
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5)
+        .append("title")
+        .text(d => `Date: ${dateFormat(d.date)}\nClosing Balance: $${d.balance.toLocaleString()}`);
     }
   }
 
@@ -3595,5 +3679,38 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Failed to delete transaction: " + error.message);
       return false;
     }
+  }
+
+  // Function to update the opening balance
+  function updateOpeningBalance() {
+    const openingBalanceInput = document.getElementById("opening-balance");
+    const newBalance = parseFloat(openingBalanceInput.value);
+    
+    if (!isNaN(newBalance)) {
+      openingBalance = newBalance;
+      // Update the chart with the new opening balance
+      updateInvestmentVisualization();
+    } else {
+      alert("Please enter a valid number for opening balance");
+    }
+  }
+  
+  // Add event listener for opening balance apply button
+  d3.select("#apply-opening-balance").on("click", updateOpeningBalance);
+  
+  // Handle keypress event on the opening balance input
+  d3.select("#opening-balance").on("keypress", function (event) {
+    if (event.key === "Enter") {
+      updateOpeningBalance();
+      event.preventDefault();
+    }
+  });
+
+  // Initialize the chart when the investment timeline tab is shown on page load
+  if (
+    document.querySelector(".tab-button[data-tab='investment-timeline']")
+      .classList.contains("active")
+  ) {
+    initInvestmentChart();
   }
 });
