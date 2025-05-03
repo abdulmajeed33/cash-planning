@@ -440,106 +440,30 @@ document.addEventListener("DOMContentLoaded", function () {
   // Add date preset buttons
   const dateRangeControl = d3.select(".date-range-control");
 
-  // Create date presets container using safer DOM manipulation
-  let datePresets;
-  try {
-    // Instead of using insert, append the element and move it to the first position
-    datePresets = dateRangeControl.append("div").attr("class", "date-presets");
+  // Use the existing date-presets from HTML instead of creating it dynamically
+  const datePresets = d3.select(".date-presets");
 
-    // If the parent element has children, move our element to the first position
-    const parent = dateRangeControl.node();
-    if (parent && parent.firstChild && datePresets.node()) {
-      parent.insertBefore(datePresets.node(), parent.firstChild);
-    }
-  } catch (e) {
-    console.error("Error creating date presets:", e);
-    // Fallback - just append if insertion fails
-    datePresets = dateRangeControl.append("div").attr("class", "date-presets");
-  }
-
-  // Only proceed if datePresets was successfully created
-  if (datePresets) {
-    // Create a container for Quick Select layout with flexible structure
-    const quickSelectContainer = datePresets
-      .append("div")
-      .style("display", "flex")
-      .style("justify-content", "space-between") // Space between Quick Select and Opening Balance
-      .style("align-items", "center")
-      .style("flex-wrap", "wrap")
-      .style("margin-bottom", "10px");
+  // Only proceed if datePresets exists in the HTML
+  if (datePresets.node()) {
+    // Add event listeners to the existing HTML buttons
+    d3.select("#btn-1-month").on("click", set1Month);
+    d3.select("#btn-3-months").on("click", set3Months);
+    d3.select("#btn-6-months").on("click", set6Months);
+    d3.select("#btn-1-year").on("click", set1Year);
     
-    // Left side - Quick Select title and buttons
-    const quickSelectLeftSide = quickSelectContainer
-      .append("div")
-      .style("display", "flex")
-      .style("align-items", "center")
-      .style("flex-wrap", "wrap");
+    // Set the initial value of the opening balance input to match the JS variable
+    d3.select("#opening-balance").property("value", openingBalance);
     
-    // Add title
-    quickSelectLeftSide.append("div")
-      .text("Quick Select:")
-      .style("margin-right", "12px")
-      .style("font-size", "14px")
-      .style("font-weight", "500")
-      .style("color", "#555");
-
-    // Add preset buttons
-    const presetButtons = [
-      { text: "1 Month", handler: set1Month },
-      { text: "3 Months", handler: set3Months },
-      { text: "6 Months", handler: set6Months },
-      { text: "1 Year", handler: set1Year },
-    ];
-
-    presetButtons.forEach((btn) => {
-      quickSelectLeftSide
-        .append("button")
-        .attr("type", "button")
-        .attr("class", "date-preset-btn")
-        .text(btn.text)
-        .style("margin", "0 6px 0 0")
-        .on("click", btn.handler);
-    });
-    
-    // Right side - Opening Cash Balance
-    const openingBalanceContainer = quickSelectContainer
-      .append("div")
-      .style("display", "flex")
-      .style("align-items", "center");
-    
-    // Add label
-    openingBalanceContainer
-      .append("label")
-      .attr("for", "opening-balance")
-      .text("Opening Cash Balance:")
-      .style("margin-right", "8px")
-      .style("font-weight", "500")
-      .style("white-space", "nowrap");
-    
-    // Add input field
-    openingBalanceContainer
-      .append("input")
-      .attr("type", "number")
-      .attr("id", "opening-balance")
-      .attr("placeholder", "Enter amount")
-      .attr("value", openingBalance)
-      .style("margin-right", "8px");
-    
-    // Add apply button
-    openingBalanceContainer
-      .append("button")
-      .attr("id", "apply-opening-balance")
-      .text("Apply")
-      .on("click", updateOpeningBalance);
+    // Add event listeners for opening balance
+    d3.select("#apply-opening-balance").on("click", updateOpeningBalance);
     
     // Add keypress event listener to the opening balance input
-    openingBalanceContainer.select("input")
-      .on("keypress", function(event) {
-        if (event.key === "Enter") {
-          updateOpeningBalance();
-          event.preventDefault();
-        }
-      });
+    d3.select("#opening-balance").on("keypress", function(event) {
+      if (event.key === "Enter") {
+        updateOpeningBalance();
+        event.preventDefault();
+      }
+    });
   }
 
   // Investment data array - now can be dynamically updated
