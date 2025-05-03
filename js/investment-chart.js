@@ -459,18 +459,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Only proceed if datePresets was successfully created
   if (datePresets) {
-    // Add title
-    datePresets.append("h4")
-      .text("Quick Select:")
-      .style("margin", "50 0 5px 0") // Reduce margin
-      .style("font-size", "14px"); // Smaller font size
-
-    // Add compact styling to the date presets container
-    datePresets
-      .style("padding", "8px")
-      .style("border-radius", "4px")
-      .style("display", "inline-block") // Make it only as wide as needed
+    // Create a container for Quick Select layout with flexible structure
+    const quickSelectContainer = datePresets
+      .append("div")
+      .style("display", "flex")
+      .style("justify-content", "space-between") // Space between Quick Select and Opening Balance
+      .style("align-items", "center")
+      .style("flex-wrap", "wrap")
       .style("margin-bottom", "10px");
+    
+    // Left side - Quick Select title and buttons
+    const quickSelectLeftSide = quickSelectContainer
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("flex-wrap", "wrap");
+    
+    // Add title
+    quickSelectLeftSide.append("div")
+      .text("Quick Select:")
+      .style("margin-right", "12px")
+      .style("font-size", "14px")
+      .style("font-weight", "500")
+      .style("color", "#555");
 
     // Add preset buttons
     const presetButtons = [
@@ -480,22 +491,55 @@ document.addEventListener("DOMContentLoaded", function () {
       { text: "1 Year", handler: set1Year },
     ];
 
-    // Create a flex container for buttons
-    const buttonContainer = datePresets
-      .append("div")
-      .style("display", "flex")
-      .style("gap", "5px"); // Small gap between buttons
-
     presetButtons.forEach((btn) => {
-      buttonContainer
+      quickSelectLeftSide
         .append("button")
         .attr("type", "button")
         .attr("class", "date-preset-btn")
         .text(btn.text)
-        .style("padding", "4px 8px") // Smaller padding
-        .style("font-size", "12px") // Smaller font size 
+        .style("margin", "0 6px 0 0")
         .on("click", btn.handler);
     });
+    
+    // Right side - Opening Cash Balance
+    const openingBalanceContainer = quickSelectContainer
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center");
+    
+    // Add label
+    openingBalanceContainer
+      .append("label")
+      .attr("for", "opening-balance")
+      .text("Opening Cash Balance:")
+      .style("margin-right", "8px")
+      .style("font-weight", "500")
+      .style("white-space", "nowrap");
+    
+    // Add input field
+    openingBalanceContainer
+      .append("input")
+      .attr("type", "number")
+      .attr("id", "opening-balance")
+      .attr("placeholder", "Enter amount")
+      .attr("value", openingBalance)
+      .style("margin-right", "8px");
+    
+    // Add apply button
+    openingBalanceContainer
+      .append("button")
+      .attr("id", "apply-opening-balance")
+      .text("Apply")
+      .on("click", updateOpeningBalance);
+    
+    // Add keypress event listener to the opening balance input
+    openingBalanceContainer.select("input")
+      .on("keypress", function(event) {
+        if (event.key === "Enter") {
+          updateOpeningBalance();
+          event.preventDefault();
+        }
+      });
   }
 
   // Investment data array - now can be dynamically updated
