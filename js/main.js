@@ -483,15 +483,43 @@ async function updateLand(id, formData) {
 document.addEventListener('click', async function(e) {
     if (e.target.classList.contains('delete-btn')) {
         const id = parseInt(e.target.dataset.id);
-        const type = e.target.closest('table').id === 'investments-table' ? 'investments' : 'lands';
+        let storeName;
         
-        if (confirm('Are you sure you want to delete this item?')) {
+        // Determine which store to use based on the closest table ID
+        const tableId = e.target.closest('table').id;
+        if (tableId === 'investments-table') {
+            storeName = STORES.investments;
+        } else if (tableId === 'lands-table') {
+            storeName = STORES.lands;
+        } else if (tableId === 'recurring-payments-table') {
+            storeName = STORES.recurringPayments;
+        } else if (tableId === 'nonrecurring-payments-table') {
+            storeName = STORES.nonRecurringPayments;
+        } else if (tableId === 'invoices-table') {
+            storeName = STORES.invoices;
+        } else if (tableId === 'suppliers-table') {
+            storeName = STORES.supplierPayments;
+        }
+        
+        if (storeName && confirm('Are you sure you want to delete this item?')) {
             try {
                 // Delete from IndexedDB
-                await deleteData(STORES[type], id);
+                await deleteData(storeName, id);
                 
-                // Reload the data
-                type === 'investments' ? loadInvestments() : loadLands();
+                // Reload the appropriate data
+                if (storeName === STORES.investments) {
+                    loadInvestments();
+                } else if (storeName === STORES.lands) {
+                    loadLands();
+                } else if (storeName === STORES.recurringPayments) {
+                    loadRecurringPayments();
+                } else if (storeName === STORES.nonRecurringPayments) {
+                    loadNonRecurringPayments();
+                } else if (storeName === STORES.invoices) {
+                    loadInvoices();
+                } else if (storeName === STORES.supplierPayments) {
+                    loadSupplierPayments();
+                }
                 
                 // Refresh the investment chart if it's visible
                 if (document.getElementById('investment-timeline').classList.contains('active')) {
@@ -507,41 +535,61 @@ document.addEventListener('click', async function(e) {
     }
 });
 
-// Add event handler for edit buttons (not implemented yet)
+// Add event handler for edit buttons
 document.addEventListener('click', async function(e) {
     if (e.target.classList.contains('edit-btn')) {
         const id = parseInt(e.target.dataset.id);
-        const type = e.target.closest('table').id === 'investments-table' ? 'investments' : 'lands';
+        let storeName, populateFunction;
         
-        try {
-            // Get the item from IndexedDB
-            const db = await openDatabase();
-            const transaction = db.transaction([STORES[type]], 'readonly');
-            const store = transaction.objectStore(STORES[type]);
-            const request = store.get(id);
-            
-            request.onsuccess = function(event) {
-                const item = event.target.result;
-                if (item) {
-                    // Populate the form with the item's data
-                    if (type === 'investments') {
-                        populateInvestmentForm(item);
+        // Determine which store to use based on the closest table ID
+        const tableId = e.target.closest('table').id;
+        if (tableId === 'investments-table') {
+            storeName = STORES.investments;
+            populateFunction = populateInvestmentForm;
+        } else if (tableId === 'lands-table') {
+            storeName = STORES.lands;
+            populateFunction = populateLandForm;
+        } else if (tableId === 'recurring-payments-table') {
+            storeName = STORES.recurringPayments;
+            populateFunction = populateRecurringPaymentForm;
+        } else if (tableId === 'nonrecurring-payments-table') {
+            storeName = STORES.nonRecurringPayments;
+            populateFunction = populateNonRecurringPaymentForm;
+        } else if (tableId === 'invoices-table') {
+            storeName = STORES.invoices;
+            populateFunction = populateInvoiceForm;
+        } else if (tableId === 'suppliers-table') {
+            storeName = STORES.supplierPayments;
+            populateFunction = populateSupplierForm;
+        }
+        
+        if (storeName && populateFunction) {
+            try {
+                // Get the item from IndexedDB
+                const db = await openDatabase();
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.get(id);
+                
+                request.onsuccess = function(event) {
+                    const item = event.target.result;
+                    if (item) {
+                        // Populate the form with the item's data
+                        populateFunction(item);
                     } else {
-                        populateLandForm(item);
+                        console.error(`Item with ID ${id} not found in ${storeName}`);
+                        alert(`Item not found. Please refresh the page and try again.`);
                     }
-                } else {
-                    console.error(`Item with ID ${id} not found in ${type}`);
-                    alert(`Item not found. Please refresh the page and try again.`);
-                }
-            };
-            
-            request.onerror = function(event) {
-                console.error('Error getting item:', event.target.error);
-                alert('Failed to get item. Please try again.');
-            };
-        } catch (error) {
-            console.error('Error in edit process:', error);
-            alert('An error occurred. Please try again.');
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Error getting item:', event.target.error);
+                    alert('Failed to get item. Please try again.');
+                };
+            } catch (error) {
+                console.error('Error in edit process:', error);
+                alert('An error occurred. Please try again.');
+            }
         }
     }
 });
