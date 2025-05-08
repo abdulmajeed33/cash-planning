@@ -160,3 +160,46 @@ th {
 .accordion-content.active {
   max-height: 2000px; /* Large enough to fit content */
 }
+
+/* Sub-Accordion Styles */
+.sub-accordion {
+  margin: 15px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sub-accordion-header {
+  background-color: #f1f3f5;
+  padding: 12px 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.sub-accordion-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.sub-accordion-header .toggle-icon {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.sub-accordion-header.active .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.sub-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.sub-accordion-content.active {
+  max-height: 1500px; /* Large enough to fit content */
+}

@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // IndexedDB setup
   const DB_NAME = "investmentTracker";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORES = {
     investments: "investments",
     lands: "lands",
