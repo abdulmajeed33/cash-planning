@@ -20,6 +20,9 @@
       <button class="tab-button" data-tab="investment-timeline">
         Investment Timeline
       </button>
+      <button class="tab-button" data-tab="cashflow-timeline">
+        Operational Cash Flow Timeline
+      </button>
     </nav>
 
     <main>
@@ -376,9 +379,56 @@
           </div>
         </div>
       </section>
+
+      <section id="cashflow-timeline" class="tab-content">
+        <div class="container">
+          <div class="cashflow-section">
+            <div class="chart-description">
+              <p style="margin-bottom: 20px;">
+                This chart displays operational cash flows over time.
+                Transactions include recurring payments, non-recurring payments, invoices, and supplier payments.
+                Click on a transaction in the chart to edit it.
+              </p>
+
+            <div class="date-range-control">
+              <div class="date-inputs">
+              <div class="date-presets">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                    <div style="margin-right: 12px; font-size: 14px; font-weight: 500; color: #555;">Quick Select:</div>
+                    <button type="button" class="date-preset-btn" id="cashflow-btn-1-month">1 Month</button>
+                    <button type="button" class="date-preset-btn" id="cashflow-btn-3-months">3 Months</button>
+                    <button type="button" class="date-preset-btn" id="cashflow-btn-6-months">6 Months</button>
+                    <button type="button" class="date-preset-btn" id="cashflow-btn-1-year">1 Year</button>
+                  </div>
+                  <div style="display: flex; align-items: center;">
+                    <label for="cashflow-opening-balance" style="margin-right: 8px; font-weight: 500; white-space: nowrap;">Opening Cash Balance:</label>
+                    <input type="number" id="cashflow-opening-balance" placeholder="Enter amount" value="50000" style="margin-right: 8px;">
+                    <button id="cashflow-apply-opening-balance">Apply</button>
+                  </div>
+                </div>
+              </div>
+                <div class="form-group">
+                  <label for="cashflow-start-date">Start Date:</label>
+                  <input type="date" id="cashflow-start-date" />
+                </div>
+                <div class="form-group">
+                  <label for="cashflow-end-date">End Date:</label>
+                  <input type="date" id="cashflow-end-date" />
+                </div>
+                <button id="cashflow-apply-dates">Apply</button>
+              </div>
+            </div>
+            <div style="margin-bottom: 60px;" id="cashflow-chart"></div>
+            <div id="cashflow-legend" class="transaction-legend"></div>
+
+          </div>
+        </div>
+      </section>
     </main>
 
     <script src="js/main.js"></script>
     <script src="./js/investment-chart.js"></script>
+    <script src="./js/cashflow-chart.js"></script>
   </body>
 </html>

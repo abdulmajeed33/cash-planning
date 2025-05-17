@@ -1038,3 +1038,88 @@ svg {
     width: 100%;
   }
 }
+
+/* Operational Cash Flow Chart Styles */
+.cashflow-section {
+  padding-top: 20px;
+}
+
+.cashflow-section h2 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+/* Cash flow event styling */
+.cashflow-label {
+  font-size: 10px;
+  fill: #333;
+  font-weight: 500;
+  text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white, 0 0 3px white;
+}
+
+.cashflow-hover-area {
+  fill-opacity: 0;
+  stroke-opacity: 0;
+  cursor: pointer;
+}
+
+.cashflow-point {
+  cursor: pointer;
+  transition: r 0.2s ease;
+}
+
+.cashflow-point:hover {
+  r: 7;
+}
+
+/* Bar chart styling */
+.cashflow-bar-inflow {
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.cashflow-bar-inflow:hover {
+  opacity: 0.7;
+}
+
+.cashflow-bar-outflow {
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+
+.cashflow-bar-outflow:hover {
+  opacity: 0.7;
+}
+
+/* Tooltip styling for cash flow chart */
+.cashflow-tooltip {
+  position: absolute;
+  background-color: white;
+  padding: 10px 15px;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  pointer-events: none;
+  font-size: 12px;
+  z-index: 10;
+  max-width: 250px;
+  border-left: 3px solid #3498db;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  transform-origin: top left;
+}
+
+/* Date label styling */
+.date-label {
+  font-size: 10px;
+  fill: #666;
+}
+
+/* Responsive styles for cash flow section */
+@media screen and (max-width: 768px) {
+  #cashflow-chart {
+    height: 300px;
+  }
+  
+  .chart-description {
+    padding: 10px;
+  }
+}
