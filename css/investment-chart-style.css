@@ -798,6 +798,7 @@ svg {
     gap: 15px;
     margin-bottom: 0;
     flex: 1;
+    align-items: flex-end;
 }
 
 .date-inputs .form-group {
@@ -826,7 +827,7 @@ svg {
     outline: none;
 }
 
-#apply-dates {
+#apply-dates, #cashflow-apply-dates {
     background-color: #1976d2;
     color: white;
     border: none;
@@ -835,12 +836,36 @@ svg {
     cursor: pointer;
     font-weight: 500;
     transition: background-color 0.2s ease;
-    /* margin-left: 15px; */
     height: 38px;
-    margin-top: 30px;
+    margin-top: 0;
+    align-self: flex-end;
 }
 
-#apply-dates:hover {
+#apply-dates:hover, #cashflow-apply-dates:hover {
+    background-color: #1565c0;
+}
+
+/* Make Apply button look consistent with other buttons */
+.btn-primary, 
+#apply-dates, 
+#cashflow-apply-dates, 
+#apply-opening-balance, 
+#cashflow-apply-opening-balance {
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover, 
+#apply-dates:hover, 
+#cashflow-apply-dates:hover, 
+#apply-opening-balance:hover, 
+#cashflow-apply-opening-balance:hover {
     background-color: #1565c0;
 }
 
