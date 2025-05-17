@@ -472,7 +472,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return instances;
   }
 
-  // Group cash flow events by date proximity for visualization
+  // Group cash flow events by date for visualization
   function groupEventsByProximity(events, dayThreshold = 7) {
     if (!events || events.length === 0) return [];
     
@@ -789,7 +789,37 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("cy", cashflowTimelineY)
         .attr("r", 5)
         .attr("fill", "#666")
-        .attr("data-date", group.date.toISOString());
+        .attr("data-date", group.date.toISOString())
+        .datum(group) // Store the group data with the point for tooltip
+        .on("mouseenter", function (event, d) {
+          // Highlight the point
+          d3.select(this).attr("r", 7);
+          
+          // Get event count
+          const eventCount = d.events.length;
+          
+          d3.select(".cashflow-tooltip")
+            .transition()
+            .duration(200)
+            .style("opacity", 0.9);
+            
+          d3.select(".cashflow-tooltip")
+            .html(`
+              <strong>Date: ${dateFormat(d.date)}</strong><br>
+              <strong>Events: ${eventCount}</strong>
+            `)
+            .style("left", event.pageX + 10 + "px")
+            .style("top", event.pageY - 28 + "px");
+        })
+        .on("mouseleave", function () {
+          // Reset point size
+          d3.select(this).attr("r", 5);
+          
+          d3.select(".cashflow-tooltip")
+            .transition()
+            .duration(500)
+            .style("opacity", 0);
+        });
 
       // Add cash flow emojis with proper spacing
       const totalEvents = group.events.length;
@@ -995,7 +1025,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .selectAll(".time-axis text")
       .attr("font-size", "10px")
       .attr("dy", "1em");
-
+    
     // Add Y axis
     barChartSvg
       .append("g")
@@ -1015,7 +1045,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add Y axis labels
     barChartSvg
       .append("text")
-      .attr("x", -25)
+      .attr("x", -50)
       .attr("y", y(maxValue / 2))
       .attr("text-anchor", "end")
       .attr("font-size", "12px")
@@ -1024,23 +1054,70 @@ document.addEventListener("DOMContentLoaded", function () {
 
     barChartSvg
       .append("text")
-      .attr("x", -25)
+      .attr("x", -50)
       .attr("y", y(-maxValue / 2))
       .attr("text-anchor", "end")
       .attr("font-size", "12px")
       .attr("fill", "#e74c3c")
       .text("Outflows");
 
-    // Calculate width for each bar
-    const barWidthFactor = 0.8; // 80% of available space
-    const barWidth = Math.min(width / (visibleEvents.length + 1) * barWidthFactor, 60);
+    // Add horizontal grid lines at regular intervals
+    const yGridValues = [];
+    const yTickCount = 8; // Number of horizontal grid lines
 
-    // Draw bars for each date group
-    eventsDataByDate.forEach(dateGroup => {
-      const dateStr = dateGroup[0];
-      const events = dateGroup[1];
-      const date = events[0].date; // All events in this group have the same date
-      const barX = xTime(date) - barWidth / 2;
+    // Calculate nice dollar values for grid lines
+    const maxDisplayValue = Math.ceil(maxValue / 10000) * 10000; // Round to nearest $10,000
+    const yTickStep = (maxDisplayValue * 2) / yTickCount;
+
+    // Generate values for both inflows and outflows
+    for (let i = 1; i <= yTickCount/2; i++) {
+      // Positive values (inflows)
+      yGridValues.push(i * yTickStep / 2);
+      // Negative values (outflows)
+      yGridValues.push(-i * yTickStep / 2);
+    }
+
+    // Add horizontal grid lines (behind everything else)
+    yGridValues.forEach(value => {
+      // Skip if too close to zero
+      if (Math.abs(value) < yTickStep / 4) return;
+      
+      // Make gridlines darker for major divisions
+      const isDivisibleBy10000 = Math.abs(value) % 10000 < 0.1;
+      
+      barChartSvg
+        .append("line")
+        .attr("class", "horizontal-grid-line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(value))
+        .attr("y2", y(value))
+        .attr("stroke", isDivisibleBy10000 ? "#ddd" : "#eee") // Darker for major lines
+        .attr("stroke-width", isDivisibleBy10000 ? 1 : 0.5)
+        .attr("stroke-dasharray", isDivisibleBy10000 ? "3,3" : "2,4")
+        .attr("opacity", 0.7);
+    });
+
+    // Calculate width for each bar based on the SAME groupedEvents used for timeline
+    const uniqueDatesCount = groupedEvents.length;
+    
+    // Calculate bar width based on available space and date count
+    const barWidthFactor = 0.5; // 50% of available space for bars (leaving more space between)
+    const barWidth = Math.min(
+      (width / Math.max(uniqueDatesCount, 12)) * barWidthFactor, 
+      20  // Maximum bar width of 20px for clearer spacing
+    );
+    
+    // Add spacing between bars
+    const barSpacing = Math.min(barWidth * 0.4, 8); // More space between bars
+    
+    console.log(`Bar dimensions: ${uniqueDatesCount} dates, width=${barWidth}px, spacing=${barSpacing}px`);
+
+    // Draw bars for each date group - using the SAME grouped events as the timeline
+    groupedEvents.forEach(group => {
+      const date = group.date; // Use the exact same date as the timeline point
+      const events = group.events;
+      const barX = xTime(date) - (barWidth / 2);
 
       // Draw inflow bars (positive values)
       events.filter(e => e.amount > 0).forEach(event => {
@@ -1049,9 +1126,9 @@ document.addEventListener("DOMContentLoaded", function () {
         barChartSvg
           .append("rect")
           .attr("class", "cashflow-bar-inflow")
-          .attr("x", barX)
+          .attr("x", barX + barSpacing/2)
           .attr("y", y(event.amount))
-          .attr("width", barWidth)
+          .attr("width", barWidth - barSpacing)
           .attr("height", barHeight)
           .attr("fill", transactionColors[event.type])
           .attr("opacity", 0.8)
@@ -1084,16 +1161,16 @@ document.addEventListener("DOMContentLoaded", function () {
           });
       });
 
-      // Draw outflow bars (negative values)
+      // Draw outflow bars (negative values) 
       events.filter(e => e.amount < 0).forEach(event => {
         const barHeight = y(event.amount) - y(0);
         
         barChartSvg
           .append("rect")
           .attr("class", "cashflow-bar-outflow")
-          .attr("x", barX)
+          .attr("x", barX + barSpacing/2)
           .attr("y", y(0))
-          .attr("width", barWidth)
+          .attr("width", barWidth - barSpacing)
           .attr("height", barHeight)
           .attr("fill", transactionColors[event.type])
           .attr("opacity", 0.8)
@@ -1147,14 +1224,15 @@ document.addEventListener("DOMContentLoaded", function () {
       .y(d => y(d.balance))
       .curve(d3.curveMonotoneX);
 
-    // Draw the balance line
+    // Draw the balance line (on top of everything else)
     barChartSvg
       .append("path")
       .datum(balanceData)
       .attr("class", "closing-balance-line")
-      .attr("d", line);
-
-    // Add balance data points
+      .attr("d", line)
+      .attr("stroke-width", 2); // Make the line slightly thicker
+      
+    // Add balance data points on top of everything
     barChartSvg
       .selectAll(".balance-point")
       .data(balanceData.filter(d => d.event)) // Only add points for actual events
@@ -1190,6 +1268,15 @@ document.addEventListener("DOMContentLoaded", function () {
           .duration(500)
           .style("opacity", 0);
       });
+
+    // Add a transparent overlay to the timeline for better interaction
+    cashflowSvg
+      .append("rect")
+      .attr("x", timelineStart)
+      .attr("y", cashflowTimelineY - 10)
+      .attr("width", timelineEnd - timelineStart)
+      .attr("height", 20)
+      .attr("fill", "transparent");
   }
 
   // Initialize the chart when the DOM is loaded
