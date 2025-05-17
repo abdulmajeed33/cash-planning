@@ -112,9 +112,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function set1Month() {
     const now = new Date();
     
-    endDate = new Date(now);
+    // Set start date to half a month before now, and end date to half a month after now
+    // This places today roughly in the middle of the timeline
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 1); // Go back 1 month
+    startDate.setDate(now.getDate() - 15); // Go back half a month
+    
+    endDate = new Date(now);
+    endDate.setDate(now.getDate() + 15); // Go forward half a month
     
     updateInputsAndChart();
   }
@@ -122,9 +126,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function set3Months() {
     const now = new Date();
     
-    endDate = new Date(now);
+    // Set start date to 1.5 months before now, and end date to 1.5 months after now
+    // This places today roughly in the middle of the timeline
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 3); // Go back 3 months
+    startDate.setMonth(now.getMonth() - 1.5); // Go back 1.5 months
+    
+    endDate = new Date(now);
+    endDate.setMonth(now.getMonth() + 1.5); // Go forward 1.5 months
     
     updateInputsAndChart();
   }
@@ -132,9 +140,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function set6Months() {
     const now = new Date();
     
-    endDate = new Date(now);
+    // Set start date to 3 months before now, and end date to 3 months after now
+    // This places today roughly in the middle of the timeline
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 6); // Go back 6 months
+    startDate.setMonth(now.getMonth() - 3); // Go back 3 months
+    
+    endDate = new Date(now);
+    endDate.setMonth(now.getMonth() + 3); // Go forward 3 months
     
     updateInputsAndChart();
   }
@@ -142,9 +154,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function set1Year() {
     const now = new Date();
     
-    endDate = new Date(now);
+    // Set start date to 6 months before now, and end date to 6 months after now
+    // This places today roughly in the middle of the timeline
     startDate = new Date(now);
-    startDate.setFullYear(now.getFullYear() - 1); // Go back 1 year
+    startDate.setMonth(now.getMonth() - 6); // Go back 6 months
+    
+    endDate = new Date(now);
+    endDate.setMonth(now.getMonth() + 6); // Go forward 6 months
     
     updateInputsAndChart();
   }
