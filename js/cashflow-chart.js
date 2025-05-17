@@ -599,12 +599,214 @@ document.addEventListener("DOMContentLoaded", function () {
     if (visibleEvents.length === 0) {
       cashflowChart.append("div")
         .attr("class", "no-data-message")
-        .text("No cash flow events in the selected period.");
-      return;
+        .text("No operational cash flow events in the selected range. Click anywhere on the timeline below to add a new transaction.");
+      
+      // Create the legend at the top of the chart section even when there's no data
+      const legendItems = [
+        { type: "recurringPayment", label: "Recurring Payment" },
+        { type: "nonRecurringPayment", label: "Non-Recurring Payment" },
+        { type: "invoice", label: "Invoice" },
+        { type: "supplierPayment", label: "Supplier Payment" }
+      ];
+
+      // Populate the legend at the top
+      const topLegend = d3.select("#cashflow-legend");
+      topLegend.html(""); // Clear any existing content
+
+      legendItems.forEach((item) => {
+        const legendItem = topLegend.append("div").attr("class", "legend-item");
+
+        legendItem
+          .append("div")
+          .attr("class", "color-box")
+          .style("background-color", transactionColors[item.type]);
+
+        legendItem
+          .append("span")
+          .html(`${item.label}`);
+      });
+
+      // Add closing balance to legend
+      const balanceLegendItem = topLegend
+        .append("div")
+        .attr("class", "legend-item balance-legend-item");
+
+      balanceLegendItem
+        .append("div")
+        .attr("class", "color-box")
+        .style("background-color", "#FF9800");
+
+      balanceLegendItem
+        .append("span")
+        .html(`Closing Balance`);
+      
+      // Continue rendering the empty chart timeline instead of returning
+      // First, create the timeline for cash flows at the top of the chart
+      const timelineHeight = 150;
+      const cashflowSvg = d3
+        .select("#cashflow-chart")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", timelineHeight)
+        .attr("viewBox", `0 0 ${svgWidth} ${timelineHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
+
+      const cashflowTimelineY = 60;
+
+      // Draw timeline
+      cashflowSvg
+        .append("line")
+        .attr("class", "timeline")
+        .attr("x1", timelineStart)
+        .attr("x2", timelineEnd)
+        .attr("y1", cashflowTimelineY)
+        .attr("y2", cashflowTimelineY)
+        .attr("stroke", "#ddd")
+        .attr("stroke-width", 1);
+      
+      // Add "Today" indicator if current date is within the visible range
+      const today = new Date();
+      
+      // Create date-only versions (without time) for comparison
+      const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      
+      if (todayDateOnly >= startDateOnly && todayDateOnly <= endDateOnly) {
+        const todayX = timeScale(today);
+
+        // Add vertical line for today
+        cashflowSvg
+          .append("line")
+          .attr("class", "today-line")
+          .attr("x1", todayX)
+          .attr("x2", todayX)
+          .attr("y1", cashflowTimelineY - 25)
+          .attr("y2", cashflowTimelineY + 25)
+          .attr("stroke", "#FF5722")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-dasharray", "4,3");
+
+        // Add "Today" label
+        cashflowSvg
+          .append("text")
+          .attr("class", "today-label")
+          .attr("x", todayX)
+          .attr("y", cashflowTimelineY - 30)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "11px")
+          .attr("font-weight", "bold")
+          .attr("fill", "#FF5722")
+          .text("Today");
+
+        // Add dot on timeline
+        cashflowSvg
+          .append("circle")
+          .attr("class", "today-dot")
+          .attr("cx", todayX)
+          .attr("cy", cashflowTimelineY)
+          .attr("r", 4)
+          .attr("fill", "#FF5722")
+          .attr("stroke", "white")
+          .attr("stroke-width", 1)
+          .on("mouseover", function (event) {
+            d3.select(".cashflow-tooltip")
+              .transition()
+              .duration(200)
+              .style("opacity", 0.9);
+            
+            d3.select(".cashflow-tooltip")
+              .html(`Today: ${dateFormat(today)}`)
+              .style("left", event.pageX + 10 + "px")
+              .style("top", event.pageY - 28 + "px");
+          })
+          .on("mouseout", function () {
+            d3.select(".cashflow-tooltip")
+              .transition()
+              .duration(500)
+              .style("opacity", 0);
+          });
+      }
+
+      // Create time axis with ticks
+      const timeAxis = d3
+        .axisBottom(timeScale)
+        .ticks(10)
+        .tickFormat(d3.timeFormat("%b %d"))
+        .tickSize(5);
+
+      // Add time axis
+      cashflowSvg
+        .append("g")
+        .attr("class", "time-axis")
+        .attr("transform", `translate(0, ${cashflowTimelineY})`)
+        .call(timeAxis)
+        .select(".domain")
+        .remove();
+
+      // Style tick lines
+      cashflowSvg
+        .selectAll(".time-axis line")
+        .attr("stroke", "#ccc")
+        .attr("stroke-dasharray", "2,2");
+
+      // Style tick text
+      cashflowSvg
+        .selectAll(".time-axis text")
+        .attr("font-size", "10px")
+        .attr("dy", "1em");
+
+      // Add year labels
+      const startYear = startDate.getFullYear();
+      const endYear = endDate.getFullYear();
+
+      // Add start year label
+      cashflowSvg
+        .append("text")
+        .attr("class", "year-label")
+        .attr("x", timelineStart)
+        .attr("y", cashflowTimelineY + 35)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "12px")
+        .text(startYear);
+
+      // Add end year label if different
+      if (startYear !== endYear) {
+        cashflowSvg
+          .append("text")
+          .attr("class", "year-label")
+          .attr("x", timelineEnd)
+          .attr("y", cashflowTimelineY + 35)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .text(endYear);
+      }
+      
+      // Add click area for adding new transactions
+      cashflowSvg
+        .append("rect")
+        .attr("pointer-events", "all")
+        .attr("x", timelineStart)
+        .attr("y", cashflowTimelineY - 10)
+        .attr("width", timelineEnd - timelineStart)
+        .attr("height", 20)
+        .attr("fill", "transparent")
+        .style("cursor", "copy")
+        .on("click", function (event) {
+          const coords = d3.pointer(event);
+          const clickX = coords[0];
+          const clickDate = getDateFromPosition(clickX);
+          
+          if (isDateInRange(clickDate)) {
+            // Add code here to open a form/modal to add a new cash flow transaction
+            alert(`Add a new cash flow transaction on ${dateFormat(clickDate)}`);
+            // This will be replaced with actual functionality to add new transactions
+          }
+        });
+    } else {
+      // Draw the chart with events
+      drawCashFlowChart(visibleEvents);
     }
-    
-    // Draw the chart
-    drawCashFlowChart(visibleEvents);
   }
 
   // Function to draw the cash flow chart
