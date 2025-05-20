@@ -1433,60 +1433,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .text(d3.timeFormat("%b %d")(date));
     });
 
-    // Calculate running balance
-    const balanceData = calculateRunningBalance(visibleEvents, openingBalance);
-
-    // Create a line generator for the balance
-    const line = d3.line()
-      .x(d => xTime(d.date))
-      .y(d => y(d.balance))
-      .curve(d3.curveMonotoneX);
-
-    // Draw the balance line (on top of everything else)
-    barChartSvg
-      .append("path")
-      .datum(balanceData)
-      .attr("class", "closing-balance-line")
-      .attr("d", line)
-      .attr("stroke-width", 2); // Make the line slightly thicker
-      
-    // Add balance data points on top of everything
-    barChartSvg
-      .selectAll(".balance-point")
-      .data(balanceData.filter(d => d.event)) // Only add points for actual events
-      .enter()
-      .append("circle")
-      .attr("class", "balance-point")
-      .attr("cx", d => xTime(d.date))
-      .attr("cy", d => y(d.balance))
-      .attr("r", 4)
-      .attr("fill", "#FF9800")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5)
-      .on("mouseenter", function (event, d) {
-        d3.select(".cashflow-tooltip")
-          .transition()
-          .duration(200)
-          .style("opacity", 0.9);
-          
-        d3.select(".cashflow-tooltip")
-          .html(`
-            <strong>Date: ${dateFormat(d.date)}</strong><br>
-            <strong>Balance: $${d.balance.toLocaleString()}</strong><br>
-            <hr style="margin: 5px 0; opacity: 0.3">
-            <span style="font-size: 0.9em;">After ${d.event.amount > 0 ? "receiving" : "paying"} 
-            $${Math.abs(d.event.amount).toLocaleString()} for ${d.event.description}</span>
-          `)
-          .style("left", event.pageX + 10 + "px")
-          .style("top", event.pageY - 28 + "px");
-      })
-      .on("mouseleave", function () {
-        d3.select(".cashflow-tooltip")
-          .transition()
-          .duration(500)
-          .style("opacity", 0);
-      });
-
     // Add a transparent overlay to the timeline for better interaction
     cashflowSvg
       .append("rect")
