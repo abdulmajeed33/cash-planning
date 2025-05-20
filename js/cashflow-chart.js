@@ -341,7 +341,19 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("div")
         .attr("class", "cashflow-tooltip tooltip")
         .style("opacity", 0)
-        .style("transform", "scale(0.95)");
+        .style("transform", "scale(0.95)")
+        .style("position", "absolute")
+        .style("background", "rgba(50, 50, 50, 0.95)")
+        .style("color", "white")
+        .style("border-radius", "5px")
+        .style("padding", "10px 15px")
+        .style("font-size", "13px")
+        .style("line-height", "1.4")
+        .style("pointer-events", "none")
+        .style("z-index", "1000")
+        .style("box-shadow", "0 2px 10px rgba(0,0,0,0.3)")
+        .style("border", "1px solid rgba(255,255,255,0.3)")
+        .style("max-width", "300px");
     }
     
     // Create date label for dragging if it doesn't exist
@@ -504,6 +516,8 @@ document.addEventListener("DOMContentLoaded", function () {
         currentGroup = {
           date: event.date,
           events: [event],
+          totalInflow: event.amount > 0 ? event.amount : 0,
+          totalOutflow: event.amount < 0 ? Math.abs(event.amount) : 0
         };
         groups.push(currentGroup);
       } else {
@@ -514,6 +528,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (daysDiff <= dayThreshold) {
           // Add to current group
           currentGroup.events.push(event);
+          
+          // Update totals
+          if (event.amount > 0) {
+            currentGroup.totalInflow += event.amount;
+          } else {
+            currentGroup.totalOutflow += Math.abs(event.amount);
+          }
           
           // Update group date as the average
           const totalTime = currentGroup.events.reduce(
@@ -526,10 +547,17 @@ document.addEventListener("DOMContentLoaded", function () {
           currentGroup = {
             date: event.date,
             events: [event],
+            totalInflow: event.amount > 0 ? event.amount : 0,
+            totalOutflow: event.amount < 0 ? Math.abs(event.amount) : 0
           };
           groups.push(currentGroup);
         }
       }
+    });
+    
+    // Calculate net flow for each group
+    groups.forEach(group => {
+      group.netFlow = group.totalInflow - group.totalOutflow;
     });
     
     return groups;
@@ -1016,6 +1044,31 @@ document.addEventListener("DOMContentLoaded", function () {
           // Get event count
           const eventCount = d.events.length;
           
+          // Count each type of event for the tooltip
+          const eventTypes = {};
+          d.events.forEach(e => {
+            eventTypes[e.type] = (eventTypes[e.type] || 0) + 1;
+          });
+          
+          // Create event type breakdown for tooltip
+          let eventBreakdown = '';
+          Object.keys(eventTypes).forEach(type => {
+            let typeName = type;
+            switch(type) {
+              case 'recurringPayment': typeName = 'Recurring Payments'; break;
+              case 'nonRecurringPayment': typeName = 'Non-Recurring Payments'; break;
+              case 'invoice': typeName = 'Invoices'; break;
+              case 'supplierPayment': typeName = 'Supplier Payments'; break;
+            }
+            eventBreakdown += `<div style="display:flex; justify-content:space-between; margin:2px 0">
+              <span>${typeName}:</span> 
+              <span>${eventTypes[type]}</span>
+            </div>`;
+          });
+          
+          // Create financial summary
+          const netFlowColor = d.netFlow >= 0 ? "#2ecc71" : "#e74c3c";
+          
           d3.select(".cashflow-tooltip")
             .transition()
             .duration(200)
@@ -1023,8 +1076,30 @@ document.addEventListener("DOMContentLoaded", function () {
             
           d3.select(".cashflow-tooltip")
             .html(`
-              <strong>Date: ${dateFormat(d.date)}</strong><br>
-              <strong>Events: ${eventCount}</strong>
+              <div style="border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:6px; padding-bottom:6px">
+                <strong style="font-size:15px">${dateFormat(d.date)}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:6px">
+                <span>Total Events:</span> 
+                <span>${eventCount}</span>
+              </div>
+              
+              ${eventBreakdown}
+              
+              <div style="border-top:1px solid rgba(255,255,255,0.2); margin-top:6px; padding-top:6px">
+                <div style="display:flex; justify-content:space-between; margin:2px 0">
+                  <span>Total Inflows:</span> 
+                  <span style="color:#2ecc71">$${d.totalInflow.toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin:2px 0">
+                  <span>Total Outflows:</span> 
+                  <span style="color:#e74c3c">$${d.totalOutflow.toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin:5px 0; font-weight:bold">
+                  <span>Net Cash Flow:</span> 
+                  <span style="color:${netFlowColor}">$${Math.abs(d.netFlow).toLocaleString()}${d.netFlow >= 0 ? ' (+)' : ' (-)'}</span>
+                </div>
+              </div>
             `)
             .style("left", event.pageX + 10 + "px")
             .style("top", event.pageY - 28 + "px");
@@ -1062,7 +1137,8 @@ document.addEventListener("DOMContentLoaded", function () {
           .append("g")
           .attr("data-id", event.id)
           .attr("transform", `translate(${position + offsetX}, ${verticalPosition})`)
-          .style("cursor", "pointer");
+          .style("cursor", "pointer")
+          .datum(event); // Attach event data to the group
 
         // Add invisible circle for better hover area
         eventGroup
@@ -1103,39 +1179,99 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Add tooltip for more details
         eventGroup
-          .on("mouseenter", function (event) {
+          .on("mouseenter", function (event, d) {
             d3.select(".cashflow-tooltip")
               .transition()
               .duration(200)
               .style("opacity", 0.9)
               .style("transform", "scale(1)");
 
+            // d is the event data
+            const eventData = d;
             // Format event type for display
             let eventType = "";
-            switch (event.currentTarget.__data__.type) {
+            let eventTypeIcon = "";
+            switch (eventData.type) {
               case "recurringPayment":
                 eventType = "Recurring Payment";
+                eventTypeIcon = "💼";
                 break;
               case "nonRecurringPayment":
                 eventType = "Non-Recurring Payment";
+                eventTypeIcon = "📋";
                 break;
               case "invoice":
                 eventType = "Invoice";
+                eventTypeIcon = "📥";
                 break;
               case "supplierPayment":
                 eventType = "Supplier Payment";
+                eventTypeIcon = "📤";
                 break;
               default:
                 eventType = "Cash Flow Event";
+                eventTypeIcon = "💰";
             }
-
+            // Format amount with color based on direction (incoming/outgoing)
+            const amountColor = eventData.amount >= 0 ? "#2ecc71" : "#e74c3c";
+            const amountText = eventData.amount >= 0 ? "Incoming" : "Outgoing";
+            // Get original data details based on event type
+            let additionalDetails = "";
+            if (eventData.originalData) {
+              if (eventData.type === "recurringPayment") {
+                additionalDetails = `
+                  <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px">
+                    <div>Monthly on day ${eventData.originalData.day_of_month}</div>
+                  </div>
+                `;
+              } else if (eventData.type === "invoice") {
+                additionalDetails = `
+                  <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px">
+                    <div>Client: ${eventData.originalData.client_name}</div>
+                    <div>Invoice: ${eventData.originalData.invoice_code}</div>
+                  </div>
+                `;
+              } else if (eventData.type === "supplierPayment") {
+                additionalDetails = `
+                  <div style="margin-top:8px; border-top:1px solid rgba(255,255,255,0.2); padding-top:8px">
+                    <div>Supplier: ${eventData.originalData.supplier_name}</div>
+                    <div>Invoice: ${eventData.originalData.invoice_code}</div>
+                  </div>
+                `;
+              }
+            }
+            // Get days from today calculation
+            const today = new Date();
+            const diffTime = Math.abs(eventData.date - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const isPast = eventData.date < today;
+            const daysText = isPast 
+              ? `<div style="margin-top:8px; font-style:italic; opacity:0.8">${diffDays} days ago</div>` 
+              : `<div style="margin-top:8px; font-style:italic; opacity:0.8">In ${diffDays} days</div>`;
             d3.select(".cashflow-tooltip")
               .html(`
-                <strong>${event.currentTarget.__data__.description}</strong><br/>
-                Type: <strong>${eventType}</strong><br/>
-                Date: <strong>${dateFormat(event.currentTarget.__data__.date)}</strong><br/>
-                Amount: <strong>$${Math.abs(event.currentTarget.__data__.amount).toLocaleString()}</strong>
-                ${event.currentTarget.__data__.amount < 0 ? " (Outgoing)" : " (Incoming)"}
+                <div style="border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:6px">
+                  <div style="font-size:16px; font-weight:bold; display:flex; align-items:center">
+                    <span style="margin-right:8px">${eventTypeIcon}</span>
+                    <span>${eventData.description}</span>
+                  </div>
+                  <div style="font-size:13px; opacity:0.9">${eventType}</div>
+                </div>
+                
+                <div style="margin:5px 0">
+                  <div>Date: <strong>${dateFormat(eventData.date)}</strong></div>
+                  ${daysText}
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0; padding:5px; background:rgba(0,0,0,0.2); border-radius:4px">
+                  <span>Amount:</span>
+                  <span style="color:${amountColor}; font-weight:bold; font-size:16px">
+                    $${Math.abs(eventData.amount).toLocaleString()} 
+                    <span style="font-size:12px">(${amountText})</span>
+                  </span>
+                </div>
+                
+                ${additionalDetails}
               `)
               .style("left", event.pageX + 15 + "px")
               .style("top", event.pageY - 100 + "px");
@@ -1343,6 +1479,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         barChartSvg
           .append("rect")
+          .datum(event)
           .attr("class", "cashflow-bar-inflow")
           .attr("x", barX + barSpacing/2)
           .attr("y", y(event.amount))
@@ -1356,17 +1493,60 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("data-type", event.type)
           .attr("data-amount", event.amount)
           .attr("data-date", date.toISOString())
-          .on("mouseenter", function (event) {
+          .on("mouseenter", function (event, d) {
+            const eventData = d;
+            const dateStr = dateFormat(new Date(event.currentTarget.getAttribute("data-date")));
+            
             d3.select(".cashflow-tooltip")
               .transition()
               .duration(200)
               .style("opacity", 0.9);
+            
+            // Get days from today calculation
+            const today = new Date();
+            const eventDate = new Date(event.currentTarget.getAttribute("data-date"));
+            const diffTime = Math.abs(eventDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const isPast = eventDate < today;
+            
+            // Format additional details based on type
+            let additionalDetails = "";
+            
+            if (eventData.originalData) {
+              if (eventData.type === "invoice") {
+                additionalDetails = `
+                  <div style="border-top:1px solid rgba(255,255,255,0.2); margin-top:8px; padding-top:8px">
+                    <div>Client: ${eventData.originalData.client_name}</div>
+                    <div>Invoice: ${eventData.originalData.invoice_code}</div>
+                    <div>Due date: ${dateFormat(new Date(eventData.originalData.due_date))}</div>
+                  </div>
+                `;
+              }
+            }
               
             d3.select(".cashflow-tooltip")
               .html(`
-                <strong>${event.currentTarget.__data__.description}</strong><br>
-                <strong>Date: ${dateFormat(date)}</strong><br>
-                <strong>Amount: $${Math.abs(event.currentTarget.__data__.amount).toLocaleString()} (Incoming)</strong>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:6px">
+                  <div style="font-size:16px; font-weight:bold; display:flex; align-items:center">
+                    <span style="margin-right:8px">📥</span>
+                    <span>${eventData.description}</span>
+                  </div>
+                </div>
+                
+                <div>Date: <strong>${dateStr}</strong></div>
+                <div style="font-style:italic; opacity:0.8; margin-bottom:8px">
+                  ${isPast ? `${diffDays} days ago` : `In ${diffDays} days`}
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0; padding:5px; background:rgba(46, 204, 113, 0.2); border-radius:4px">
+                  <span>Amount:</span>
+                  <span style="color:#2ecc71; font-weight:bold; font-size:16px">
+                    $${Math.abs(eventData.amount).toLocaleString()} 
+                    <span style="font-size:12px">(Incoming)</span>
+                  </span>
+                </div>
+                
+                ${additionalDetails}
               `)
               .style("left", event.pageX + 10 + "px")
               .style("top", event.pageY - 28 + "px");
@@ -1385,6 +1565,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         barChartSvg
           .append("rect")
+          .datum(event)
           .attr("class", "cashflow-bar-outflow")
           .attr("x", barX + barSpacing/2)
           .attr("y", y(0))
@@ -1398,17 +1579,75 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("data-type", event.type)
           .attr("data-amount", event.amount)
           .attr("data-date", date.toISOString())
-          .on("mouseenter", function (event) {
+          .on("mouseenter", function (event, d) {
+            const eventData = d;
+            const dateStr = dateFormat(new Date(event.currentTarget.getAttribute("data-date")));
+            
             d3.select(".cashflow-tooltip")
               .transition()
               .duration(200)
               .style("opacity", 0.9);
+            
+            // Get days from today calculation
+            const today = new Date();
+            const eventDate = new Date(event.currentTarget.getAttribute("data-date"));
+            const diffTime = Math.abs(eventDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const isPast = eventDate < today;
+            
+            // Format additional details based on type
+            let additionalDetails = "";
+            let icon = "📤";
+            
+            if (eventData.originalData) {
+              if (eventData.type === "recurringPayment") {
+                icon = "💼";
+                additionalDetails = `
+                  <div style="border-top:1px solid rgba(255,255,255,0.2); margin-top:8px; padding-top:8px">
+                    <div>Monthly on day ${eventData.originalData.day_of_month}</div>
+                  </div>
+                `;
+              } else if (eventData.type === "supplierPayment") {
+                additionalDetails = `
+                  <div style="border-top:1px solid rgba(255,255,255,0.2); margin-top:8px; padding-top:8px">
+                    <div>Supplier: ${eventData.originalData.supplier_name}</div>
+                    <div>Invoice: ${eventData.originalData.invoice_code}</div>
+                    <div>Due date: ${dateFormat(new Date(eventData.originalData.due_date))}</div>
+                  </div>
+                `;
+              } else if (eventData.type === "nonRecurringPayment") {
+                icon = "📋";
+                additionalDetails = `
+                  <div style="border-top:1px solid rgba(255,255,255,0.2); margin-top:8px; padding-top:8px">
+                    <div>Payment date: ${dateFormat(new Date(eventData.originalData.payment_date))}</div>
+                  </div>
+                `;
+              }
+            }
               
             d3.select(".cashflow-tooltip")
               .html(`
-                <strong>${event.currentTarget.__data__.description}</strong><br>
-                <strong>Date: ${dateFormat(date)}</strong><br>
-                <strong>Amount: $${Math.abs(event.currentTarget.__data__.amount).toLocaleString()} (Outgoing)</strong>
+                <div style="border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:6px">
+                  <div style="font-size:16px; font-weight:bold; display:flex; align-items:center">
+                    <span style="margin-right:8px">${icon}</span>
+                    <span>${eventData.description}</span>
+                  </div>
+                </div>
+                
+                <div>Date: <strong>${dateStr}</strong></div>
+                <div style="font-style:italic; opacity:0.8; margin-bottom:8px">
+                  ${isPast ? `${diffDays} days ago` : `In ${diffDays} days`}
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0; padding:5px; background:rgba(231, 76, 60, 0.2); border-radius:4px">
+                  <span>Amount:</span>
+                  <span style="color:#e74c3c; font-weight:bold; font-size:16px">
+                    $${Math.abs(eventData.amount).toLocaleString()} 
+                    <span style="font-size:12px">(Outgoing)</span>
+                  </span>
+                </div>
+                
+                ${additionalDetails}
               `)
               .style("left", event.pageX + 10 + "px")
               .style("top", event.pageY - 28 + "px");
