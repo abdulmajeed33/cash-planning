@@ -1592,77 +1592,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const investmentChart = d3.select("#investment-chart");
     investmentChart.html("");
 
-    // Create the legend at the top of the chart section
-    const legendItems = [
-      { type: "fund-buy", label: "Fund Purchase" },
-      { type: "fund-sale", label: "Fund Sale" },
-      { type: "land-buy", label: "Land Purchase" },
-      { type: "land-sale", label: "Land Sale" },
-      // Cash flow legend items
-      { type: "recurringPayment", label: "Recurring Payment" },
-      { type: "nonRecurringPayment", label: "Non-Recurring Payment" },
-      { type: "invoice", label: "Invoice" },
-      { type: "supplierPayment", label: "Supplier Payment" },
-    ];
-
-    // Color scale for different investment types (defined early so it can be used in legend)
-    const color = d3
-      .scaleOrdinal()
-      .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
-      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
-
-    // Populate the legend at the top
-    const topLegend = d3.select("#investment-legend");
-    topLegend.html(""); // Clear any existing content
-
-    legendItems.forEach((item) => {
-      const legendItem = topLegend.append("div").attr("class", "legend-item");
-
-      legendItem
-        .append("div")
-        .attr("class", "color-box")
-        .style("background-color", color(item.type));
-
-      legendItem
-        .append("span")
-        .html(`${item.label}`);
-    });
-
-    // Add closing balance to legend
-    const balanceLegendItem = topLegend
-      .append("div")
-      .attr("class", "legend-item balance-legend-item");
-
-    balanceLegendItem
-      .append("div")
-      .attr("class", "color-box")
-      .style("background-color", "#FF9800");
-
-    balanceLegendItem
-      .append("span")
-      .html(`Closing Balance`);
-
-    // Add divider line explanation to legend
-    const dividerLegendItem = topLegend
-      .append("div")
-      .attr("class", "legend-item")
-      .style("margin-top", "8px");
-
-    // Create a small line to demonstrate the divider
-    dividerLegendItem
-      .append("div")
-      .attr("class", "color-box")
-      .html(
-        `<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`
-      )
-      .style("background", "transparent");
-
-    dividerLegendItem
-      .append("span")
-      .html(
-        `<small>Dashed lines separate transactions on different dates</small>`
-      );
-
     // Filter transactions and cash flow events based on selected date range AND amount filter
     const visibleTransactions = filterTransactions(transactionData);
     const visibleCashFlowEvents = filterCashFlowEvents(cashFlowEvents);
@@ -1819,6 +1748,168 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Now draw the combined bar chart below both timelines
     drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents);
+
+    // Create the legend at the bottom of the chart section
+    const legendItems = [
+      // Investment items
+      { type: "fund-buy", label: "Fund Purchase", category: "Investment" },
+      { type: "fund-sale", label: "Fund Sale", category: "Investment" },
+      { type: "land-buy", label: "Land Purchase", category: "Investment" },
+      { type: "land-sale", label: "Land Sale", category: "Investment" },
+      // Cash flow items
+      { type: "recurringPayment", label: "Recurring Payment", category: "Cash Flow" },
+      { type: "nonRecurringPayment", label: "Non-Recurring Payment", category: "Cash Flow" },
+      { type: "invoice", label: "Invoice", category: "Cash Flow" },
+      { type: "supplierPayment", label: "Supplier Payment", category: "Cash Flow" },
+    ];
+
+    // Color scale for different investment types (defined early so it can be used in legend)
+    const color = d3
+      .scaleOrdinal()
+      .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
+      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
+
+    // Populate the legend at the bottom with improved layout
+    const bottomLegend = d3.select("#investment-legend");
+    bottomLegend.html(""); // Clear any existing content
+
+    // Create legend sections
+    const legendContainer = bottomLegend
+      .append("div")
+      .style("display", "flex")
+      .style("flex-wrap", "wrap")
+      .style("gap", "20px")
+      .style("align-items", "flex-start")
+      .style("margin-top", "30px")
+      .style("padding", "20px")
+      .style("background", "#f8f9fa")
+      .style("border-radius", "8px")
+      .style("border", "1px solid #dee2e6");
+
+    // Group legend items by category
+    const investmentItems = legendItems.filter(item => item.category === "Investment");
+    const cashFlowItems = legendItems.filter(item => item.category === "Cash Flow");
+
+    // Create Investment section
+    const investmentSection = legendContainer
+      .append("div")
+      .style("flex", "1")
+      .style("min-width", "300px");
+
+    investmentSection
+      .append("h4")
+      .style("margin", "0 0 8px 0")
+      .style("font-size", "14px")
+      .style("color", "#333")
+      .text("Investment Transactions");
+
+    const investmentGrid = investmentSection
+      .append("div")
+      .style("display", "grid")
+      .style("grid-template-columns", "1fr 1fr")
+      .style("gap", "8px");
+
+    investmentItems.forEach((item) => {
+      const legendItem = investmentGrid.append("div")
+        .attr("class", "legend-item")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "6px");
+
+      legendItem
+        .append("div")
+        .attr("class", "color-box")
+        .style("width", "12px")
+        .style("height", "12px")
+        .style("background-color", color(item.type))
+        .style("border-radius", "2px");
+
+      legendItem
+        .append("span")
+        .style("font-size", "12px")
+        .text(item.label);
+    });
+
+    // Create Cash Flow section
+    const cashFlowSection = legendContainer
+      .append("div")
+      .style("flex", "1")
+      .style("min-width", "300px");
+
+    cashFlowSection
+      .append("h4")
+      .style("margin", "0 0 8px 0")
+      .style("font-size", "14px")
+      .style("color", "#333")
+      .text("Cash Flow Events");
+
+    const cashFlowGrid = cashFlowSection
+      .append("div")
+      .style("display", "grid")
+      .style("grid-template-columns", "1fr 1fr")
+      .style("gap", "8px");
+
+    cashFlowItems.forEach((item) => {
+      const legendItem = cashFlowGrid.append("div")
+        .attr("class", "legend-item")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "6px");
+
+      legendItem
+        .append("div")
+        .attr("class", "color-box")
+        .style("width", "12px")
+        .style("height", "12px")
+        .style("background-color", color(item.type))
+        .style("border-radius", "2px");
+
+      legendItem
+        .append("span")
+        .style("font-size", "12px")
+        .text(item.label);
+    });
+
+    // Create Balance section
+    const balanceSection = legendContainer
+      .append("div")
+      .style("flex", "0 0 auto")
+      .style("min-width", "200px");
+
+    balanceSection
+      .append("h4")
+      .style("margin", "0 0 8px 0")
+      .style("font-size", "14px")
+      .style("color", "#333")
+      .text("Balance Tracking");
+
+    const balanceLegendItem = balanceSection
+      .append("div")
+      .attr("class", "legend-item")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "6px")
+      .style("margin-bottom", "8px");
+
+    balanceLegendItem
+      .append("div")
+      .style("width", "20px")
+      .style("height", "3px")
+      .style("background-color", "#FF9800")
+      .style("border-radius", "1px");
+
+    balanceLegendItem
+      .append("span")
+      .style("font-size", "12px")
+      .text("Running Balance");
+
+    // Add explanation
+    balanceSection
+      .append("div")
+      .style("font-size", "11px")
+      .style("color", "#666")
+      .style("line-height", "1.3")
+      .html("Dashed lines separate<br>transactions on different dates");
   }
 
   // Function to draw combined bar chart showing both investment transactions and cash flow events
@@ -1836,10 +1927,10 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("color", "#333")
       .text("Combined Financial Overview");
 
-    // Set chart dimensions
-    const margin = { top: 20, right: 50, bottom: 80, left: 60 };
-    const width = 1000 - margin.left - margin.right;
-    const height = 400 - margin.top - margin.bottom;
+    // Set chart dimensions - make it wider and taller for better visibility
+    const margin = { top: 20, right: 80, bottom: 100, left: 80 };
+    const width = 1200 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
 
     // Create SVG for combined bar chart
     const barChartSvg = d3
@@ -1900,25 +1991,30 @@ document.addEventListener("DOMContentLoaded", function () {
       .domain([startDate, endDate])
       .range([0, width]);
 
-    // Calculate bar width based on time scale
+    // Improved bar width calculation - make bars narrower and more spaced
     const calculateBarWidth = (date) => {
-      const currentMonth = new Date(date);
-      const nextMonth = new Date(date);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      if (nextMonth > endDate) {
-        nextMonth.setTime(endDate.getTime());
+      const timeRange = endDate.getTime() - startDate.getTime();
+      const dayRange = timeRange / (1000 * 60 * 60 * 24);
+      
+      // Base width on the total time range, with reasonable min/max
+      let barWidth;
+      if (dayRange <= 30) {
+        barWidth = width / Math.max(allEvents.length * 2, 10); // For short ranges
+      } else if (dayRange <= 90) {
+        barWidth = width / Math.max(allEvents.length * 1.5, 15); // For medium ranges
+      } else {
+        barWidth = width / Math.max(allEvents.length, 20); // For long ranges
       }
-
-      const monthWidth = xTime(nextMonth) - xTime(currentMonth);
-      return Math.min(Math.max(monthWidth * 0.6, 15), 60);
+      
+      // Ensure reasonable bounds
+      return Math.min(Math.max(barWidth, 8), 40);
     };
 
-    // Create time axis
+    // Create time axis with better formatting
     const timeAxis = d3
       .axisBottom(xTime)
-      .ticks(10)
-      .tickFormat(d3.timeFormat("%b %d"))
+      .ticks(8) // Reduce number of ticks for cleaner look
+      .tickFormat(d3.timeFormat("%b %Y"))
       .tickSize(5);
 
     // Add X axis
@@ -1937,11 +2033,24 @@ document.addEventListener("DOMContentLoaded", function () {
     // Style tick text
     barChartSvg
       .selectAll(".time-axis text")
-      .attr("font-size", "10px")
-      .attr("dy", "1em");
+      .attr("font-size", "11px")
+      .attr("dy", "1em")
+      .style("text-anchor", "middle");
 
-    // Add Y axis
-    barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
+    // Add Y axis with better formatting
+    barChartSvg.append("g")
+      .attr("class", "y-axis")
+      .call(d3.axisLeft(y)
+        .ticks(8)
+        .tickFormat((d) => {
+          if (Math.abs(d) >= 1000000) {
+            return `$${(d/1000000).toFixed(1)}M`;
+          } else if (Math.abs(d) >= 1000) {
+            return `$${(d/1000).toFixed(0)}K`;
+          } else {
+            return `$${d.toLocaleString()}`;
+          }
+        }));
 
     // Add horizontal line at y=0
     barChartSvg
@@ -1950,19 +2059,20 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("x2", width)
       .attr("y1", zeroLineY)
       .attr("y2", zeroLineY)
-      .attr("stroke", "#000")
-      .attr("stroke-width", 1)
-      .attr("stroke-dasharray", "4,4");
+      .attr("stroke", "#333")
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", "5,5");
 
     // Add Y axis label
     barChartSvg
       .append("text")
       .attr("text-anchor", "middle")
       .attr("transform", "rotate(-90)")
-      .attr("y", -margin.left)
+      .attr("y", -margin.left + 20)
       .attr("x", -height / 2)
       .text("Amount ($)")
-      .style("font-size", "12px");
+      .style("font-size", "14px")
+      .style("font-weight", "bold");
 
     // Group events by date for stacking
     const eventsByDate = d3.groups(allEvents, d => d.date.toDateString());
@@ -1970,8 +2080,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Draw bars for each date group
     eventsByDate.forEach(([dateString, events]) => {
       const date = new Date(dateString);
-      const barX = xTime(date) - calculateBarWidth(date) / 2;
       const barWidth = calculateBarWidth(date);
+      const barX = xTime(date) - barWidth / 2;
 
       // Separate positive and negative amounts
       const positiveEvents = events.filter(e => e.amount > 0);
@@ -1995,8 +2105,9 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("fill", color)
           .attr("opacity", 0.8)
           .attr("stroke", "#fff")
-          .attr("stroke-width", 0.5)
+          .attr("stroke-width", 1)
           .on("mouseenter", function (mouseEvent) {
+            d3.select(this).attr("opacity", 1);
             tooltip.transition().duration(200).style("opacity", 0.9);
             tooltip
               .html(getEventTooltipContent(event))
@@ -2004,6 +2115,7 @@ document.addEventListener("DOMContentLoaded", function () {
               .style("top", mouseEvent.pageY - 28 + "px");
           })
           .on("mouseleave", function () {
+            d3.select(this).attr("opacity", 0.8);
             tooltip.transition().duration(500).style("opacity", 0);
           });
 
@@ -2028,8 +2140,9 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("fill", color)
           .attr("opacity", 0.8)
           .attr("stroke", "#fff")
-          .attr("stroke-width", 0.5)
+          .attr("stroke-width", 1)
           .on("mouseenter", function (mouseEvent) {
+            d3.select(this).attr("opacity", 1);
             tooltip.transition().duration(200).style("opacity", 0.9);
             tooltip
               .html(getEventTooltipContent(event))
@@ -2037,6 +2150,7 @@ document.addEventListener("DOMContentLoaded", function () {
               .style("top", mouseEvent.pageY - 28 + "px");
           })
           .on("mouseleave", function () {
+            d3.select(this).attr("opacity", 0.8);
             tooltip.transition().duration(500).style("opacity", 0);
           });
 
@@ -2058,13 +2172,23 @@ document.addEventListener("DOMContentLoaded", function () {
     // Update Y scale to include balance data
     const maxBalance = Math.max(maxValue, d3.max(balanceData, d => d.balance) || 0);
     const minBalance = Math.min(minValue, d3.min(balanceData, d => d.balance) || 0);
-    y.domain([minBalance, maxBalance * 1.1]);
+    y.domain([minBalance * 1.1, maxBalance * 1.1]);
 
     // Redraw Y axis with updated scale
     barChartSvg.select(".y-axis").remove();
     barChartSvg.append("g")
       .attr("class", "y-axis")
-      .call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
+      .call(d3.axisLeft(y)
+        .ticks(8)
+        .tickFormat((d) => {
+          if (Math.abs(d) >= 1000000) {
+            return `$${(d/1000000).toFixed(1)}M`;
+          } else if (Math.abs(d) >= 1000) {
+            return `$${(d/1000).toFixed(0)}K`;
+          } else {
+            return `$${d.toLocaleString()}`;
+          }
+        }));
 
     // Create line generator for balance
     const line = d3.line()
@@ -2080,30 +2204,48 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("fill", "none")
       .attr("stroke", "#FF9800")
       .attr("stroke-width", 3)
-      .attr("opacity", 0.8);
+      .attr("opacity", 0.9);
 
-    // Add balance points
-    barChartSvg.selectAll(".balance-point")
-      .data(balanceData.slice(1, -1))
-      .enter()
-      .append("circle")
-      .attr("class", "balance-point")
-      .attr("cx", d => xTime(d.date))
-      .attr("cy", d => y(d.balance))
-      .attr("r", 4)
-      .attr("fill", "#FF9800")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5)
-      .on("mouseenter", function (mouseEvent, d) {
-        tooltip.transition().duration(200).style("opacity", 0.9);
-        tooltip
-          .html(`Date: ${dateFormat(d.date)}<br>Balance: $${d.balance.toLocaleString()}`)
-          .style("left", mouseEvent.pageX + 10 + "px")
-          .style("top", mouseEvent.pageY - 28 + "px");
-      })
-      .on("mouseleave", function () {
-        tooltip.transition().duration(500).style("opacity", 0);
-      });
+    // Add balance points - only show points for actual events, not start/end
+    const eventBalanceData = balanceData.slice(1, -1);
+    
+    // Only show balance points if there aren't too many (to avoid clutter)
+    if (eventBalanceData.length <= 20) {
+      barChartSvg.selectAll(".balance-point")
+        .data(eventBalanceData)
+        .enter()
+        .append("circle")
+        .attr("class", "balance-point")
+        .attr("cx", d => xTime(d.date))
+        .attr("cy", d => y(d.balance))
+        .attr("r", 4)
+        .attr("fill", "#FF9800")
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
+        .on("mouseenter", function (mouseEvent, d) {
+          d3.select(this).attr("r", 6);
+          tooltip.transition().duration(200).style("opacity", 0.9);
+          tooltip
+            .html(`Date: ${dateFormat(d.date)}<br>Balance: $${d.balance.toLocaleString()}`)
+            .style("left", mouseEvent.pageX + 10 + "px")
+            .style("top", mouseEvent.pageY - 28 + "px");
+        })
+        .on("mouseleave", function () {
+          d3.select(this).attr("r", 4);
+          tooltip.transition().duration(500).style("opacity", 0);
+        });
+    }
+
+    // Add chart title
+    barChartSvg
+      .append("text")
+      .attr("x", width / 2)
+      .attr("y", -5)
+      .attr("text-anchor", "middle")
+      .style("font-size", "16px")
+      .style("font-weight", "bold")
+      .style("fill", "#333")
+      .text("Financial Transactions and Running Balance");
   }
 
   // Helper function to get color for events

@@ -220,11 +220,11 @@ function createCashFlowTimeline(config) {
 
     // Render each group
     eventGroups.forEach((group, groupIndex) => {
-      renderEventGroup(group, groupIndex);
+      renderEventGroup(group, groupIndex, eventGroups);
     });
   }
 
-  function renderEventGroup(group, groupIndex) {
+  function renderEventGroup(group, groupIndex, eventGroups) {
     const groupX = timeScale(group.date);
     const totalEvents = group.events.length;
 
