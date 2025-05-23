@@ -29,12 +29,23 @@ document.addEventListener("DOMContentLoaded", function () {
     investments: "investments",
     lands: "lands",
     transactions: "transactions",
+    recurringPayments: "recurringPayments",
+    nonRecurringPayments: "nonRecurringPayments",
+    invoices: "invoices",
+    supplierPayments: "supplierPayments"
   };
 
   let db;
   
   // Variable for opening cash balance
   let openingBalance = 50000; // Default opening balance
+
+  // Cash flow data arrays
+  let cashFlowEvents = [];
+  let recurringPaymentsData = [];
+  let nonRecurringPaymentsData = [];
+  let invoicesData = [];
+  let supplierPaymentsData = [];
 
   // Initialize the database
   function initDatabase() {
@@ -92,6 +103,38 @@ document.addEventListener("DOMContentLoaded", function () {
             "transaction_date",
             { unique: false }
           );
+        }
+
+        if (!db.objectStoreNames.contains(STORES.recurringPayments)) {
+          const recurringPaymentsStore = db.createObjectStore(STORES.recurringPayments, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          recurringPaymentsStore.createIndex("name", "name", { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains(STORES.nonRecurringPayments)) {
+          const nonRecurringPaymentsStore = db.createObjectStore(STORES.nonRecurringPayments, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          nonRecurringPaymentsStore.createIndex("name", "name", { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains(STORES.invoices)) {
+          const invoicesStore = db.createObjectStore(STORES.invoices, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          invoicesStore.createIndex("name", "name", { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains(STORES.supplierPayments)) {
+          const supplierPaymentsStore = db.createObjectStore(STORES.supplierPayments, {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          supplierPaymentsStore.createIndex("name", "name", { unique: false });
         }
 
         console.log("Database schema created");
@@ -257,12 +300,81 @@ document.addEventListener("DOMContentLoaded", function () {
       },
     ];
 
+    // Sample cash flow data
+    const sampleRecurringPayments = [
+      {
+        id: 1,
+        description: "Office Rent",
+        amount: "5000",
+        day_of_month: 1
+      },
+      {
+        id: 2,
+        description: "Employee Salaries",
+        amount: "25000",
+        day_of_month: 15
+      }
+    ];
+
+    const sampleNonRecurringPayments = [
+      {
+        id: 1,
+        description: "Equipment Purchase",
+        amount: "15000",
+        payment_date: new Date(currentYear, currentMonth, currentDay + 30)
+      },
+      {
+        id: 2,
+        description: "Marketing Campaign",
+        amount: "8000",
+        payment_date: new Date(currentYear, currentMonth, currentDay + 90)
+      }
+    ];
+
+    const sampleInvoices = [
+      {
+        id: 1,
+        invoice_code: "INV-001",
+        client_name: "ABC Corp",
+        amount: "45000",
+        due_date: new Date(currentYear, currentMonth, currentDay + 45)
+      },
+      {
+        id: 2,
+        invoice_code: "INV-002",
+        client_name: "XYZ Ltd",
+        amount: "32000",
+        due_date: new Date(currentYear, currentMonth, currentDay + 75)
+      }
+    ];
+
+    const sampleSupplierPayments = [
+      {
+        id: 1,
+        invoice_code: "SUP-001",
+        supplier_name: "Tech Supplies Inc",
+        amount: "12000",
+        due_date: new Date(currentYear, currentMonth, currentDay + 20)
+      },
+      {
+        id: 2,
+        invoice_code: "SUP-002",
+        supplier_name: "Office Solutions",
+        amount: "3500",
+        due_date: new Date(currentYear, currentMonth, currentDay + 50)
+      }
+    ];
+
     // Add all sample data to database
     try {
       await Promise.all([
         ...sampleInvestments.map((inv) => addData(STORES.investments, inv)),
         ...sampleLands.map((land) => addData(STORES.lands, land)),
         ...sampleTransactions.map((tx) => addData(STORES.transactions, tx)),
+        ...sampleRecurringPayments.map((payment) => addData(STORES.recurringPayments, payment)),
+        ...sampleNonRecurringPayments.map((payment) => addData(STORES.nonRecurringPayments, payment)),
+        ...sampleInvoices.map((invoice) => addData(STORES.invoices, invoice)),
+        ...sampleSupplierPayments.map((payment) => addData(STORES.supplierPayments, payment)),
       ]);
       console.log("Sample data added successfully");
     } catch (error) {
@@ -390,6 +502,124 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // Cash flow data fetching functions
+  async function fetchCashFlowData() {
+    try {
+      console.log("Fetching cash flow data from IndexedDB...");
+      
+      // Fetch all data types in parallel
+      const [recurringPayments, nonRecurringPayments, invoices, supplierPayments] = 
+        await Promise.all([
+          getAllData(STORES.recurringPayments),
+          getAllData(STORES.nonRecurringPayments),
+          getAllData(STORES.invoices),
+          getAllData(STORES.supplierPayments)
+        ]);
+      
+      console.log("Recurring payments:", recurringPayments);
+      console.log("Non-recurring payments:", nonRecurringPayments);
+      console.log("Invoices:", invoices);
+      console.log("Supplier payments:", supplierPayments);
+      
+      // Process recurring payments (create instances for the date range)
+      recurringPaymentsData = processRecurringPayments(recurringPayments, startDate, endDate);
+      
+      // Format non-recurring payments
+      nonRecurringPaymentsData = nonRecurringPayments.map(payment => ({
+        id: payment.id,
+        type: 'nonRecurringPayment',
+        description: payment.description,
+        amount: -parseFloat(payment.amount), // Negative for outgoing payments
+        date: new Date(payment.payment_date),
+        originalData: payment
+      }));
+      
+      // Format invoices
+      invoicesData = invoices.map(invoice => ({
+        id: invoice.id,
+        type: 'invoice',
+        description: `${invoice.invoice_code} - ${invoice.client_name}`,
+        amount: parseFloat(invoice.amount), // Positive for incoming payments
+        date: new Date(invoice.due_date),
+        originalData: invoice
+      }));
+      
+      // Format supplier payments
+      supplierPaymentsData = supplierPayments.map(payment => ({
+        id: payment.id,
+        type: 'supplierPayment',
+        description: `${payment.invoice_code} - ${payment.supplier_name}`,
+        amount: -parseFloat(payment.amount), // Negative for outgoing payments
+        date: new Date(payment.due_date),
+        originalData: payment
+      }));
+      
+      // Combine all data into a single array for visualization
+      cashFlowEvents = [
+        ...recurringPaymentsData,
+        ...nonRecurringPaymentsData,
+        ...invoicesData,
+        ...supplierPaymentsData
+      ];
+      
+      console.log("Combined cash flow events:", cashFlowEvents);
+      
+      return cashFlowEvents;
+    } catch (error) {
+      console.error("Error fetching cash flow data:", error);
+      return [];
+    }
+  }
+
+  // Process recurring payments and create instances for each month in the date range
+  function processRecurringPayments(recurringPayments, startDate, endDate) {
+    const instances = [];
+    
+    recurringPayments.forEach(payment => {
+      const dayOfMonth = parseInt(payment.day_of_month);
+      const amount = parseFloat(payment.amount);
+      
+      // Calculate all occurrences within the date range
+      let currentDate = new Date(startDate);
+      // Set to first day of month to avoid issues with month length
+      currentDate.setDate(1);
+      
+      while (currentDate <= endDate) {
+        // Create a date for this month's payment
+        const paymentDate = new Date(currentDate);
+        
+        // Set the day of month, handling month length
+        const lastDayOfMonth = new Date(
+          paymentDate.getFullYear(), 
+          paymentDate.getMonth() + 1, 
+          0
+        ).getDate();
+        
+        // Use the specified day, but don't exceed month length
+        const actualDay = Math.min(dayOfMonth, lastDayOfMonth);
+        paymentDate.setDate(actualDay);
+        
+        // Only add if it's within our date range
+        if (paymentDate >= startDate && paymentDate <= endDate) {
+          instances.push({
+            id: `recurring-${payment.id}-${paymentDate.getTime()}`, // Create unique ID
+            type: 'recurringPayment',
+            description: payment.description,
+            amount: -amount, // Negative for outgoing payments
+            date: new Date(paymentDate),
+            originalData: payment,
+            recurringId: payment.id
+          });
+        }
+        
+        // Move to next month
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    });
+    
+    return instances;
+  }
+
   // Date formatting utilities
   const dateFormat = d3.timeFormat("%b %d, %Y");
   const inputDateFormat = d3.timeFormat("%Y-%m-%d");
@@ -431,6 +661,19 @@ document.addEventListener("DOMContentLoaded", function () {
     "fund-sale": "📈",
     "land-buy": "🏞️",
     "land-sale": "🏞️",
+    // Cash flow emojis
+    "recurringPayment": "💼",
+    "nonRecurringPayment": "📋",
+    "invoice": "📥",
+    "supplierPayment": "📤"
+  };
+
+  // Cash flow transaction colors
+  const cashFlowColors = {
+    "recurringPayment": "#3498db", // Blue
+    "nonRecurringPayment": "#e74c3c", // Red
+    "invoice": "#2ecc71", // Green
+    "supplierPayment": "#f39c12"  // Orange
   };
 
   // Initialize date inputs with current year dates
@@ -445,6 +688,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Global variable to store timeline instance
   let timelineInstance = null;
+  let cashFlowTimelineInstance = null;
 
   // Only proceed if datePresets exists in the HTML
   if (datePresets.node()) {
@@ -475,6 +719,56 @@ document.addEventListener("DOMContentLoaded", function () {
   // Transaction data array - now can be dynamically updated
   let transactionData = [];
 
+  // Filter cash flow events based on selected date range and amount filter
+  function filterCashFlowEvents(events) {
+    if (!events || !Array.isArray(events)) {
+      return [];
+    }
+
+    // Check if amount filter is enabled - use the checkbox if it exists,
+    // otherwise use the amountFilterActive variable
+    const filterCheckbox = document.getElementById("enable-amount-filter");
+    const isFilterActive = filterCheckbox
+      ? filterCheckbox.checked
+      : amountFilterActive;
+
+    // If filter is active, get current min/max values from inputs if available
+    let filterMin = minAmount;
+    let filterMax = maxAmount;
+
+    if (isFilterActive) {
+      const minInput = document.getElementById("min-amount");
+      const maxInput = document.getElementById("max-amount");
+
+      if (minInput) {
+        filterMin = parseFloat(minInput.value) || 0;
+      }
+
+      if (maxInput && maxInput.value) {
+        filterMax = parseFloat(maxInput.value);
+      }
+    }
+
+    return events.filter((event) => {
+      // Make sure event object is valid
+      if (!event || !event.date) {
+        return false;
+      }
+
+      // Date filter
+      const dateInRange =
+        event.date >= startDate && event.date <= endDate;
+
+      // Amount filter (only apply if active)
+      const amountInRange =
+        !isFilterActive ||
+        (Math.abs(event.amount) >= filterMin &&
+          Math.abs(event.amount) <= filterMax);
+
+      return dateInRange && amountInRange;
+    });
+  }
+
   // Function to fetch all required data for the investment chart
   async function fetchChartData() {
     try {
@@ -486,16 +780,20 @@ document.addEventListener("DOMContentLoaded", function () {
         await seedDatabaseIfEmpty();
       }
 
-      // Fetch investments, lands, and transactions in parallel
+      // Fetch investments, lands, transactions, and cash flow data in parallel
       const [investments, lands, transactions] = await Promise.all([
         fetchInvestments(),
         fetchLands(),
         fetchTransactions(),
       ]);
 
+      // Fetch cash flow data separately
+      await fetchCashFlowData();
+
       console.log("Investments:", investments);
       console.log("Lands:", lands);
       console.log("Transactions:", transactions);
+      console.log("Cash flow events:", cashFlowEvents);
 
       // Map investments to the expected format
       const mappedInvestments = investments.map((inv) => ({
@@ -572,11 +870,75 @@ document.addEventListener("DOMContentLoaded", function () {
       return {
         investments: combinedInvestmentData,
         transactions: mappedTransactions,
+        cashFlowEvents: cashFlowEvents
       };
     } catch (error) {
       console.error("Error fetching chart data:", error);
-      return { investments: [], transactions: [] };
+      return { investments: [], transactions: [], cashFlowEvents: [] };
     }
+  }
+
+  // Group cash flow events by date for visualization
+  function groupEventsByProximity(events, dayThreshold = 7) {
+    if (!events || events.length === 0) return [];
+    
+    const sortedEvents = [...events].sort((a, b) => a.date - b.date);
+    const groups = [];
+    let currentGroup = null;
+    
+    sortedEvents.forEach((event) => {
+      const eventTime = event.date.getTime();
+      
+      if (!currentGroup) {
+        // Start first group
+        currentGroup = {
+          date: event.date,
+          events: [event],
+          totalInflow: event.amount > 0 ? event.amount : 0,
+          totalOutflow: event.amount < 0 ? Math.abs(event.amount) : 0
+        };
+        groups.push(currentGroup);
+      } else {
+        // Check if this event is close to the current group
+        const groupAvgTime = currentGroup.date.getTime();
+        const daysDiff = Math.abs(eventTime - groupAvgTime) / (1000 * 60 * 60 * 24);
+        
+        if (daysDiff <= dayThreshold) {
+          // Add to current group
+          currentGroup.events.push(event);
+          
+          // Update totals
+          if (event.amount > 0) {
+            currentGroup.totalInflow += event.amount;
+          } else {
+            currentGroup.totalOutflow += Math.abs(event.amount);
+          }
+          
+          // Update group date as the average
+          const totalTime = currentGroup.events.reduce(
+            (sum, e) => sum + e.date.getTime(),
+            0
+          );
+          currentGroup.date = new Date(totalTime / currentGroup.events.length);
+        } else {
+          // Start a new group
+          currentGroup = {
+            date: event.date,
+            events: [event],
+            totalInflow: event.amount > 0 ? event.amount : 0,
+            totalOutflow: event.amount < 0 ? Math.abs(event.amount) : 0
+          };
+          groups.push(currentGroup);
+        }
+      }
+    });
+    
+    // Calculate net flow for each group
+    groups.forEach(group => {
+      group.netFlow = group.totalInflow - group.totalOutflow;
+    });
+    
+    return groups;
   }
 
   // Expose these functions to the global scope to allow for dynamic data loading
@@ -1236,13 +1598,18 @@ document.addEventListener("DOMContentLoaded", function () {
       { type: "fund-sale", label: "Fund Sale" },
       { type: "land-buy", label: "Land Purchase" },
       { type: "land-sale", label: "Land Sale" },
+      // Cash flow legend items
+      { type: "recurringPayment", label: "Recurring Payment" },
+      { type: "nonRecurringPayment", label: "Non-Recurring Payment" },
+      { type: "invoice", label: "Invoice" },
+      { type: "supplierPayment", label: "Supplier Payment" },
     ];
 
     // Color scale for different investment types (defined early so it can be used in legend)
     const color = d3
       .scaleOrdinal()
-      .domain(["fund-buy", "fund-sale", "land-buy", "land-sale"])
-      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3"]);
+      .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
+      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
 
     // Populate the legend at the top
     const topLegend = d3.select("#investment-legend");
@@ -1255,7 +1622,6 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("div")
         .attr("class", "color-box")
         .style("background-color", color(item.type));
-
 
       legendItem
         .append("span")
@@ -1297,8 +1663,9 @@ document.addEventListener("DOMContentLoaded", function () {
         `<small>Dashed lines separate transactions on different dates</small>`
       );
 
-    // Filter transactions based on selected date range AND amount filter
+    // Filter transactions and cash flow events based on selected date range AND amount filter
     const visibleTransactions = filterTransactions(transactionData);
+    const visibleCashFlowEvents = filterCashFlowEvents(cashFlowEvents);
 
     // Create filter status message
     const filterCheckbox = document.getElementById("enable-amount-filter");
@@ -1336,18 +1703,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
       filterMsg
         .append("span")
-        .text(` (Showing ${visibleTransactions.length} transactions)`);
+        .text(` (Showing ${visibleTransactions.length} investment transactions, ${visibleCashFlowEvents.length} cash flow events)`);
     }
 
-    // Process the transaction data for display
+    // Add section header for investment timeline
+    investmentChart
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", "20px 0 10px 0")
+      .style("color", "#333")
+      .text("Investment Timeline");
+
+    // Process the investment transaction data for display
     if (visibleTransactions.length === 0) {
       investmentChart
         .append("div")
         .attr("class", "no-data-message")
+        .style("margin-bottom", "20px")
         .text(
           "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
         );
-      // Continue rendering the chart instead of returning
     }
 
     // Clean up any existing timeline instance
@@ -1356,9 +1731,15 @@ document.addEventListener("DOMContentLoaded", function () {
       timelineInstance = null;
     }
 
+    // Create investment timeline container
+    const investmentTimelineContainer = investmentChart
+      .append("div")
+      .attr("id", "investment-timeline-container")
+      .style("margin-bottom", "30px");
+
     // Create investment timeline using the component
     timelineInstance = createInvestmentTimeline({
-      containerId: "investment-chart",
+      containerId: "investment-timeline-container",
       transactions: visibleTransactions,
       timeScale: timeScale,
       startDate: startDate,
@@ -1382,474 +1763,454 @@ document.addEventListener("DOMContentLoaded", function () {
       highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
     });
 
-    // Now draw the bar chart below the timeline - only if we have transactions
-    if (visibleTransactions.length > 0) {
-      // Set chart dimensions
-      const margin = { top: 20, right: 50, bottom: 80, left: 60 };
-      const width = 1000 - margin.left - margin.right;
-      const height = 300 - margin.top - margin.bottom;
+    // Add section header for cash flow timeline
+    investmentChart
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", "20px 0 10px 0")
+      .style("color", "#333")
+      .text("Cash Flow Timeline");
 
-      // Create SVG for bar chart
-      const barChartSvg = d3
-        .select("#investment-chart")
-        .append("svg")
-        .attr("width", "100%")
-        .attr("height", height + margin.top + margin.bottom)
-        .attr(
-          "viewBox",
-          `0 0 ${width + margin.left + margin.right} ${
-            height + margin.top + margin.bottom
-          }`
-        )
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
-
-      // Group transactions by entity (fund/land name)
-      const transactionsByEntity = d3.groups(
-        visibleTransactions,
-        (d) => d.name
-      );
-
-      // Calculate total buy and sale amounts for each entity
-      const entityData = transactionsByEntity.map((group) => {
-        const name = group[0];
-        const transactions = group[1];
-
-        // Get investment type (fund or land)
-        const investmentType = transactions[0].investmentType;
-
-        // Calculate buy and sale totals - FIX: Use signed values
-        const buyTotal = d3.sum(
-          transactions.filter((t) => t.transactionType === "buy"),
-          (d) => -d.amount // Buy is negative, so negate to get positive value for display
+    // Process the cash flow data for display
+    if (visibleCashFlowEvents.length === 0) {
+      investmentChart
+        .append("div")
+        .attr("class", "no-data-message")
+        .style("margin-bottom", "20px")
+        .text(
+          "No cash flow events in the selected range."
         );
+    }
 
-        const saleTotal = d3.sum(
-          transactions.filter((t) => t.transactionType === "sale"),
-          (d) => d.amount // Sale is already positive
-        );
+    // Clean up any existing cash flow timeline instance
+    if (cashFlowTimelineInstance) {
+      cashFlowTimelineInstance.destroy();
+      cashFlowTimelineInstance = null;
+    }
 
-        // Find earliest transaction date for sorting
-        const dates = transactions.map((t) => new Date(t.date));
-        const earliestDate = new Date(
-          Math.min(...dates.map((d) => d.getTime()))
-        );
+    // Create cash flow timeline container
+    const cashFlowTimelineContainer = investmentChart
+      .append("div")
+      .attr("id", "cashflow-timeline-container")
+      .style("margin-bottom", "30px");
 
-        return {
-          name,
-          investmentType,
-          buyTotal,
-          saleTotal,
-          total: buyTotal + saleTotal,
-          earliestDate,
-          transactions,
-        };
-      });
+    // Create cash flow timeline using the component
+    cashFlowTimelineInstance = createCashFlowTimeline({
+      containerId: "cashflow-timeline-container",
+      events: visibleCashFlowEvents,
+      timeScale: timeScale,
+      startDate: startDate,
+      endDate: endDate,
+      dimensions: {
+        svgWidth: svgWidth,
+        timelineStart: timelineStart,
+        timelineEnd: timelineEnd,
+        timelineLength: timelineLength
+      },
+      tooltip: tooltip,
+      dateLabel: dateLabel,
+      transactionEmojis: transactionEmojis,
+      transactionColors: cashFlowColors,
+      dateFormat: dateFormat,
+      getDateFromPosition: getDateFromPosition,
+      isDateInRange: isDateInRange,
+      groupEventsByProximity: groupEventsByProximity
+    });
 
-      // Sort by earliest transaction date (chronological order)
-      entityData.sort((a, b) => a.earliestDate - b.earliestDate);
+    // Now draw the combined bar chart below both timelines
+    drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents);
+  }
 
-      // Calculate the min and max values for the y-axis
-      const maxValue = (d3.max(entityData, d => d.saleTotal) || 0) * 1.1;
+  // Function to draw combined bar chart showing both investment transactions and cash flow events
+  function drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents) {
+    if (visibleTransactions.length === 0 && visibleCashFlowEvents.length === 0) {
+      return; // No data to display
+    }
 
-      // For buys, we want the actual negative values
-      const minValue = (d3.min(
-        visibleTransactions.filter(t => t.transactionType === "buy"),
-        d => d.amount
-      ) || 0) * 1.1;
-      
+    // Add combined chart section header
+    const investmentChart = d3.select("#investment-chart");
+    investmentChart
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", "30px 0 10px 0")
+      .style("color", "#333")
+      .text("Combined Financial Overview");
 
-      // Create y scale that includes negative values for buys
-      const y = d3
-        .scaleLinear()
-        .domain([minValue, maxValue]) // Range from min (negative) to max (positive)
-        .range([height, 0]);
+    // Set chart dimensions
+    const margin = { top: 20, right: 50, bottom: 80, left: 60 };
+    const width = 1000 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
 
-      // Calculate the position of the zero line
-      const zeroLineY = y(0);
+    // Create SVG for combined bar chart
+    const barChartSvg = d3
+      .select("#investment-chart")
+      .append("svg")
+      .attr("width", "100%")
+      .attr("height", height + margin.top + margin.bottom)
+      .attr(
+        "viewBox",
+        `0 0 ${width + margin.left + margin.right} ${
+          height + margin.top + margin.bottom
+        }`
+      )
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      // Create a time-based x scale
-      const xTime = d3
-        .scaleTime()
-        .domain([startDate, endDate])
-        .range([0, width]);
+    // Combine all financial events
+    const allEvents = [
+      ...visibleTransactions.map(t => ({
+        ...t,
+        category: 'investment',
+        type: `${t.investmentType}-${t.transactionType}`
+      })),
+      ...visibleCashFlowEvents.map(e => ({
+        ...e,
+        category: 'cashflow',
+        type: e.type
+      }))
+    ];
 
-      // Calculate the width for each month based on the time scale
-      const calculateMonthWidth = (date) => {
-        // Calculate a reasonable bar width based on month length
-        const currentMonth = new Date(date);
-        const nextMonth = new Date(date);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
+    // Sort all events by date
+    allEvents.sort((a, b) => a.date - b.date);
 
-        // Account for date range boundary
-        if (nextMonth > endDate) {
-          nextMonth.setTime(endDate.getTime());
-        }
+    // Calculate the min and max values for the y-axis
+    const maxValue = Math.max(
+      d3.max(allEvents.filter(e => e.amount > 0), d => d.amount) || 0,
+      d3.max(visibleTransactions.filter(t => t.transactionType === "sale"), d => d.amount) || 0
+    ) * 1.1;
 
-        // Calculate width based on time scale
-        const monthWidth = xTime(nextMonth) - xTime(currentMonth);
+    const minValue = Math.min(
+      d3.min(allEvents.filter(e => e.amount < 0), d => d.amount) || 0,
+      d3.min(visibleTransactions.filter(t => t.transactionType === "buy"), d => d.amount) || 0
+    ) * 1.1;
 
-        // Set a reasonable width - not too narrow and not too wide
-        return Math.min(Math.max(monthWidth * 0.6, 15), 60);
-      };
+    // Create y scale that includes negative values
+    const y = d3
+      .scaleLinear()
+      .domain([minValue, maxValue])
+      .range([height, 0]);
 
-      // Create time axis with appropriate ticks
-      const timeAxis = d3
-        .axisBottom(xTime)
-        .ticks(10)
-        .tickFormat(d3.timeFormat("%b %d"))
-        .tickSize(5);
+    // Calculate the position of the zero line
+    const zeroLineY = y(0);
 
-      // Add X axis with time scale
-      barChartSvg
-        .append("g")
-        .attr("class", "time-axis")
-        .attr("transform", `translate(0,${height})`)
-        .call(timeAxis);
+    // Create a time-based x scale
+    const xTime = d3
+      .scaleTime()
+      .domain([startDate, endDate])
+      .range([0, width]);
 
-      // Style tick lines
-      barChartSvg
-        .selectAll(".time-axis line")
-        .attr("stroke", "#ccc")
-        .attr("stroke-dasharray", "2,2");
+    // Calculate bar width based on time scale
+    const calculateBarWidth = (date) => {
+      const currentMonth = new Date(date);
+      const nextMonth = new Date(date);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-      // Style tick text
-      barChartSvg
-        .selectAll(".time-axis text")
-        .attr("font-size", "10px")
-        .attr("dy", "1em");
-
-      // Add Y axis
-      barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d}`));
-
-      // Add a horizontal line at y=0 to separate buy and sale transactions
-
-      barChartSvg
-        .append("line")
-        .attr("x1", 0)
-        .attr("x2", width)
-        .attr("y1", zeroLineY)
-        .attr("y2", zeroLineY)
-        .attr("stroke", "#000")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "4,4");
-
-      // Add a small label at the zero line
-      barChartSvg
-        .append("text")
-        .attr("x", -25)
-        .attr("y", zeroLineY + 4)
-        .attr("text-anchor", "end")
-        .attr("font-size", "10px")
-        .attr("fill", "#666")
-        .text("$0");
-
-      // Add Y axis label
-      barChartSvg
-        .append("text")
-        .attr("text-anchor", "middle")
-        .attr("transform", "rotate(-90)")
-        .attr("y", -margin.left)
-        .attr("x", -height / 2)
-        .text("Amount ($)")
-        .style("font-size", "12px");
-
-      // Add year labels if the range spans multiple years
-      const startYear = startDate.getFullYear();
-      const endYear = endDate.getFullYear();
-
-      if (startYear !== endYear) {
-        // Add start year label
-        barChartSvg
-          .append("text")
-          .attr("class", "year-label")
-          .attr("x", 0)
-          .attr("y", height + 50)
-          .attr("text-anchor", "middle")
-          .attr("font-size", "12px")
-          .text(startYear);
-
-        // Add end year label
-        barChartSvg
-          .append("text")
-          .attr("class", "year-label")
-          .attr("x", width)
-          .attr("y", height + 50)
-          .attr("text-anchor", "middle")
-          .attr("font-size", "12px")
-          .text(endYear);
-
-        // Add intermediate year labels
-        for (let year = startYear + 1; year < endYear; year++) {
-          const yearDate = new Date(year, 0, 1);
-          if (yearDate >= startDate && yearDate <= endDate) {
-            const xPos = xTime(yearDate);
-
-            barChartSvg
-              .append("text")
-              .attr("class", "year-label")
-              .attr("x", xPos)
-              .attr("y", height + 50)
-              .attr("text-anchor", "middle")
-              .attr("font-size", "12px")
-              .text(year);
-          }
-        }
+      if (nextMonth > endDate) {
+        nextMonth.setTime(endDate.getTime());
       }
 
-      // Draw bars for each entity
-      entityData.forEach((entity) => {
-        const barGroup = barChartSvg
-          .append("g")
-          .attr("class", "investment-entity-group")
-          .datum(entity);
+      const monthWidth = xTime(nextMonth) - xTime(currentMonth);
+      return Math.min(Math.max(monthWidth * 0.6, 15), 60);
+    };
 
-        // Group buy transactions by date
-        const buyTransactionsByDate = d3.groups(
-          entity.transactions.filter((t) => t.transactionType === "buy"),
-          (d) => d.date.toDateString()
-        );
+    // Create time axis
+    const timeAxis = d3
+      .axisBottom(xTime)
+      .ticks(10)
+      .tickFormat(d3.timeFormat("%b %d"))
+      .tickSize(5);
 
-        // Draw buy transaction segments
-        buyTransactionsByDate.forEach((dateGroup, i) => {
-          const transactions = dateGroup[1];
-          const transactionDate = transactions[0].date;
+    // Add X axis
+    barChartSvg
+      .append("g")
+      .attr("class", "time-axis")
+      .attr("transform", `translate(0,${height})`)
+      .call(timeAxis);
 
-          // Calculate bar position and width based on date
-          const barX =
-            xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
-          const barWidth = calculateMonthWidth(transactionDate);
+    // Style tick lines
+    barChartSvg
+      .selectAll(".time-axis line")
+      .attr("stroke", "#ccc")
+      .attr("stroke-dasharray", "2,2");
 
-          // Calculate bar position and height for negative values (buys)
-          const buyTotal = d3.sum(transactions, (d) => d.amount); // Use actual negative amount
-          const barY = y(0); // Start at zero line
-          const barHeight = y(buyTotal) - y(0); // Height going down from zero
+    // Style tick text
+    barChartSvg
+      .selectAll(".time-axis text")
+      .attr("font-size", "10px")
+      .attr("dy", "1em");
 
-          barGroup
-            .append("rect")
-            .attr("class", "buy-bar-segment")
-            .attr("x", barX)
-            .attr("y", barY) // Position at zero line
-            .attr("width", barWidth)
-            .attr("height", Math.abs(barHeight)) // Use absolute height value
-            .attr(
-              "fill",
-              entity.investmentType === "fund" ? "#F44336" : "#FF9800"
-            ) // Green for fund buys, blue for land buys
-            .attr("opacity", 0.8)
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 0.5)
-            .attr("data-entity-name", entity.name)
-            .attr("data-transaction-type", "buy")
-            .attr("data-date", transactions[0].date.toISOString())
-            .attr(
-              "data-transaction-ids",
-              transactions.map((t) => t.id).join(",")
-            )
-            .on("mouseenter", function (event) {
-              // Show tooltip
-              tooltip.transition().duration(200).style("opacity", 0.9);
+    // Add Y axis
+    barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
 
-              // Format transactions for display, showing negative values
-              const transactionsList = transactions
-                .map(
-                  (t) => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`
-                )
-                .join("<br>");
+    // Add horizontal line at y=0
+    barChartSvg
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", width)
+      .attr("y1", zeroLineY)
+      .attr("y2", zeroLineY)
+      .attr("stroke", "#000")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "4,4");
 
-              tooltip
-                .html(
-                  `
-                  <strong>${entity.name}</strong><br>
-                  <strong>Purchases on ${dateFormat(
-                    transactions[0].date
-                  )}</strong><br>
-                  <strong>Total: $${buyTotal.toLocaleString()}</strong><br>
-                  <hr style="margin: 5px 0; opacity: 0.3">
-                  ${transactionsList}
-                `
-                )
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 28 + "px");
-            })
-            .on("mouseleave", function () {
-              tooltip.transition().duration(500).style("opacity", 0);
-            })
-            .on("click", function () {
-              if (transactions.length > 0) {
-                // Modal opening removed
-              }
-            });
+    // Add Y axis label
+    barChartSvg
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -margin.left)
+      .attr("x", -height / 2)
+      .text("Amount ($)")
+      .style("font-size", "12px");
 
-          // Add a small label on bottom of the bar (for buy transactions)
-          barGroup
-            .append("text")
-            .attr("class", "bar-label")
-            .attr("x", barX + barWidth / 2)
-            .attr("y", barY + Math.abs(barHeight) + 15) // Position below the bar
-            .attr("text-anchor", "middle")
-            .attr("font-size", "9px")
-            .attr("fill", "#333")
-            .text(entity.name);
-        });
-        const saleTransactionsByDate = d3.groups(
-          entity.transactions.filter((t) => t.transactionType === "sale"),
-          (d) => d.date.toDateString()
-        );
+    // Group events by date for stacking
+    const eventsByDate = d3.groups(allEvents, d => d.date.toDateString());
 
-        // Draw sale transaction segments
-        saleTransactionsByDate.forEach((dateGroup, i) => {
-          const transactions = dateGroup[1];
-          const transactionDate = transactions[0].date;
+    // Draw bars for each date group
+    eventsByDate.forEach(([dateString, events]) => {
+      const date = new Date(dateString);
+      const barX = xTime(date) - calculateBarWidth(date) / 2;
+      const barWidth = calculateBarWidth(date);
 
-          // Calculate bar position and width based on date
-          const barX =
-            xTime(transactionDate) - calculateMonthWidth(transactionDate) / 2;
-          const barWidth = calculateMonthWidth(transactionDate);
+      // Separate positive and negative amounts
+      const positiveEvents = events.filter(e => e.amount > 0);
+      const negativeEvents = events.filter(e => e.amount < 0);
 
-          // Calculate heights for positive values (sales)
-          const saleTotal = d3.sum(transactions, (d) => d.amount);
-          const barHeight = y(0) - y(saleTotal);
+      // Draw positive bars (stacked above zero line)
+      let positiveStackTop = 0;
+      positiveEvents.forEach((event, index) => {
+        const barHeight = y(positiveStackTop) - y(positiveStackTop + event.amount);
+        const barY = y(positiveStackTop + event.amount);
 
-          // For sales, position at y(saleTotal) which will be above zero line
-          barGroup
-            .append("rect")
-            .attr("class", "sale-bar-segment")
-            .attr("x", barX)
-            .attr("y", y(saleTotal)) // Position bars above zero line
-            .attr("width", barWidth)
-            .attr("height", barHeight)
-            .attr(
-              "fill",
-              entity.investmentType === "fund" ? "#4CAF50" : "#2196F3"
-            ) // Red for fund sales, orange for land sales
-            .attr("opacity", 0.8)
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 0.5)
-            .attr("data-entity-name", entity.name)
-            .attr("data-transaction-type", "sale")
-            .attr("data-date", transactions[0].date.toISOString())
-            .attr(
-              "data-transaction-ids",
-              transactions.map((t) => t.id).join(",")
-            )
-            .on("mouseenter", function (event) {
-              // Show tooltip
-              tooltip.transition().duration(200).style("opacity", 0.9);
+        const color = getEventColor(event);
 
-              // Format transactions for display, showing positive values
-              const transactionsList = transactions
-                .map(
-                  (t) => `${dateFormat(t.date)}: $${t.amount.toLocaleString()}`
-                )
-                .join("<br>");
+        barChartSvg
+          .append("rect")
+          .attr("class", `${event.category}-bar-segment`)
+          .attr("x", barX)
+          .attr("y", barY)
+          .attr("width", barWidth)
+          .attr("height", barHeight)
+          .attr("fill", color)
+          .attr("opacity", 0.8)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0.5)
+          .on("mouseenter", function (mouseEvent) {
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip
+              .html(getEventTooltipContent(event))
+              .style("left", mouseEvent.pageX + 10 + "px")
+              .style("top", mouseEvent.pageY - 28 + "px");
+          })
+          .on("mouseleave", function () {
+            tooltip.transition().duration(500).style("opacity", 0);
+          });
 
-              tooltip
-                .html(
-                  `
-                  <strong>${entity.name}</strong><br>
-                  <strong>Sales on ${dateFormat(
-                    transactions[0].date
-                  )}</strong><br>
-                  <strong>Total: $${saleTotal.toLocaleString()}</strong><br>
-                  <hr style="margin: 5px 0; opacity: 0.3">
-                  ${transactionsList}
-                `
-                )
-                .style("left", event.pageX + 10 + "px")
-                .style("top", event.pageY - 28 + "px");
-            })
-            .on("mouseleave", function () {
-              tooltip.transition().duration(500).style("opacity", 0);
-            })
-            .on("click", function () {
-              if (transactions.length > 0) {
-                // Modal opening removed
-              }
-            });
-
-          // Add a small label on top of the bar (for sale transactions)
-          barGroup
-            .append("text")
-            .attr("class", "bar-label")
-            .attr("x", barX + barWidth / 2)
-            .attr("y", y(saleTotal) - 5) // Position above the bar
-            .attr("text-anchor", "middle")
-            .attr("font-size", "9px")
-            .attr("fill", "#333")
-            .text(entity.name);
-        });
+        positiveStackTop += event.amount;
       });
 
-      // Calculate running balance for each transaction
-      // First, sort transactions by date
-      const sortedTransactions = [...visibleTransactions].sort((a, b) => 
-        a.date.getTime() - b.date.getTime()
-      );
-      
-      let runningBalance = openingBalance;
-      const balanceData = [];
-      
-      // Add the starting point (first date with opening balance)
-      balanceData.push({
-        date: startDate,
-        balance: runningBalance
+      // Draw negative bars (stacked below zero line)
+      let negativeStackBottom = 0;
+      negativeEvents.forEach((event, index) => {
+        const barHeight = y(negativeStackBottom + event.amount) - y(negativeStackBottom);
+        const barY = y(negativeStackBottom);
+
+        const color = getEventColor(event);
+
+        barChartSvg
+          .append("rect")
+          .attr("class", `${event.category}-bar-segment`)
+          .attr("x", barX)
+          .attr("y", barY)
+          .attr("width", barWidth)
+          .attr("height", Math.abs(barHeight))
+          .attr("fill", color)
+          .attr("opacity", 0.8)
+          .attr("stroke", "#fff")
+          .attr("stroke-width", 0.5)
+          .on("mouseenter", function (mouseEvent) {
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip
+              .html(getEventTooltipContent(event))
+              .style("left", mouseEvent.pageX + 10 + "px")
+              .style("top", mouseEvent.pageY - 28 + "px");
+          })
+          .on("mouseleave", function () {
+            tooltip.transition().duration(500).style("opacity", 0);
+          });
+
+        negativeStackBottom += event.amount;
       });
-      
-      // Calculate running balance over time
-      sortedTransactions.forEach(transaction => {
-        // For buy transactions (negative amounts), subtract from balance
-        // For sale transactions (positive amounts), add to balance
-        runningBalance += transaction.amount;
-        
-        balanceData.push({
-          date: transaction.date,
-          balance: runningBalance
-        });
+    });
+
+    // Calculate and draw running balance line
+    let runningBalance = openingBalance;
+    const balanceData = [{ date: startDate, balance: runningBalance }];
+
+    allEvents.forEach(event => {
+      runningBalance += event.amount;
+      balanceData.push({ date: event.date, balance: runningBalance });
+    });
+
+    balanceData.push({ date: endDate, balance: runningBalance });
+
+    // Update Y scale to include balance data
+    const maxBalance = Math.max(maxValue, d3.max(balanceData, d => d.balance) || 0);
+    const minBalance = Math.min(minValue, d3.min(balanceData, d => d.balance) || 0);
+    y.domain([minBalance, maxBalance * 1.1]);
+
+    // Redraw Y axis with updated scale
+    barChartSvg.select(".y-axis").remove();
+    barChartSvg.append("g")
+      .attr("class", "y-axis")
+      .call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
+
+    // Create line generator for balance
+    const line = d3.line()
+      .x(d => xTime(d.date))
+      .y(d => y(d.balance))
+      .curve(d3.curveMonotoneX);
+
+    // Draw balance line
+    barChartSvg.append("path")
+      .datum(balanceData)
+      .attr("class", "closing-balance-line")
+      .attr("d", line)
+      .attr("fill", "none")
+      .attr("stroke", "#FF9800")
+      .attr("stroke-width", 3)
+      .attr("opacity", 0.8);
+
+    // Add balance points
+    barChartSvg.selectAll(".balance-point")
+      .data(balanceData.slice(1, -1))
+      .enter()
+      .append("circle")
+      .attr("class", "balance-point")
+      .attr("cx", d => xTime(d.date))
+      .attr("cy", d => y(d.balance))
+      .attr("r", 4)
+      .attr("fill", "#FF9800")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .on("mouseenter", function (mouseEvent, d) {
+        tooltip.transition().duration(200).style("opacity", 0.9);
+        tooltip
+          .html(`Date: ${dateFormat(d.date)}<br>Balance: $${d.balance.toLocaleString()}`)
+          .style("left", mouseEvent.pageX + 10 + "px")
+          .style("top", mouseEvent.pageY - 28 + "px");
+      })
+      .on("mouseleave", function () {
+        tooltip.transition().duration(500).style("opacity", 0);
       });
-      
-      // Add final point (end date with last balance)
-      balanceData.push({
-        date: endDate,
-        balance: runningBalance
-      });
-      
-      // Create a line generator for the balance line
-      const line = d3.line()
-        .x(d => xTime(d.date))
-        .y(d => y(d.balance))
-        .curve(d3.curveMonotoneX);
-      
-      // Calculate the Y domain including the balance data
-      const maxBalance = Math.max(maxValue, d3.max(balanceData, d => d.balance) || 0);
-      const minBalance = Math.min(minValue, d3.min(balanceData, d => d.balance) || 0);
-      
-      // Update the Y scale to include balance data
-      y.domain([minBalance, maxBalance * 1.1]);
-      
-      // Draw the closing balance line
-      barChartSvg.append("path")
-        .datum(balanceData)
-        .attr("class", "closing-balance-line")
-        .attr("d", line);
-      
-      // Add data points on the line
-      barChartSvg.selectAll(".balance-point")
-        .data(balanceData.slice(1, -1)) // Skip first and last point (start and end dates)
-        .enter()
-        .append("circle")
-        .attr("class", "balance-point")
-        .attr("cx", d => xTime(d.date))
-        .attr("cy", d => y(d.balance))
-        .attr("r", 4)
-        .attr("fill", "#FF9800")
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 1.5)
-        .append("title")
-        .text(d => `Date: ${dateFormat(d.date)}\nClosing Balance: $${d.balance.toLocaleString()}`);
+  }
+
+  // Helper function to get color for events
+  function getEventColor(event) {
+    if (event.category === 'investment') {
+      const colorMap = {
+        'fund-buy': '#F44336',
+        'fund-sale': '#4CAF50',
+        'land-buy': '#FF9800',
+        'land-sale': '#2196F3'
+      };
+      return colorMap[event.type] || '#666';
+    } else {
+      return cashFlowColors[event.type] || '#666';
     }
   }
+
+  // Helper function to get tooltip content for events
+  function getEventTooltipContent(event) {
+    if (event.category === 'investment') {
+      return `
+        <strong>${event.name}</strong><br>
+        <strong>Type:</strong> ${event.investmentType} ${event.transactionType}<br>
+        <strong>Amount:</strong> $${event.amount.toLocaleString()}<br>
+        <strong>Date:</strong> ${dateFormat(event.date)}<br>
+        ${event.notes ? `<strong>Notes:</strong> ${event.notes}` : ''}
+      `;
+    } else {
+      return `
+        <strong>${event.description}</strong><br>
+        <strong>Type:</strong> ${getEventTypeLabel(event.type)}<br>
+        <strong>Amount:</strong> ${event.amount >= 0 ? '+' : ''}$${event.amount.toLocaleString()}<br>
+        <strong>Date:</strong> ${dateFormat(event.date)}
+      `;
+    }
+  }
+
+  // Helper function to get event type labels
+  function getEventTypeLabel(type) {
+    const typeLabels = {
+      'recurringPayment': 'Recurring Payment',
+      'nonRecurringPayment': 'Non-Recurring Payment',
+      'invoice': 'Invoice',
+      'supplierPayment': 'Supplier Payment'
+    };
+    return typeLabels[type] || type;
+  }
+
+  // Helper function to calculate bar width based on time scale
+  function calculateBarWidth(date) {
+    const currentMonth = new Date(date);
+    const nextMonth = new Date(date);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+    if (nextMonth > endDate) {
+      nextMonth.setTime(endDate.getTime());
+    }
+
+    const monthWidth = timeScale(nextMonth) - timeScale(currentMonth);
+    return Math.min(Math.max(monthWidth * 0.6, 15), 60);
+  }
+
+  // Initialize the IndexedDB when the page loads
+  initDatabase()
+    .then(() => {
+      console.log(
+        "Database initialized, checking if data needs to be seeded..."
+      );
+      return seedDatabaseIfEmpty();
+    })
+    .catch((error) => {
+      console.error("Error initializing database:", error);
+    });
+
+  // Add event listeners for amount filter controls
+  d3.select("#apply-amount-filter").on("click", updateAmountFilter);
+  d3.select("#reset-amount-filter").on("click", resetAmountFilter);
+
+  // // Create tooltip container with enhanced styling
+  const tooltip = d3
+    .select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0)
+    .style("transform", "scale(0.95)");
+
+  // Create date label for dragging
+  const dateLabel = d3
+    .select("body")
+    .append("div")
+    .attr("class", "date-label")
+    .style("opacity", 0)
+    .style("position", "absolute")
+    .style("background", "rgba(0,0,0,0.7)")
+    .style("color", "white")
+    .style("padding", "4px 8px")
+    .style("border-radius", "4px")
+    .style("font-size", "12px")
+    .style("pointer-events", "none")
+    .style("z-index", "1000");
+
+  // Create investment transaction modal - initially empty, will be populated when needed
+  const investmentModal = d3
+    .select("body")
+    .append("div")
+    .attr("class", "modal")
+    .style("display", "none");
 
   // Function to show transaction modal for a specific date
   function showTransactionModal(date, transaction = null) {
@@ -1932,219 +2293,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return true;
   }
 
-  // Function to validate sale transactions
-  function validateSaleTransaction() {
-    console.log("Running validateSaleTransaction");
-
-    const transactionType = document.getElementById("transaction-type").value;
-    const investmentId = document.getElementById("investment-name").value;
-    const transactionId = document.getElementById("transaction-id").value;
-    const amountInput = document.getElementById("transaction-amount");
-    const submitButton = document.querySelector(
-      "#transaction-form .btn-submit"
-    );
-    const errorMsg =
-      document.getElementById("sale-validation-error") ||
-      document.createElement("div");
-
-    console.log(
-      `Transaction type: ${transactionType}, Investment ID: ${investmentId}, Transaction ID: ${transactionId}`
-    );
-
-    // Only validate if this is a sale transaction
-    if (transactionType === "sale" && investmentId) {
-      // Get all transactions for this investment
-      const entityId = Number(investmentId);
-      const currentTransactionId = transactionId ? Number(transactionId) : null;
-
-      // Get the investment type (fund or land)
-      const selectedOption =
-        document.getElementById("investment-name").selectedOptions[0];
-      const entityType = selectedOption.dataset.type; // "investment" or "land"
-      const investmentType = entityType === "investment" ? "fund" : "land";
-
-      console.log(
-        `Validating sale for entity ID ${entityId}, type: ${investmentType}, current transaction ID: ${currentTransactionId}`
-      );
-
-      // Filter transactions for this specific entity (excluding this one being updated)
-      // IMPORTANT: Check both entity_id AND entity_type to prevent mix-ups between funds and lands
-      const entityTransactions = transactionData.filter(
-        (t) =>
-          Number(t.entity_id) === entityId &&
-          t.investmentType === investmentType &&
-          (!currentTransactionId || Number(t.id) !== currentTransactionId)
-      );
-
-      console.log(
-        `Found ${entityTransactions.length} related transactions (excluding current)`,
-        entityTransactions
-      );
-
-      // Calculate total buy amount up to current date
-      const dateInput = document.getElementById("transaction-date");
-      const transactionDate = dateInput.value
-        ? new Date(dateInput.value)
-        : new Date();
-
-      console.log(`Transaction date: ${transactionDate.toISOString()}`);
-
-      // Get buy transactions that happened before this sale date
-      const buyTransactions = entityTransactions.filter(
-        (t) => t.transactionType === "buy" && t.date <= transactionDate
-      );
-
-      // Get sale transactions that happened before this sale date
-      const saleTransactions = entityTransactions.filter(
-        (t) => t.transactionType === "sale" && t.date <= transactionDate
-      );
-
-      console.log(
-        `Buy transactions: ${buyTransactions.length}`,
-        buyTransactions
-      );
-      console.log(
-        `Sale transactions: ${saleTransactions.length}`,
-        saleTransactions
-      );
-
-      // Calculate available amount to sell
-      const totalBought = d3.sum(buyTransactions, (d) => -d.amount); // Buy is negative, use negative sign to get positive value
-      const totalSold = d3.sum(saleTransactions, (d) => d.amount); // Sale is already positive
-
-      // Get the entity info to determine cash injection amount based on investment type
-      // Ensure we find the correct entity by filtering on both ID and type
-      const entity = investmentData.find((inv) => {
-        // First check if IDs match
-        const idMatches = Number(inv.id) === entityId;
-
-        // Then check if the type matches based on investment name
-        // Funds have "Fund" in their name, Lands have "Land" in their name
-        const isCorrectType =
-          investmentType === "fund"
-            ? inv.name && inv.name.includes("Fund")
-            : inv.name && inv.name.includes("Land");
-
-        return idMatches && isCorrectType;
-      });
-
-      if (!entity) {
-        console.error(
-          `Could not find entity with ID ${entityId} and type ${investmentType}`
-        );
-        return false;
-      }
-
-      // Get cash injection amount based on entity type
-      let cashInjection;
-      if (investmentType === "fund") {
-        // For funds, use cash_investment property
-        cashInjection = parseFloat(entity.cash_investment || entity.val6);
-      } else if (investmentType === "land") {
-        // For lands, use cash_injection property
-        cashInjection = parseFloat(entity.cash_injection || entity.val6);
-      } else {
-        console.error(`Invalid investment type: ${investmentType}`);
-        return false;
-      }
-
-      if (isNaN(cashInjection) || cashInjection <= 0) {
-        console.error(
-          `Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`
-        );
-        // Check for mapped fields from fetchChartData
-        if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
-          cashInjection = parseFloat(entity.val6);
-          console.log(
-            `Using val6 (${cashInjection}) as fallback for cash injection amount`
-          );
-        } else {
-          return false;
-        }
-      }
-
-      // Debug logging
-      console.log("Sale Validation Summary:", {
-        entityId,
-        entityType,
-        investmentType,
-        entity: entity.name,
-        cashInjection,
-        entityTransactions: entityTransactions.length,
-        buyTransactions: buyTransactions.length,
-        saleTransactions: saleTransactions.length,
-        totalBought,
-        totalSold,
-        availableToSell: cashInjection - totalSold,
-        currentTransactionId,
-      });
-
-      // Add or update the error message element
-      if (!document.getElementById("sale-validation-error")) {
-        errorMsg.id = "sale-validation-error";
-        errorMsg.style.color = "red";
-        errorMsg.style.marginTop = "5px";
-        errorMsg.style.fontSize = "12px";
-        document
-          .getElementById("transaction-amount")
-          .parentNode.appendChild(errorMsg);
-        console.log("Created new error message element");
-      }
-
-      // Get the investment name for better error messages
-      const investmentName =
-        document.getElementById("investment-name").selectedOptions[0]
-          ?.textContent || "this investment";
-
-      // Purchase is not mandatory to sell - remove check
-
-      // Enable partial sales - remove block on already sold investments
-      // Instead, uncomment the partial transaction logic to validate sale amounts
-
-      // Set maximum sale amount to remaining balance
-      const availableToSell = cashInjection - totalSold;
-      amountInput.max = availableToSell;
-
-      // Check current input value against available amount
-      const currentAmount = parseFloat(amountInput.value) || 0;
-      console.log(
-        `Current amount: ${currentAmount}, Max allowed: ${availableToSell}`
-      );
-
-      if (currentAmount > availableToSell) {
-        const errorText = `Warning: You can only sell up to $${availableToSell.toLocaleString()} of ${investmentName} (remaining balance of purchases).`;
-        console.error(errorText);
-        errorMsg.textContent = errorText;
-        errorMsg.style.display = "block";
-        submitButton.disabled = true;
-        return false;
-      }
-
-      console.log("Sale validation passed");
-      errorMsg.style.display = "none";
-      submitButton.disabled = false;
-      return true;
-    } else {
-      // For buy transactions, remove any validation messages
-      if (document.getElementById("sale-validation-error")) {
-        document.getElementById("sale-validation-error").style.display = "none";
-      }
-
-      // Reset max value constraint for buy transactions
-      if (amountInput) {
-        amountInput.removeAttribute("max");
-      }
-
-      // Enable submit button for buy transactions
-      if (submitButton) {
-        submitButton.disabled = false;
-      }
-
-      console.log("Buy transaction - validation not needed");
-      return true;
-    }
-  }
-
   // Filter transactions based on selected date range and amount filter
   function filterTransactions(transactions) {
     if (!transactions || !Array.isArray(transactions)) {
@@ -2194,52 +2342,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return dateInRange && amountInRange;
     });
   }
-
-  // Initialize the IndexedDB when the page loads
-  initDatabase()
-    .then(() => {
-      console.log(
-        "Database initialized, checking if data needs to be seeded..."
-      );
-      return seedDatabaseIfEmpty();
-    })
-    .catch((error) => {
-      console.error("Error initializing database:", error);
-    });
-
-  // Add event listeners for amount filter controls
-  d3.select("#apply-amount-filter").on("click", updateAmountFilter);
-  d3.select("#reset-amount-filter").on("click", resetAmountFilter);
-
-  // // Create tooltip container with enhanced styling
-  const tooltip = d3
-    .select("body")
-    .append("div")
-    .attr("class", "tooltip")
-    .style("opacity", 0)
-    .style("transform", "scale(0.95)");
-
-  // Create date label for dragging
-  const dateLabel = d3
-    .select("body")
-    .append("div")
-    .attr("class", "date-label")
-    .style("opacity", 0)
-    .style("position", "absolute")
-    .style("background", "rgba(0,0,0,0.7)")
-    .style("color", "white")
-    .style("padding", "4px 8px")
-    .style("border-radius", "4px")
-    .style("font-size", "12px")
-    .style("pointer-events", "none")
-    .style("z-index", "1000");
-
-  // Create investment transaction modal - initially empty, will be populated when needed
-  const investmentModal = d3
-    .select("body")
-    .append("div")
-    .attr("class", "modal")
-    .style("display", "none");
 
   // Initialization function to populate the modal when investmentData is available
   function initTransactionModal() {
@@ -2517,137 +2619,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-    // Add event listeners for form fields to trigger validation
-    console.log("Adding validation event listeners");
-
-    // We need to be careful to check if elements exist before adding event listeners
-    const typeSelect = document.getElementById("transaction-type");
-    const investmentSelect = document.getElementById("investment-name");
-    const amountInput = document.getElementById("transaction-amount");
-    const dateInput = document.getElementById("transaction-date");
-
-    if (typeSelect) {
-      typeSelect.addEventListener("change", function () {
-        console.log("Type changed to:", this.value);
-
-        const amountInput = document.getElementById("transaction-amount");
-
-        // If changed to "buy", prefill with cash injection value and make readonly
-        if (this.value === "buy") {
-          if (amountInput) {
-            amountInput.setAttribute("readonly", true);
-          }
-
-          const investmentField = document.getElementById("investment-name");
-          if (investmentField && investmentField.value) {
-            // Trigger the change event on the investment field to prefill the amount
-            const event = new Event("change");
-            investmentField.dispatchEvent(event);
-          }
-        } else if (this.value === "sale") {
-          // For sale, allow manual editing
-          if (amountInput) {
-            amountInput.removeAttribute("readonly");
-          }
-        }
-
-        // No validation on change - only validate on form submission
-      });
-    } else {
-      console.error("Transaction type select not found!");
-    }
-
-    if (investmentSelect) {
-      investmentSelect.addEventListener("change", async function () {
-        console.log("Investment changed to:", this.value);
-
-        // Reset any previous validation errors when selection changes
-        const errorElement = document.getElementById("sale-validation-error");
-        if (errorElement) {
-          errorElement.style.display = "none";
-          errorElement.textContent = "";
-        }
-
-        // Re-enable submit button which might have been disabled by previous validation
-        const submitButton = document.querySelector(
-          "#transaction-form .btn-submit"
-        );
-        if (submitButton) {
-          submitButton.disabled = false;
-        }
-
-        // Always set the full cash value for the selected investment
-        if (this.value) {
-          const entityId = parseInt(this.value);
-          const entityType = this.selectedOptions[0].dataset.type;
-          const amountInput = document.getElementById("transaction-amount");
-          const transactionType =
-            document.getElementById("transaction-type").value;
-
-          // Store the current selection in a data attribute to help track changes
-          this.setAttribute("data-last-selected", entityId);
-          this.setAttribute("data-last-type", entityType);
-
-          // Fetch the investment details from IndexedDB
-          try {
-            const store =
-              entityType === "investment" ? STORES.investments : STORES.lands;
-            const transaction = db.transaction(store, "readonly");
-            const objectStore = transaction.objectStore(store);
-            const request = objectStore.get(entityId);
-
-            request.onsuccess = function (event) {
-              const entity = event.target.result;
-
-              if (entity) {
-                // For investments, use cash_investment, for lands use cash_injection
-                const cashValue =
-                  entityType === "investment"
-                    ? parseFloat(entity.cash_investment)
-                    : parseFloat(entity.cash_injection);
-
-                // Always set the exact cash value - no partial transactions
-                if (amountInput && !isNaN(cashValue)) {
-                  amountInput.value = cashValue;
-                  console.log(
-                    `Set amount to exact ${entityType} cash value: ${cashValue}`
-                  );
-
-                  // Store the cash value in a data attribute for validation
-                  amountInput.setAttribute("data-cash-value", cashValue);
-                }
-              }
-            };
-
-            request.onerror = function (event) {
-              console.error(
-                "Error fetching entity details:",
-                event.target.error
-              );
-            };
-          } catch (error) {
-            console.error("Error setting amount:", error);
-          }
-        }
-
-        // No validation on change - only validate on form submission
-      });
-    } else {
-      console.error("Investment select not found!");
-    }
-
-    if (amountInput) {
-      // No validation on input change - only validate on form submission
-    } else {
-      console.error("Amount input not found!");
-    }
-
-    if (dateInput) {
-      // No validation on date change - only validate on form submission
-    } else {
-      console.error("Date input not found!");
-    }
-
     // Investment modal close button
     investmentModal.select(".close").on("click", function () {
       investmentModal.style("display", "none");
@@ -2656,384 +2627,29 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Transaction modal initialization complete");
   }
 
-  // Function to update the modal's investment options
-  function updateModalInvestmentOptions() {
-    const select = document.getElementById("investment-name");
-    if (!select) return;
-
-    // Clear existing options
-    select.innerHTML = "";
-
-    // Add placeholder option
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Select a transaction";
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    select.appendChild(placeholder);
-
-    // Simple arrays to hold fund and land options
-    const fundOptions = [];
-    const landOptions = [];
-
-    // Add options to appropriate arrays first
-    investmentData.forEach((item) => {
-      if (!item || !item.name) return; // Skip items without a name
-
-      if (item.name.includes("Fund")) {
-        fundOptions.push({
-          id: item.id,
-          name: item.name,
-          type: "investment",
-        });
-      } else if (item.name.includes("Land")) {
-        landOptions.push({
-          id: item.id,
-          name: item.name,
-          type: "land",
-        });
+  // Function to delete a transaction directly without opening a modal
+  async function deleteTransaction(transactionId) {
+    try {
+      // Confirm deletion with the user
+      if (!confirm("Are you sure you want to delete this transaction?")) {
+        return false;
       }
-    });
 
-    // Add a fund header if we have fund options
-    if (fundOptions.length > 0) {
-      const fundHeader = document.createElement("option");
-      fundHeader.disabled = true;
-      fundHeader.textContent = "--- Funds ---";
-      select.appendChild(fundHeader);
+      // Delete the transaction from the database
+      await deleteData(STORES.transactions, Number(transactionId));
 
-      // Add all fund options
-      fundOptions.forEach((fund) => {
-        const option = document.createElement("option");
-        option.value = fund.id;
-        option.textContent = fund.name;
-        option.dataset.type = "investment"; // Ensure correct data-type is set
-        select.appendChild(option);
-      });
-    }
+      // Refresh the chart data and redraw
+      await fetchChartData();
+      drawInvestmentChart();
 
-    // Add a land header if we have land options
-    if (landOptions.length > 0) {
-      const landHeader = document.createElement("option");
-      landHeader.disabled = true;
-      landHeader.textContent = "--- Lands ---";
-      select.appendChild(landHeader);
-
-      // Add all land options
-      landOptions.forEach((land) => {
-        const option = document.createElement("option");
-        option.value = land.id;
-        option.textContent = land.name;
-        option.dataset.type = "land"; // Ensure correct data-type is set
-        select.appendChild(option);
-      });
-    }
-
-    // If no options were added, show a message
-    if (fundOptions.length === 0 && landOptions.length === 0) {
-      const noOptions = document.createElement("option");
-      noOptions.value = "";
-      noOptions.textContent = "No investments or lands available";
-      noOptions.disabled = true;
-      select.appendChild(noOptions);
-    }
-  }
-
-  // Function to validate that a sale transaction has previous buys only (no amount validation)
-  function validateSaleExistenceOnly() {
-    const typeSelect = document.getElementById("transaction-type");
-    const investmentSelect = document.getElementById("investment-name");
-    const dateInput = document.getElementById("transaction-date");
-
-    // If we're not in a sale transaction, no validation needed
-    if (!typeSelect || typeSelect.value !== "sale") {
       return true;
-    }
-
-    // If any required fields are empty, we can't validate yet
-    if (
-      !investmentSelect ||
-      !investmentSelect.value ||
-      !dateInput ||
-      !dateInput.value
-    ) {
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      alert("Failed to delete transaction: " + error.message);
       return false;
     }
-
-    console.log("Validating sale transaction existence");
-
-    // Get the selected investment id and the date of the transaction
-    const entityId = Number(investmentSelect.value);
-    const saleDate = new Date(dateInput.value);
-
-    // Get investment type from selected option
-    const selectedOption = investmentSelect.selectedOptions[0];
-    if (!selectedOption || !selectedOption.dataset.type) {
-      console.error("Selected option doesn't have a data-type attribute");
-      return false;
-    }
-
-    const entityType = selectedOption.dataset.type;
-    const investmentType = entityType === "investment" ? "fund" : "land";
-
-    // Log entity information for debugging
-    console.log(
-      `Validating existence for entity ID=${entityId}, type=${entityType}, investmentType=${investmentType}`
-    );
-
-    // Find all transactions for this investment (with correct investment type)
-    const existingTransactions = transactionData.filter(
-      (t) =>
-        Number(t.entity_id) === entityId && t.investmentType === investmentType
-    );
-
-    // Only count buy transactions that happened before or on the sale date
-    const buyTransactions = existingTransactions.filter(
-      (t) => t.transactionType === "buy" && t.date <= saleDate
-    );
-
-    // Calculate total amount bought
-    const totalBought = d3.sum(buyTransactions, (d) => -d.amount);
-
-    console.log("Sale validation details:", {
-      entityId: entityId,
-      entityType: entityType,
-      investmentType: investmentType,
-      buyTransactions: buyTransactions.length,
-      totalBought,
-    });
-
-    // No need to check if purchases exist - purchase is no longer mandatory to sell
-
-    // If we get here, the sale is valid
-    return true;
   }
 
-  // Add global sorting preference variable - default to date-based sorting
-  let sortBarsByDate = true;
-
-  // Function to update bar chart sorting
-  function updateBarSorting(byDate) {
-    sortBarsByDate = byDate;
-    updateInvestmentVisualization();
-  }
-
-  // Function to calculate available sale amount for a given entity
-  function getEntityAvailableSaleAmount(entityId, investmentType) {
-    console.log(
-      `Getting available amount for entityId=${entityId}, investmentType=${investmentType}`
-    );
-
-    // Find the entity to get the cash injection amount
-    // Ensure we filter by both ID and the correct type to avoid confusion between funds and lands
-    const entity = investmentData.find((inv) => {
-      // First check if IDs match
-      const idMatches = Number(inv.id) === Number(entityId);
-
-      // Then check if the type matches based on investment name
-      // Funds have "Fund" in their name, Lands have "Land" in their name
-      const isCorrectType =
-        investmentType === "fund"
-          ? inv.name && inv.name.includes("Fund")
-          : inv.name && inv.name.includes("Land");
-
-      return idMatches && isCorrectType;
-    });
-
-    if (!entity) {
-      console.error(
-        `Could not find entity with ID ${entityId} and type ${investmentType}`
-      );
-      return {
-        error: "Entity not found",
-        available: 0,
-        cashInjection: 0,
-        sold: 0,
-      };
-    }
-
-    console.log("Found entity:", entity);
-
-    // Get the cash injection amount (different property name depending on type)
-    let cashInjection;
-
-    if (investmentType === "fund") {
-      // For funds, use cash_investment property
-      cashInjection = parseFloat(entity.cash_investment || entity.val6);
-    } else if (investmentType === "land") {
-      // For lands, use cash_injection property
-      cashInjection = parseFloat(entity.cash_injection || entity.val6);
-    } else {
-      console.error(`Invalid investment type: ${investmentType}`);
-      return {
-        error: "Invalid investment type",
-        available: 0,
-        cashInjection: 0,
-        sold: 0,
-      };
-    }
-
-    console.log(`Cash injection amount determined: ${cashInjection}`);
-
-    if (isNaN(cashInjection) || cashInjection <= 0) {
-      console.error(
-        `Invalid cash injection amount for entity ID ${entityId}: ${cashInjection}`
-      );
-      // Check for mapped fields from fetchChartData
-      if (entity.val6 && !isNaN(parseFloat(entity.val6))) {
-        cashInjection = parseFloat(entity.val6);
-        console.log(
-          `Using val6 (${cashInjection}) as fallback for cash injection amount`
-        );
-      } else {
-        return {
-          error: "Invalid cash injection amount",
-          available: 0,
-          cashInjection: 0,
-          sold: 0,
-        };
-      }
-    }
-
-    // Get all sale transactions for this entity
-    const entitySales = transactionData.filter(
-      (t) =>
-        Number(t.entity_id) === Number(entityId) &&
-        t.investmentType === investmentType &&
-        t.transactionType === "sale"
-    );
-
-    console.log(
-      `Found ${entitySales.length} sale transactions for this entity`
-    );
-
-    // Calculate total sold so far
-    const totalSold = d3.sum(entitySales, (d) => d.amount); // Sale amounts are positive
-
-    // Calculate available amount to sell
-    const availableToSell = cashInjection - totalSold;
-
-    console.log(
-      `Cash injection: ${cashInjection}, Total sold: ${totalSold}, Available: ${availableToSell}`
-    );
-
-    return {
-      entity: entity,
-      cashInjection: cashInjection,
-      sold: totalSold,
-      available: availableToSell,
-    };
-  }
-
-  // Function that only validates that a sale transaction has previous buys
-  function validateSaleExistence() {
-    const typeSelect = document.getElementById("transaction-type");
-    const investmentSelect = document.getElementById("investment-name");
-    const dateInput = document.getElementById("transaction-date");
-    const amountField = document.getElementById("transaction-amount");
-
-    // If we're not in a sale transaction, no validation needed
-    if (!typeSelect || typeSelect.value !== "sale") {
-      return true;
-    }
-
-    // If any required fields are empty, we can't validate yet
-    if (
-      !investmentSelect ||
-      !investmentSelect.value ||
-      !dateInput ||
-      !dateInput.value ||
-      !amountField ||
-      !amountField.value
-    ) {
-      return false;
-    }
-
-    console.log("Validating sale transaction amount");
-
-    // Get the selected investment id, amount, and the date of the transaction
-    const entityId = Number(investmentSelect.value);
-    const saleDate = new Date(dateInput.value);
-    const saleAmount = parseFloat(amountField.value);
-
-    // Get investment type from selected option
-    const selectedOption = investmentSelect.selectedOptions[0];
-    if (!selectedOption || !selectedOption.dataset.type) {
-      console.error("Selected option doesn't have a data-type attribute");
-      return false;
-    }
-
-    const entityType = selectedOption.dataset.type;
-    const investmentType = entityType === "investment" ? "fund" : "land";
-
-    // Check if there was a change in selection
-    const lastSelected = investmentSelect.getAttribute("data-last-selected");
-    const lastType = investmentSelect.getAttribute("data-last-type");
-    const selectionChanged =
-      lastSelected &&
-      (Number(lastSelected) !== entityId || lastType !== entityType);
-
-    if (selectionChanged) {
-      console.log(
-        `Selection changed from ID=${lastSelected} (${lastType}) to ID=${entityId} (${entityType})`
-      );
-    }
-
-    // Get entity info and available amount to sell
-    const entityInfo = getEntityAvailableSaleAmount(entityId, investmentType);
-
-    if (entityInfo.error) {
-      alert(`${entityInfo.error} for ${investmentType} with ID ${entityId}`);
-      return false;
-    }
-
-    // If we have a saved cash value in the amount field, use it for validation
-    // This helps prevent stale comparisons when changing selections
-    const savedCashValue = amountField.getAttribute("data-cash-value");
-    let cashInjection = entityInfo.cashInjection;
-
-    if (savedCashValue && !isNaN(parseFloat(savedCashValue))) {
-      // Use the saved cash value from the amount field's data attribute
-      // This is especially important when the selection has changed
-      cashInjection = parseFloat(savedCashValue);
-      console.log(`Using saved cash value for validation: ${cashInjection}`);
-    }
-
-    console.log("Sale validation details:", {
-      entityId: entityId,
-      investmentType: investmentType,
-      cashInjection: cashInjection,
-      savedCashValue: savedCashValue,
-      entityInfoCashInjection: entityInfo.cashInjection,
-      totalSold: entityInfo.sold,
-      available: entityInfo.available,
-      saleAmount: saleAmount,
-    });
-
-    // Check if amount exceeds cash injection
-    if (saleAmount > cashInjection) {
-      alert(
-        `Error: You can't sell more than the cash injection amount of ${cashInjection}.`
-      );
-      return false;
-    }
-
-    // For consistency with the saved cash value, calculate available amount
-    const available = cashInjection - entityInfo.sold;
-
-    // Check if amount exceeds available (cash injection minus already sold)
-    if (saleAmount > available) {
-      alert(
-        `Error: You've already sold ${entityInfo.sold} of this investment. You can only sell up to ${available} more.`
-      );
-      return false;
-    }
-
-    // If we get here, the sale is valid
-    return true;
-  }
-
-  // Update the form submission handler around line 2680
   // Function to highlight the bar segment corresponding to a dragged transaction
   function highlightBarSegmentForTransaction(transaction) {
     // Find all bar segments
@@ -3104,29 +2720,6 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("stroke-width", 0.5);
       }
     });
-  }
-
-  // Function to delete a transaction directly without opening a modal
-  async function deleteTransaction(transactionId) {
-    try {
-      // Confirm deletion with the user
-      if (!confirm("Are you sure you want to delete this transaction?")) {
-        return false;
-      }
-
-      // Delete the transaction from the database
-      await deleteData(STORES.transactions, Number(transactionId));
-
-      // Refresh the chart data and redraw
-      await fetchChartData();
-      drawInvestmentChart();
-
-      return true;
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-      alert("Failed to delete transaction: " + error.message);
-      return false;
-    }
   }
 
   // Function to update the opening balance
