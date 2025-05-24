@@ -1827,9 +1827,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return; // No data to display
     }
 
-    // Add combined chart section header
-    const investmentChart = d3.select("#investment-chart");
-    investmentChart
+    // Clear any existing content in the combined chart container
+    const combinedChart = d3.select("#combined-chart");
+    combinedChart.selectAll("*").remove();
+
+    // Add combined chart section header to the combined chart container
+    combinedChart
       .append("h3")
       .attr("class", "section-header")
       .style("margin", "30px 0 10px 0")
@@ -1842,8 +1845,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const height = 400 - margin.top - margin.bottom;
 
     // Create SVG for combined bar chart
-    const barChartSvg = d3
-      .select("#investment-chart")
+    const barChartSvg = combinedChart
       .append("svg")
       .attr("width", "100%")
       .attr("height", height + margin.top + margin.bottom)
