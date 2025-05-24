@@ -1998,6 +1998,8 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("opacity", 0.8)
           .attr("stroke", "#fff")
           .attr("stroke-width", 0.5)
+          .attr("data-amount", event.amount)
+          .attr("data-stack-position", positiveStackTop)
           .on("mouseenter", function (mouseEvent) {
             tooltip.transition().duration(200).style("opacity", 0.9);
             tooltip
@@ -2031,6 +2033,8 @@ document.addEventListener("DOMContentLoaded", function () {
           .attr("opacity", 0.8)
           .attr("stroke", "#fff")
           .attr("stroke-width", 0.5)
+          .attr("data-amount", event.amount)
+          .attr("data-stack-position", negativeStackBottom)
           .on("mouseenter", function (mouseEvent) {
             tooltip.transition().duration(200).style("opacity", 0.9);
             tooltip
@@ -2067,6 +2071,33 @@ document.addEventListener("DOMContentLoaded", function () {
     barChartSvg.append("g")
       .attr("class", "y-axis")
       .call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
+
+    // Update the zero line position with new scale
+    const newZeroLineY = y(0);
+    barChartSvg.select("line[stroke-dasharray='4,4']")
+      .attr("y1", newZeroLineY)
+      .attr("y2", newZeroLineY);
+
+    // Reposition all existing bars with the updated Y scale
+    barChartSvg.selectAll("rect").each(function() {
+      const rect = d3.select(this);
+      const originalAmount = parseFloat(rect.attr("data-amount"));
+      const originalStackPosition = parseFloat(rect.attr("data-stack-position")) || 0;
+      
+      if (!isNaN(originalAmount)) {
+        if (originalAmount > 0) {
+          // Positive bars
+          const newBarHeight = y(originalStackPosition) - y(originalStackPosition + originalAmount);
+          const newBarY = y(originalStackPosition + originalAmount);
+          rect.attr("y", newBarY).attr("height", newBarHeight);
+        } else {
+          // Negative bars
+          const newBarHeight = y(originalStackPosition + originalAmount) - y(originalStackPosition);
+          const newBarY = y(originalStackPosition);
+          rect.attr("y", newBarY).attr("height", Math.abs(newBarHeight));
+        }
+      }
+    });
 
     // Create line generator for balance
     const line = d3.line()
