@@ -47,8 +47,8 @@ function createCashFlowTimeline(config) {
   } = config;
 
   const { svgWidth, timelineStart, timelineEnd, timelineLength } = dimensions;
-  const cashFlowTimelineHeight = 150;
-  const cashFlowTimelineY = 60;
+  const cashFlowTimelineHeight = 200;
+  const cashFlowTimelineY = 100;
 
   // Create SVG for cash flow timeline
   const cashFlowSvg = d3
@@ -94,7 +94,6 @@ function createCashFlowTimeline(config) {
     if (todayDateOnly >= startDateOnly && todayDateOnly <= endDateOnly) {
       const todayX = timeScale(today);
 
-      // Add vertical line for today
       cashFlowSvg
         .append("line")
         .attr("class", "today-line")
@@ -234,23 +233,27 @@ function createCashFlowTimeline(config) {
     const groupX = timeScale(group.date);
     const totalEvents = group.events.length;
 
-    // Add divider line between groups (except for first group)
-    if (groupIndex > 0) {
-      const prevGroupX = timeScale(eventGroups[groupIndex - 1].date);
-      const dividerX = (prevGroupX + groupX) / 2;
+    // // Add divider line between groups (except for first group)
+    // if (groupIndex > 0) {
+    //   const prevGroupX = timeScale(eventGroups[groupIndex - 1].date);
+    //   const dividerX = (prevGroupX + groupX) / 2;
 
-      cashFlowSvg
-        .append("line")
-        .attr("class", "group-divider")
-        .attr("x1", dividerX)
-        .attr("x2", dividerX)
-        .attr("y1", cashFlowTimelineY - 40)
-        .attr("y2", cashFlowTimelineY + 40)
-        .attr("stroke", "#666")
-        .attr("stroke-width", 1)
-        .attr("stroke-dasharray", "3,3")
-        .attr("opacity", 0.5);
-    }
+    //   // Extend divider lines to accommodate events above and below timeline
+    //   const dividerTop = cashFlowTimelineY - 80; // Extended above for positive events
+    //   const dividerBottom = cashFlowTimelineY + 80; // Extended below for negative events
+
+    //   cashFlowSvg
+    //     .append("line")
+    //     .attr("class", "group-divider")
+    //     .attr("x1", dividerX)
+    //     .attr("x2", dividerX)
+    //     .attr("y1", dividerTop)
+    //     .attr("y2", dividerBottom)
+    //     .attr("stroke", "#666")
+    //     .attr("stroke-width", 1)
+    //     .attr("stroke-dasharray", "3,3")
+    //     .attr("opacity", 0.5);
+    // }
 
     // Render each event in the group
     group.events.forEach((event, eventIndex) => {
@@ -259,11 +262,22 @@ function createCashFlowTimeline(config) {
   }
 
   function renderEvent(event, index, totalEvents, position) {
-    // Calculate vertical position for stacking
+    // Calculate vertical position based on amount sign
+    const isPositive = event.amount > 0;
     const stackHeight = 25;
     const maxStackSize = 3;
     const stackIndex = index % maxStackSize;
-    const verticalOffset = (stackIndex - Math.floor(maxStackSize / 2)) * stackHeight;
+    
+    // Position above timeline for positive amounts, below for negative amounts
+    let verticalOffset;
+    if (isPositive) {
+      // Above the timeline (negative Y offset)
+      verticalOffset = -(stackIndex + 1) * stackHeight;
+    } else {
+      // Below the timeline (positive Y offset)
+      verticalOffset = (stackIndex + 1) * stackHeight;
+    }
+    
     const verticalPosition = cashFlowTimelineY + verticalOffset;
 
     // Create event group
@@ -307,13 +321,15 @@ function createCashFlowTimeline(config) {
       .attr("dy", "0.35em")
       .text(transactionEmojis[event.type] || "💰");
 
-    // Add amount label
+    // Add amount label - position based on whether event is above or below timeline
     const amountText = event.amount >= 0 ? `+$${event.amount.toLocaleString()}` : `-$${Math.abs(event.amount).toLocaleString()}`;
+    const labelYOffset = isPositive ? -15 : 20; // Above circle for positive, below for negative
+    
     eventGroup
       .append("text")
       .attr("class", "cashflow-event-amount")
       .attr("x", 0)
-      .attr("y", verticalOffset > 0 ? 20 : -15)
+      .attr("y", labelYOffset)
       .attr("text-anchor", "middle")
       .attr("font-size", "9px")
       .attr("font-weight", "bold")
@@ -331,11 +347,18 @@ function createCashFlowTimeline(config) {
   }
 
   function addDeleteButton(eventGroup, event) {
+    // Determine if this is a positive (above timeline) or negative (below timeline) event
+    const isPositive = event.amount > 0;
+    
+    // Position delete button appropriately - above for positive events, below for negative events
+    const deleteButtonX = 24;
+    const deleteButtonY = isPositive ? -18 : 18;
+    
     // Add delete button (only visible on hover)
     const deleteButton = eventGroup
       .append("g")
       .attr("class", "delete-button-group")
-      .attr("transform", "translate(24, -18)")
+      .attr("transform", `translate(${deleteButtonX}, ${deleteButtonY})`)
       .style("opacity", 0)
       .style("pointer-events", "none") // Initially disabled until hover
       .style("cursor", "pointer")
