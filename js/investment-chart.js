@@ -1941,7 +1941,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("dy", "1em");
 
     // Add Y axis
-    barChartSvg.append("g").call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
+    barChartSvg.append("g")
+      .attr("class", "y-axis")
+      .call(d3.axisLeft(y).tickFormat((d) => `$${d.toLocaleString()}`));
 
     // Add horizontal line at y=0
     barChartSvg
@@ -1954,15 +1956,15 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("stroke-width", 1)
       .attr("stroke-dasharray", "4,4");
 
-    // // Add Y axis label
-    // barChartSvg
-    //   .append("text")
-    //   .attr("text-anchor", "middle")
-    //   .attr("transform", "rotate(-90)")
-    //   .attr("y", -margin.left)
-    //   .attr("x", -height / 2)
-    //   .text("Amount ($)")
-    //   .style("font-size", "12px");
+    // Add Y axis label
+    barChartSvg
+      .append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -margin.left)
+      .attr("x", -height / 2)
+      .text("Amount ($)")
+      .style("font-size", "12px");
 
     // Group events by date for stacking
     const eventsByDate = d3.groups(allEvents, d => d.date.toDateString());
