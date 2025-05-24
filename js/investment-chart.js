@@ -1814,7 +1814,10 @@ document.addEventListener("DOMContentLoaded", function () {
       dateFormat: dateFormat,
       getDateFromPosition: getDateFromPosition,
       isDateInRange: isDateInRange,
-      groupEventsByProximity: groupEventsByProximity
+      groupEventsByProximity: groupEventsByProximity,
+      deleteCashFlowEvent: deleteCashFlowEvent,
+      updateCashFlowEvent: updateCashFlowEvent,
+      updateCashFlowVisualization: updateInvestmentVisualization
     });
 
     // Now draw the combined bar chart below both timelines
@@ -2681,6 +2684,102 @@ document.addEventListener("DOMContentLoaded", function () {
     } catch (error) {
       console.error("Error deleting transaction:", error);
       alert("Failed to delete transaction: " + error.message);
+      return false;
+    }
+  }
+
+  // Function to delete a cash flow event directly without opening a modal
+  async function deleteCashFlowEvent(event) {
+    try {
+      // Confirm deletion with the user
+      if (!confirm("Are you sure you want to delete this cash flow event?")) {
+        return false;
+      }
+
+      // Determine which store to delete from based on event type
+      let storeName;
+      switch (event.type) {
+        case 'recurringPayment':
+          storeName = STORES.recurringPayments;
+          break;
+        case 'nonRecurringPayment':
+          storeName = STORES.nonRecurringPayments;
+          break;
+        case 'invoice':
+          storeName = STORES.invoices;
+          break;
+        case 'supplierPayment':
+          storeName = STORES.supplierPayments;
+          break;
+        default:
+          console.error("Unknown cash flow event type:", event.type);
+          return false;
+      }
+
+      // Delete the event from the database
+      await deleteData(storeName, Number(event.id));
+
+      // Refresh the chart data and redraw
+      await fetchChartData();
+      drawInvestmentChart();
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting cash flow event:", error);
+      alert("Failed to delete cash flow event: " + error.message);
+      return false;
+    }
+  }
+
+  // Function to update a cash flow event
+  async function updateCashFlowEvent(event) {
+    try {
+      // Determine which store to update based on event type
+      let storeName;
+      let updateDataObj;
+      
+      switch (event.type) {
+        case 'recurringPayment':
+          storeName = STORES.recurringPayments;
+          updateDataObj = {
+            ...event.originalData,
+            // Update the relevant date field for recurring payments
+            // Note: Recurring payments typically use day_of_month, so we might need special handling
+          };
+          break;
+        case 'nonRecurringPayment':
+          storeName = STORES.nonRecurringPayments;
+          updateDataObj = {
+            ...event.originalData,
+            payment_date: event.date.toISOString().split('T')[0]
+          };
+          break;
+        case 'invoice':
+          storeName = STORES.invoices;
+          updateDataObj = {
+            ...event.originalData,
+            due_date: event.date.toISOString().split('T')[0]
+          };
+          break;
+        case 'supplierPayment':
+          storeName = STORES.supplierPayments;
+          updateDataObj = {
+            ...event.originalData,
+            due_date: event.date.toISOString().split('T')[0]
+          };
+          break;
+        default:
+          console.error("Unknown cash flow event type:", event.type);
+          return false;
+      }
+
+      // Update the event in the database
+      await updateData(storeName, updateDataObj);
+
+      return true;
+    } catch (error) {
+      console.error("Error updating cash flow event:", error);
+      alert("Failed to update cash flow event: " + error.message);
       return false;
     }
   }

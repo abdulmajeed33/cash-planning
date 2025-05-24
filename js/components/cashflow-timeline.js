@@ -20,6 +20,9 @@
  * @param {Function} config.getDateFromPosition - Function to get date from x position
  * @param {Function} config.isDateInRange - Function to check if date is in range
  * @param {Function} config.groupEventsByProximity - Function to group events by proximity
+ * @param {Function} config.deleteCashFlowEvent - Function to delete cash flow event
+ * @param {Function} config.updateCashFlowEvent - Function to update cash flow event
+ * @param {Function} config.updateCashFlowVisualization - Function to update visualization
  * @returns {Object} - Object with update and destroy methods
  */
 function createCashFlowTimeline(config) {
@@ -37,7 +40,10 @@ function createCashFlowTimeline(config) {
     dateFormat,
     getDateFromPosition,
     isDateInRange,
-    groupEventsByProximity
+    groupEventsByProximity,
+    deleteCashFlowEvent,
+    updateCashFlowEvent,
+    updateCashFlowVisualization
   } = config;
 
   const { svgWidth, timelineStart, timelineEnd, timelineLength } = dimensions;
@@ -265,14 +271,25 @@ function createCashFlowTimeline(config) {
       .append("g")
       .attr("class", "cashflow-event-group")
       .attr("data-event-id", event.id)
-      .attr("data-event-type", event.type);
+      .attr("data-event-type", event.type)
+      .attr("transform", `translate(${position}, ${verticalPosition})`)
+      .style("cursor", "pointer");
+
+    // Add invisible circle for better hover area
+    eventGroup
+      .append("circle")
+      .attr("class", "cashflow-hover-area")
+      .attr("r", 20)
+      .attr("cx", 0)
+      .attr("cy", 0)
+      .attr("fill", "transparent");
 
     // Add event circle
     const eventCircle = eventGroup
       .append("circle")
       .attr("class", "cashflow-event-circle")
-      .attr("cx", position)
-      .attr("cy", verticalPosition)
+      .attr("cx", 0)
+      .attr("cy", 0)
       .attr("r", 8)
       .attr("fill", transactionColors[event.type] || "#666")
       .attr("stroke", "white")
@@ -283,8 +300,8 @@ function createCashFlowTimeline(config) {
     eventGroup
       .append("text")
       .attr("class", "cashflow-event-emoji")
-      .attr("x", position)
-      .attr("y", verticalPosition + 1)
+      .attr("x", 0)
+      .attr("y", 1)
       .attr("text-anchor", "middle")
       .attr("font-size", "10px")
       .attr("dy", "0.35em")
@@ -295,55 +312,282 @@ function createCashFlowTimeline(config) {
     eventGroup
       .append("text")
       .attr("class", "cashflow-event-amount")
-      .attr("x", position)
-      .attr("y", verticalPosition + (verticalOffset > 0 ? 20 : -15))
+      .attr("x", 0)
+      .attr("y", verticalOffset > 0 ? 20 : -15)
       .attr("text-anchor", "middle")
       .attr("font-size", "9px")
       .attr("font-weight", "bold")
       .attr("fill", event.amount >= 0 ? "#2ecc71" : "#e74c3c")
       .text(amountText);
 
-    // Add tooltip
+    // Add delete button functionality
+    addDeleteButton(eventGroup, event);
+
+    // Add tooltip functionality
     addTooltip(eventGroup, event);
 
-    // Add hover effects
-    eventGroup
-      .on("mouseenter", function () {
-        d3.select(this).select(".cashflow-event-circle")
-          .transition()
-          .duration(200)
-          .attr("r", 10)
-          .attr("opacity", 1);
-      })
-      .on("mouseleave", function () {
-        d3.select(this).select(".cashflow-event-circle")
-          .transition()
-          .duration(200)
-          .attr("r", 8)
-          .attr("opacity", 0.9);
-      });
+    // Make event draggable
+    addDragBehavior(eventGroup, event, position, verticalPosition);
+  }
+
+  function addDeleteButton(eventGroup, event) {
+    // Add delete button (only visible on hover)
+    const deleteButton = eventGroup
+      .append("g")
+      .attr("class", "delete-button-group")
+      .attr("transform", "translate(24, -18)")
+      .style("opacity", 0)
+      .style("pointer-events", "none") // Initially disabled until hover
+      .style("cursor", "pointer")
+      .attr("data-fixed-position", "true") // Mark as fixed position element
+      .raise(); // Ensure delete button stays on top
+
+    // Add white background circle for the delete icon
+    deleteButton
+      .append("circle")
+      .attr("r", 12)
+      .attr("fill", "white")
+      .attr("stroke", "#E53935")
+      .attr("stroke-width", 1.5);
+
+    // Add delete icon (X symbol) instead of emoji
+    deleteButton
+      .append("text")
+      .attr("class", "delete-icon")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .attr("fill", "#E53935")
+      .text("×")
+      .style("pointer-events", "none");
+
+    // Add click handler to the delete button group with stopImmediatePropagation
+    deleteButton.on("click", function (clickEvent) {
+      clickEvent.stopPropagation(); // Prevent triggering parent click events
+      clickEvent.preventDefault();
+      clickEvent.stopImmediatePropagation();
+      deleteCashFlowEvent(event);
+    });
+
+    return deleteButton;
   }
 
   function addTooltip(eventGroup, event) {
+    const deleteButton = eventGroup.select(".delete-button-group");
+
     eventGroup
-      .on("mouseover", function (mouseEvent) {
-        tooltip.transition().duration(200).style("opacity", 0.9);
+      .on("mouseenter", function (mouseEvent) {
+        // Prevent event bubbling
+        mouseEvent.stopPropagation();
+
+        // Stop any ongoing transitions to prevent juggling
+        deleteButton.interrupt();
+
+        // Show delete button on hover with no animation
+        deleteButton.style("opacity", 1).style("pointer-events", "all");
+
+        tooltip
+          .interrupt() // Stop any ongoing tooltip transitions
+          .transition()
+          .duration(200)
+          .style("opacity", 0.9)
+          .style("transform", "scale(1)");
 
         const tooltipContent = `
           <strong>${event.description}</strong><br>
           <strong>Type:</strong> ${getEventTypeLabel(event.type)}<br>
           <strong>Amount:</strong> ${event.amount >= 0 ? '+' : ''}$${event.amount.toLocaleString()}<br>
           <strong>Date:</strong> ${dateFormat(event.date)}
+          <br/><span style="font-size: 0.8em; color: #666;">(Click × to delete)</span>
         `;
 
         tooltip
           .html(tooltipContent)
-          .style("left", mouseEvent.pageX + 10 + "px")
-          .style("top", mouseEvent.pageY - 28 + "px");
+          .style("left", mouseEvent.pageX + 30 + "px")
+          .style("top", mouseEvent.pageY - 108 + "px");
       })
-      .on("mouseout", function () {
-        tooltip.transition().duration(500).style("opacity", 0);
+      .on("mouseleave", function () {
+        // Stop any ongoing transitions
+        deleteButton.interrupt();
+
+        // Hide delete button when not hovering with no animation
+        deleteButton.style("opacity", 0).style("pointer-events", "none");
+
+        tooltip
+          .interrupt() // Stop any ongoing tooltip transitions
+          .transition()
+          .duration(300)
+          .style("opacity", 0)
+          .style("transform", "scale(0.95)");
       });
+  }
+
+  function addDragBehavior(eventGroup, event, position, verticalPosition) {
+    // Make event draggable
+    eventGroup.call(
+      d3
+        .drag()
+        .filter(function (dragEvent) {
+          // Only initiate drag if not clicking on the delete button
+          return (
+            !dragEvent.target.closest(".delete-button-group") &&
+            !dragEvent.target.closest(".delete-icon")
+          );
+        })
+        .on("start", function (dragEvent) {
+          // Prevent browser's default drag behavior
+          dragEvent.sourceEvent.preventDefault();
+          dragEvent.sourceEvent.stopPropagation();
+
+          // Hide all delete buttons during drag to prevent interference
+          d3.selectAll(".delete-button-group")
+            .style("opacity", 0)
+            .style("pointer-events", "none");
+
+          d3.select(this)
+            .style("cursor", "grabbing")
+            .raise() // Bring to front
+            .classed("dragging", true); // Add class for styles
+
+          // Get connector color based on event type
+          const connectorColor = transactionColors[event.type] || "#666";
+
+          // Create the triangle connector
+          const connector = cashFlowSvg
+            .append("path")
+            .attr("class", "drag-connector")
+            .attr("stroke", connectorColor)
+            .attr("stroke-width", 2)
+            .attr("fill", "none");
+
+          // Add visual indicator for current date
+          cashFlowSvg
+            .append("circle")
+            .attr("class", "current-date-indicator")
+            .attr("cx", timeScale(event.date))
+            .attr("cy", cashFlowTimelineY)
+            .attr("r", 8)
+            .attr("fill", "none")
+            .attr("stroke", connectorColor)
+            .attr("stroke-width", 1)
+            .attr("stroke-dasharray", "3,2");
+        })
+        .on("drag", function (dragEvent) {
+          // Update position while dragging
+          const x = dragEvent.x;
+          const y = dragEvent.y;
+
+          d3.select(this).attr("transform", `translate(${x}, ${y})`);
+
+          // Get target date at current position
+          const targetDate = getDateFromPosition(x);
+
+          // Show date label during drag
+          dateLabel
+            .style("opacity", 1)
+            .html(dateFormat(targetDate))
+            .style("left", dragEvent.sourceEvent.pageX + 10 + "px")
+            .style("top", dragEvent.sourceEvent.pageY - 30 + "px");
+
+          // Update the connector
+          const trianglePath = `M ${x} ${y} L ${timeScale(event.date)} ${cashFlowTimelineY}`;
+          cashFlowSvg.select(".drag-connector").attr("d", trianglePath);
+
+          // Remove previous target indicator
+          cashFlowSvg.selectAll(".target-date-indicator").remove();
+
+          // Don't highlight dates beyond the end date
+          if (isDateInRange(targetDate)) {
+            // Get color based on event type
+            const indicatorColor = transactionColors[event.type] || "#666";
+            const fillColor = `rgba(${parseInt(indicatorColor.slice(1, 3), 16)}, ${parseInt(indicatorColor.slice(3, 5), 16)}, ${parseInt(indicatorColor.slice(5, 7), 16)}, 0.2)`;
+
+            // Add visual indicator for target date
+            cashFlowSvg
+              .append("circle")
+              .attr("class", "target-date-indicator")
+              .attr("cx", timeScale(targetDate))
+              .attr("cy", cashFlowTimelineY)
+              .attr("r", 8)
+              .attr("fill", fillColor)
+              .attr("stroke", indicatorColor)
+              .attr("stroke-width", 1.5);
+          }
+        })
+        .on("end", function (dragEvent) {
+          // Hide date label
+          dateLabel.style("opacity", 0);
+
+          // Determine date at drop position
+          const newDate = getDateFromPosition(dragEvent.x);
+
+          // Update data if date changed and is in range
+          if (
+            newDate.getTime() !== event.date.getTime() &&
+            isDateInRange(newDate)
+          ) {
+            // Store original date for comparison
+            const originalDate = new Date(event.date);
+
+            // Update date
+            event.date = new Date(newDate);
+
+            // Add subtle feedback animation
+            d3.select(this)
+              .style("transform", "scale(1.2)")
+              .transition()
+              .duration(300)
+              .style("transform", "scale(1)");
+
+            // Clear any existing timeouts
+            if (window.cashFlowUpdateTimeout) {
+              clearTimeout(window.cashFlowUpdateTimeout);
+            }
+
+            // Update the cash flow event in the database
+            if (updateCashFlowEvent) {
+              updateCashFlowEvent(event);
+            }
+
+            // Force complete redraw with a small delay to ensure animations complete
+            window.cashFlowUpdateTimeout = setTimeout(() => {
+              updateCashFlowVisualization();
+            }, 50);
+
+            // Show feedback about change
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip
+              .html(
+                `
+                  <strong>Moved to ${dateFormat(newDate)}</strong><br/>
+                  Event date updated
+                `
+              )
+              .style("left", dragEvent.sourceEvent.pageX + 10 + "px")
+              .style("top", dragEvent.sourceEvent.pageY - 28 + "px");
+
+            setTimeout(() => {
+              tooltip.transition().duration(500).style("opacity", 0);
+            }, 3000);
+          } else if (isDateInRange(newDate)) {
+            // If only the vertical position changed but date is the same,
+            // we still want to force a redraw to ensure proper position
+            updateCashFlowVisualization();
+          } else {
+            // If no change or invalid target, reset position
+            updateCashFlowVisualization();
+          }
+
+          // Remove the connector and indicators
+          cashFlowSvg.select(".drag-connector").remove();
+          cashFlowSvg.select(".current-date-indicator").remove();
+          cashFlowSvg.select(".target-date-indicator").remove();
+
+          // Reset cursor
+          d3.select(this).style("cursor", "grab");
+        })
+    );
   }
 
   function getEventTypeLabel(type) {
@@ -364,12 +608,16 @@ function createCashFlowTimeline(config) {
       cashFlowSvg.selectAll(".group-divider").remove();
       
       // Update events and re-render
-      visibleEvents = newEvents;
+      config.events = newEvents;
       renderCashFlowEvents();
     },
     
     destroy: function() {
       cashFlowSvg.remove();
+    },
+    
+    getSvg: function() {
+      return cashFlowSvg;
     }
   };
 }

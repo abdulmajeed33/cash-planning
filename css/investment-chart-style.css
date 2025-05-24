@@ -1148,3 +1148,57 @@ svg {
     padding: 10px;
   }
 }
+
+/* Cash flow timeline drag and delete styles */
+.cashflow-event-group {
+  cursor: pointer;
+}
+
+.cashflow-event-group.dragging {
+  opacity: 0.8;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+.cashflow-hover-area {
+  fill-opacity: 0;
+  stroke-opacity: 0;
+  cursor: pointer;
+}
+
+.cashflow-event-circle {
+  transition: r 0.2s ease, opacity 0.2s ease;
+}
+
+.cashflow-event-group:hover .cashflow-event-circle {
+  r: 10;
+  opacity: 1;
+}
+
+.cashflow-event-group .delete-button-group {
+  position: absolute;
+  transition: none;
+  pointer-events: all;
+  opacity: 0;
+  z-index: 100;
+}
+
+.cashflow-event-group .delete-button-group circle {
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+
+/* Prevent hover effect changes that could cause juggling */
+.cashflow-hover-area:hover,
+.cashflow-event-circle:hover,
+.cashflow-event-group .delete-button-group:hover ~ .cashflow-hover-area {
+  transform: none;
+}
+
+/* Drag indicators for cash flow events */
+.drag-connector {
+  pointer-events: none;
+}
+
+.current-date-indicator,
+.target-date-indicator {
+  pointer-events: none;
+}
