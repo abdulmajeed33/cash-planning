@@ -112,13 +112,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function set1Month() {
     const now = new Date();
     
-    // Set start date to half a month before now, and end date to half a month after now
-    // This places today roughly in the middle of the timeline
+    // Set start date to today (cannot be before today)
     startDate = new Date(now);
-    startDate.setDate(now.getDate() - 15); // Go back half a month
     
+    // Set end date to 1 month from today
     endDate = new Date(now);
-    endDate.setDate(now.getDate() + 15); // Go forward half a month
+    endDate.setMonth(now.getMonth() + 1);
     
     updateInputsAndChart();
   }
@@ -126,13 +125,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function set3Months() {
     const now = new Date();
     
-    // Set start date to 1.5 months before now, and end date to 1.5 months after now
-    // This places today roughly in the middle of the timeline
+    // Set start date to today (cannot be before today)
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 1.5); // Go back 1.5 months
     
+    // Set end date to 3 months from today
     endDate = new Date(now);
-    endDate.setMonth(now.getMonth() + 1.5); // Go forward 1.5 months
+    endDate.setMonth(now.getMonth() + 3);
     
     updateInputsAndChart();
   }
@@ -140,13 +138,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function set6Months() {
     const now = new Date();
     
-    // Set start date to 3 months before now, and end date to 3 months after now
-    // This places today roughly in the middle of the timeline
+    // Set start date to today (cannot be before today)
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 3); // Go back 3 months
     
+    // Set end date to 6 months from today
     endDate = new Date(now);
-    endDate.setMonth(now.getMonth() + 3); // Go forward 3 months
+    endDate.setMonth(now.getMonth() + 6);
     
     updateInputsAndChart();
   }
@@ -154,13 +151,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function set1Year() {
     const now = new Date();
     
-    // Set start date to 6 months before now, and end date to 6 months after now
-    // This places today roughly in the middle of the timeline
+    // Set start date to today (cannot be before today)
     startDate = new Date(now);
-    startDate.setMonth(now.getMonth() - 6); // Go back 6 months
     
+    // Set end date to 1 year from today
     endDate = new Date(now);
-    endDate.setMonth(now.getMonth() + 6); // Go forward 6 months
+    endDate.setFullYear(now.getFullYear() + 1);
     
     updateInputsAndChart();
   }
@@ -184,6 +180,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // Parse dates
     const newStartDate = startDateValue ? new Date(startDateValue) : startDate;
     const newEndDate = endDateValue ? new Date(endDateValue) : endDate;
+    
+    // Get today's date (without time component for comparison)
+    const today = new Date();
+    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startDateOnly = new Date(newStartDate.getFullYear(), newStartDate.getMonth(), newStartDate.getDate());
+
+    // Validate that start date is not before today
+    if (startDateOnly < todayDateOnly) {
+      alert("Start date cannot be before today. Today is the minimum allowed start date.");
+      // Reset to today
+      const correctedStartDate = new Date(today);
+      d3.select("#cashflow-start-date").property("value", inputDateFormat(correctedStartDate));
+      return;
+    }
     
     // Validate dates
     if (newStartDate >= newEndDate) {
