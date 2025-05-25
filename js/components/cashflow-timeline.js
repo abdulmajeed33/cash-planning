@@ -233,6 +233,31 @@ function createCashFlowTimeline(config) {
     const groupX = timeScale(group.date);
     const totalEvents = group.events.length;
 
+    // Determine dot color based on event amounts in this group
+    let dotColor = "#2ecc71"; // Default green for positive amounts
+
+    // Check if the group has any negative or positive amounts
+    const hasNegative = group.events.some(event => event.amount < 0);
+    const hasPositive = group.events.some(event => event.amount > 0);
+
+    if (hasNegative && hasPositive) {
+      dotColor = "#9C27B0"; // Purple for mixed event types
+    } else if (hasNegative) {
+      dotColor = "#e74c3c"; // Red for negative amounts
+    }
+
+    // Add a colored dot for this group's date on the main timeline
+    cashFlowSvg
+      .append("circle")
+      .attr("class", "timeline-point cashflow-point")
+      .attr("cx", groupX)
+      .attr("cy", cashFlowTimelineY)
+      .attr("r", 5)
+      .attr("fill", dotColor)
+      .attr("data-event-type", group.events[0].type)
+      .attr("data-date", group.date.toISOString())
+      .attr("data-event-id", group.events[0].id);
+
     // // Add divider line between groups (except for first group)
     // if (groupIndex > 0) {
     //   const prevGroupX = timeScale(eventGroups[groupIndex - 1].date);
@@ -352,7 +377,7 @@ function createCashFlowTimeline(config) {
     
     // Position delete button appropriately - above for positive events, below for negative events
     const deleteButtonX = 24;
-    const deleteButtonY = isPositive ? -18 : 18;
+    const deleteButtonY = -18;
     
     // Add delete button (only visible on hover)
     const deleteButton = eventGroup
@@ -626,8 +651,9 @@ function createCashFlowTimeline(config) {
   // Return object with methods for external control
   return {
     update: function(newEvents) {
-      // Remove existing events
+      // Remove existing events and timeline dots
       cashFlowSvg.selectAll(".cashflow-event-group").remove();
+      cashFlowSvg.selectAll(".timeline-point").remove();
       cashFlowSvg.selectAll(".group-divider").remove();
       
       // Update events and re-render
