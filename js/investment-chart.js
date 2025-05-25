@@ -640,6 +640,10 @@ document.addEventListener("DOMContentLoaded", function () {
   let maxAmount = Infinity;
   let amountFilterActive = false;
 
+  // Transaction type visibility toggles
+  let showCapitalTransactions = true;  // Show investment transactions (funds/lands)
+  let showOperationalTransactions = true;  // Show cash flow events
+
   // Setup visualization dimensions
   const svgWidth = 1200;
   const svgHeight = 150;
@@ -712,6 +716,9 @@ document.addEventListener("DOMContentLoaded", function () {
         event.preventDefault();
       }
     });
+
+    // Add transaction type toggles
+    addTransactionTypeToggles();
   }
 
   // Investment data array - now can be dynamically updated
@@ -720,9 +727,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Transaction data array - now can be dynamically updated
   let transactionData = [];
 
-  // Filter cash flow events based on selected date range and amount filter
-  function filterCashFlowEvents(events) {
-    if (!events || !Array.isArray(events)) {
+  // Filter transactions based on selected date range and amount filter
+  function filterTransactions(transactions) {
+    if (!transactions || !Array.isArray(transactions)) {
       return [];
     }
 
@@ -750,21 +757,26 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    return events.filter((event) => {
-      // Make sure event object is valid
-      if (!event || !event.date) {
+    return transactions.filter((transaction) => {
+      // Make sure transaction object is valid
+      if (!transaction || !transaction.date) {
+        return false;
+      }
+
+      // Transaction type toggle filter - only show if capital transactions are enabled
+      if (!showCapitalTransactions) {
         return false;
       }
 
       // Date filter
       const dateInRange =
-        event.date >= startDate && event.date <= endDate;
+        transaction.date >= startDate && transaction.date <= endDate;
 
       // Amount filter (only apply if active)
       const amountInRange =
         !isFilterActive ||
-        (Math.abs(event.amount) >= filterMin &&
-          Math.abs(event.amount) <= filterMax);
+        (Math.abs(transaction.amount) >= filterMin &&
+          Math.abs(transaction.amount) <= filterMax);
 
       return dateInRange && amountInRange;
     });
@@ -1273,6 +1285,243 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInputsAndChart();
   }
 
+  /**
+   * Creates transaction type toggle controls
+   * Adds switches to show/hide capital and operational transactions
+   */
+  function addTransactionTypeToggles() {
+    const timelineEl = d3.select("#investment-timeline");
+    
+    if (!timelineEl.node()) {
+      console.warn("Timeline element not found, skipping toggle creation");
+      return;
+    }
+
+    // Create toggle container
+    const toggleContainer = timelineEl
+      .append("div")
+      .attr("class", "transaction-type-toggles")
+      .style("margin", "15px 0")
+      .style("padding", "15px")
+      .style("background", "#f8f9fa")
+      .style("border-radius", "8px")
+      .style("border", "1px solid #e9ecef")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "30px")
+      .style("flex-wrap", "wrap");
+
+    // Add section title
+    toggleContainer
+      .append("h4")
+      .text("View Options:")
+      .style("margin", "0")
+      .style("color", "#495057")
+      .style("font-size", "14px")
+      .style("font-weight", "600");
+
+    // Create capital transactions toggle
+    const capitalToggle = createToggleSwitch(
+      toggleContainer,
+      "capital-toggle",
+      "Capital Transactions",
+      "📈 Investments (Funds & Lands)",
+      showCapitalTransactions,
+      onCapitalToggleChange
+    );
+
+    // Create operational transactions toggle
+    const operationalToggle = createToggleSwitch(
+      toggleContainer,
+      "operational-toggle", 
+      "Operational Transactions",
+      "💼 Cash Flow (Payments & Invoices)",
+      showOperationalTransactions,
+      onOperationalToggleChange
+    );
+
+    // Move the toggle container to appear after date controls
+    const dateRangeEl = document.querySelector(".date-range-control");
+    if (dateRangeEl && dateRangeEl.nextSibling && toggleContainer.node()) {
+      dateRangeEl.parentNode.insertBefore(
+        toggleContainer.node(),
+        dateRangeEl.nextSibling
+      );
+    }
+  }
+
+  /**
+   * Creates a styled toggle switch component
+   * @param {d3.Selection} container - Parent container
+   * @param {string} id - Unique identifier for the toggle
+   * @param {string} label - Main label text
+   * @param {string} description - Description text
+   * @param {boolean} initialState - Initial toggle state
+   * @param {Function} onChange - Callback function when toggle changes
+   * @returns {d3.Selection} Toggle element
+   */
+  function createToggleSwitch(container, id, label, description, initialState, onChange) {
+    const toggleGroup = container
+      .append("div")
+      .attr("class", "toggle-group")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "10px");
+
+    // Create toggle switch HTML
+    const toggleHtml = `
+      <div class="toggle-switch">
+        <input type="checkbox" id="${id}" ${initialState ? 'checked' : ''}>
+        <label for="${id}" class="toggle-label">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    `;
+
+    // Add toggle switch
+    toggleGroup.html(toggleHtml);
+
+    // Add labels
+    const labelContainer = toggleGroup
+      .append("div")
+      .attr("class", "toggle-text");
+
+    labelContainer
+      .append("div")
+      .attr("class", "toggle-main-label")
+      .style("font-weight", "600")
+      .style("color", "#212529")
+      .style("font-size", "13px")
+      .text(label);
+
+    labelContainer
+      .append("div")
+      .attr("class", "toggle-description")
+      .style("font-size", "11px")
+      .style("color", "#6c757d")
+      .text(description);
+
+    // Add event listener
+    d3.select(`#${id}`).on("change", function() {
+      onChange(this.checked);
+    });
+
+    // Add CSS styles for toggle switch
+    addToggleSwitchStyles();
+
+    return toggleGroup;
+  }
+
+  /**
+   * Adds CSS styles for toggle switches
+   * Injects styles only once to avoid duplication
+   */
+  function addToggleSwitchStyles() {
+    // Check if styles already exist
+    if (document.getElementById("toggle-switch-styles")) {
+      return;
+    }
+
+    const styles = `
+      <style id="toggle-switch-styles">
+        .toggle-switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+        }
+
+        .toggle-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .toggle-label {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          border-radius: 24px;
+          transition: 0.3s;
+        }
+
+        .toggle-label:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          border-radius: 50%;
+          transition: 0.3s;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .toggle-label {
+          background-color: #007bff;
+        }
+
+        input:checked + .toggle-label:before {
+          transform: translateX(20px);
+        }
+
+        .toggle-group:hover .toggle-label {
+          box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+      </style>
+    `;
+
+    document.head.insertAdjacentHTML('beforeend', styles);
+  }
+
+  /**
+   * Handles capital transactions toggle change
+   * @param {boolean} isEnabled - New toggle state
+   */
+  function onCapitalToggleChange(isEnabled) {
+    showCapitalTransactions = isEnabled;
+    console.log(`Capital transactions visibility: ${isEnabled ? 'enabled' : 'disabled'}`);
+    updateVisualizationWithToggles();
+  }
+
+  /**
+   * Handles operational transactions toggle change
+   * @param {boolean} isEnabled - New toggle state
+   */
+  function onOperationalToggleChange(isEnabled) {
+    showOperationalTransactions = isEnabled;
+    console.log(`Operational transactions visibility: ${isEnabled ? 'enabled' : 'disabled'}`);
+    updateVisualizationWithToggles();
+  }
+
+  /**
+   * Updates visualization based on current toggle states
+   * Provides user feedback and refreshes the chart
+   */
+  function updateVisualizationWithToggles() {
+    // Validate that at least one toggle is enabled
+    if (!showCapitalTransactions && !showOperationalTransactions) {
+      // Show warning and reset both toggles
+      alert("At least one transaction type must be visible. Enabling both types.");
+      
+      // Reset toggles
+      showCapitalTransactions = true;
+      showOperationalTransactions = true;
+      
+      // Update UI toggles
+      d3.select("#capital-toggle").property("checked", true);
+      d3.select("#operational-toggle").property("checked", true);
+    }
+
+    // Update the chart with current toggle states
+    updateInvestmentVisualization();
+  }
+
   function set3Months() {
     const now = new Date();
     
@@ -1717,119 +1966,154 @@ document.addEventListener("DOMContentLoaded", function () {
         .text(` (Showing ${visibleTransactions.length} investment transactions, ${visibleCashFlowEvents.length} cash flow events)`);
     }
 
-    // Add section header for investment timeline
-    investmentChart
-      .append("h3")
-      .attr("class", "section-header")
-      .style("margin", "20px 0 10px 0")
-      .style("color", "#333")
-      .text("Investment Timeline");
-
-    // Process the investment transaction data for display
-    if (visibleTransactions.length === 0) {
-      investmentChart
-        .append("div")
-        .attr("class", "no-data-message")
-        .style("margin-bottom", "20px")
-        .text(
-          "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
-        );
-    }
-
-    // Clean up any existing timeline instance
-    if (timelineInstance) {
-      timelineInstance.destroy();
-      timelineInstance = null;
-    }
-
-    // Create investment timeline container
-    const investmentTimelineContainer = investmentChart
+    // Create toggle status message
+    const toggleStatusMsg = investmentChart
       .append("div")
-      .attr("id", "investment-timeline-container")
-      .style("margin-bottom", "30px");
+      .attr("class", "toggle-status")
+      .style("margin-bottom", "10px")
+      .style("padding", "5px 10px")
+      .style("background", "#e3f2fd")
+      .style("border-left", "4px solid #2196F3")
+      .style("border-radius", "2px");
 
-    // Create investment timeline using the component
-    timelineInstance = createInvestmentTimeline({
-      containerId: "investment-timeline-container",
-      transactions: visibleTransactions,
-      timeScale: timeScale,
-      startDate: startDate,
-      endDate: endDate,
-      dimensions: {
-        svgWidth: svgWidth,
-        timelineStart: timelineStart,
-        timelineEnd: timelineEnd,
-        timelineLength: timelineLength
-      },
-      tooltip: tooltip,
-      dateLabel: dateLabel,
-      transactionEmojis: transactionEmojis,
-      dateFormat: dateFormat,
-      getDateFromPosition: getDateFromPosition,
-      isDateInRange: isDateInRange,
-      groupTransactionsByProximity: groupTransactionsByProximity,
-      showTransactionModal: showTransactionModal,
-      deleteTransaction: deleteTransaction,
-      updateInvestmentVisualization: updateInvestmentVisualization,
-      highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
-    });
+    const activeToggles = [];
+    if (showCapitalTransactions) activeToggles.push("Capital");
+    if (showOperationalTransactions) activeToggles.push("Operational");
 
-    // Add section header for cash flow timeline
-    investmentChart
-      .append("h3")
-      .attr("class", "section-header")
-      .style("margin", "20px 0 10px 0")
-      .style("color", "#333")
-      .text("Cash Flow Timeline");
+    toggleStatusMsg.append("strong").text("Viewing: ");
+    toggleStatusMsg
+      .append("span")
+      .text(`${activeToggles.join(" + ")} transactions`);
 
-    // Process the cash flow data for display
-    if (visibleCashFlowEvents.length === 0) {
+    // Add section header for investment timeline (only if capital transactions are enabled)
+    if (showCapitalTransactions) {
       investmentChart
+        .append("h3")
+        .attr("class", "section-header")
+        .style("margin", "20px 0 10px 0")
+        .style("color", "#333")
+        .text("Investment Timeline");
+
+      // Process the investment transaction data for display
+      if (visibleTransactions.length === 0) {
+        investmentChart
+          .append("div")
+          .attr("class", "no-data-message")
+          .style("margin-bottom", "20px")
+          .text(
+            "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
+          );
+      }
+
+      // Clean up any existing timeline instance
+      if (timelineInstance) {
+        timelineInstance.destroy();
+        timelineInstance = null;
+      }
+
+      // Create investment timeline container
+      const investmentTimelineContainer = investmentChart
         .append("div")
-        .attr("class", "no-data-message")
-        .style("margin-bottom", "20px")
-        .text(
-          "No cash flow events in the selected range."
-        );
+        .attr("id", "investment-timeline-container")
+        .style("margin-bottom", "30px");
+
+      // Create investment timeline using the component
+      timelineInstance = createInvestmentTimeline({
+        containerId: "investment-timeline-container",
+        transactions: visibleTransactions,
+        timeScale: timeScale,
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: {
+          svgWidth: svgWidth,
+          timelineStart: timelineStart,
+          timelineEnd: timelineEnd,
+          timelineLength: timelineLength
+        },
+        tooltip: tooltip,
+        dateLabel: dateLabel,
+        transactionEmojis: transactionEmojis,
+        dateFormat: dateFormat,
+        getDateFromPosition: getDateFromPosition,
+        isDateInRange: isDateInRange,
+        groupTransactionsByProximity: groupTransactionsByProximity,
+        showTransactionModal: showTransactionModal,
+        deleteTransaction: deleteTransaction,
+        updateInvestmentVisualization: updateInvestmentVisualization,
+        highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
+      });
+    } else {
+      // Clean up timeline instance if capital transactions are disabled
+      if (timelineInstance) {
+        timelineInstance.destroy();
+        timelineInstance = null;
+      }
     }
 
-    // Clean up any existing cash flow timeline instance
-    if (cashFlowTimelineInstance) {
-      cashFlowTimelineInstance.destroy();
-      cashFlowTimelineInstance = null;
+    // Add section header for cash flow timeline (only if operational transactions are enabled)
+    if (showOperationalTransactions) {
+      investmentChart
+        .append("h3")
+        .attr("class", "section-header")
+        .style("margin", "20px 0 10px 0")
+        .style("color", "#333")
+        .text("Cash Flow Timeline");
+
+      // Process the cash flow data for display
+      if (visibleCashFlowEvents.length === 0) {
+        investmentChart
+          .append("div")
+          .attr("class", "no-data-message")
+          .style("margin-bottom", "20px")
+          .text(
+            "No cash flow events in the selected range."
+          );
+      }
+
+      // Clean up any existing cash flow timeline instance
+      if (cashFlowTimelineInstance) {
+        cashFlowTimelineInstance.destroy();
+        cashFlowTimelineInstance = null;
+      }
+
+      // Create cash flow timeline container
+      const cashFlowTimelineContainer = investmentChart
+        .append("div")
+        .attr("id", "cashflow-timeline-container")
+        .style("margin-bottom", "30px");
+
+      // Create cash flow timeline using the component
+      cashFlowTimelineInstance = createCashFlowTimeline({
+        containerId: "cashflow-timeline-container",
+        events: visibleCashFlowEvents,
+        timeScale: timeScale,
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: {
+          svgWidth: svgWidth,
+          timelineStart: timelineStart,
+          timelineEnd: timelineEnd,
+          timelineLength: timelineLength
+        },
+        tooltip: tooltip,
+        dateLabel: dateLabel,
+        transactionEmojis: transactionEmojis,
+        transactionColors: cashFlowColors,
+        dateFormat: dateFormat,
+        getDateFromPosition: getDateFromPosition,
+        isDateInRange: isDateInRange,
+        groupEventsByProximity: groupEventsByProximity,
+        deleteCashFlowEvent: deleteCashFlowEvent,
+        updateCashFlowEvent: updateCashFlowEvent,
+        updateCashFlowVisualization: updateInvestmentVisualization
+      });
+    } else {
+      // Clean up cash flow timeline instance if operational transactions are disabled
+      if (cashFlowTimelineInstance) {
+        cashFlowTimelineInstance.destroy();
+        cashFlowTimelineInstance = null;
+      }
     }
-
-    // Create cash flow timeline container
-    const cashFlowTimelineContainer = investmentChart
-      .append("div")
-      .attr("id", "cashflow-timeline-container")
-      .style("margin-bottom", "30px");
-
-    // Create cash flow timeline using the component
-    cashFlowTimelineInstance = createCashFlowTimeline({
-      containerId: "cashflow-timeline-container",
-      events: visibleCashFlowEvents,
-      timeScale: timeScale,
-      startDate: startDate,
-      endDate: endDate,
-      dimensions: {
-        svgWidth: svgWidth,
-        timelineStart: timelineStart,
-        timelineEnd: timelineEnd,
-        timelineLength: timelineLength
-      },
-      tooltip: tooltip,
-      dateLabel: dateLabel,
-      transactionEmojis: transactionEmojis,
-      transactionColors: cashFlowColors,
-      dateFormat: dateFormat,
-      getDateFromPosition: getDateFromPosition,
-      isDateInRange: isDateInRange,
-      groupEventsByProximity: groupEventsByProximity,
-      deleteCashFlowEvent: deleteCashFlowEvent,
-      updateCashFlowEvent: updateCashFlowEvent,
-      updateCashFlowVisualization: updateInvestmentVisualization
-    });
 
     // Now draw the combined bar chart below both timelines
     drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents);
@@ -2342,56 +2626,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return true;
   }
 
-  // Filter transactions based on selected date range and amount filter
-  function filterTransactions(transactions) {
-    if (!transactions || !Array.isArray(transactions)) {
-      return [];
-    }
-
-    // Check if amount filter is enabled - use the checkbox if it exists,
-    // otherwise use the amountFilterActive variable
-    const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox
-      ? filterCheckbox.checked
-      : amountFilterActive;
-
-    // If filter is active, get current min/max values from inputs if available
-    let filterMin = minAmount;
-    let filterMax = maxAmount;
-
-    if (isFilterActive) {
-      const minInput = document.getElementById("min-amount");
-      const maxInput = document.getElementById("max-amount");
-
-      if (minInput) {
-        filterMin = parseFloat(minInput.value) || 0;
-      }
-
-      if (maxInput && maxInput.value) {
-        filterMax = parseFloat(maxInput.value);
-      }
-    }
-
-    return transactions.filter((transaction) => {
-      // Make sure transaction object is valid
-      if (!transaction || !transaction.date) {
-        return false;
-      }
-
-      // Date filter
-      const dateInRange =
-        transaction.date >= startDate && transaction.date <= endDate;
-
-      // Amount filter (only apply if active)
-      const amountInRange =
-        !isFilterActive ||
-        (Math.abs(transaction.amount) >= filterMin &&
-          Math.abs(transaction.amount) <= filterMax);
-
-      return dateInRange && amountInRange;
-    });
-  }
-
   // Initialization function to populate the modal when investmentData is available
   function initTransactionModal() {
     console.log(
@@ -2898,5 +3132,60 @@ document.addEventListener("DOMContentLoaded", function () {
       .classList.contains("active")
   ) {
     initInvestmentChart();
+  }
+
+  // Filter cash flow events based on selected date range, amount filter, and transaction type toggles
+  function filterCashFlowEvents(events) {
+    if (!events || !Array.isArray(events)) {
+      return [];
+    }
+
+    // Check if amount filter is enabled - use the checkbox if it exists,
+    // otherwise use the amountFilterActive variable
+    const filterCheckbox = document.getElementById("enable-amount-filter");
+    const isFilterActive = filterCheckbox
+      ? filterCheckbox.checked
+      : amountFilterActive;
+
+    // If filter is active, get current min/max values from inputs if available
+    let filterMin = minAmount;
+    let filterMax = maxAmount;
+
+    if (isFilterActive) {
+      const minInput = document.getElementById("min-amount");
+      const maxInput = document.getElementById("max-amount");
+
+      if (minInput) {
+        filterMin = parseFloat(minInput.value) || 0;
+      }
+
+      if (maxInput && maxInput.value) {
+        filterMax = parseFloat(maxInput.value);
+      }
+    }
+
+    return events.filter((event) => {
+      // Make sure event object is valid
+      if (!event || !event.date) {
+        return false;
+      }
+
+      // Transaction type toggle filter - only show if operational transactions are enabled
+      if (!showOperationalTransactions) {
+        return false;
+      }
+
+      // Date filter
+      const dateInRange =
+        event.date >= startDate && event.date <= endDate;
+
+      // Amount filter (only apply if active)
+      const amountInRange =
+        !isFilterActive ||
+        (Math.abs(event.amount) >= filterMin &&
+          Math.abs(event.amount) <= filterMax);
+
+      return dateInRange && amountInRange;
+    });
   }
 });
