@@ -2327,7 +2327,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const investmentTimelineContainer = investmentChart
         .append("div")
         .attr("id", "investment-timeline-container")
-        .style("margin-bottom", "30px");
+        .style("margin-bottom", "40px"); // Increased margin for consistency
 
       // Create investment timeline using the component
       timelineInstance = createInvestmentTimeline({
@@ -2382,7 +2382,7 @@ document.addEventListener("DOMContentLoaded", function () {
         investmentChart
           .append("div")
           .attr("class", "no-data-message")
-          .style("margin-bottom", "20px")
+          .style("margin-bottom", "60px") // Increased margin for consistency
           .style("text-align", "center")
           .style("padding", "20px")
           .style("color", "#666")
@@ -2393,7 +2393,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const cashFlowTimelineContainer = investmentChart
           .append("div")
           .attr("id", "cashflow-timeline-container")
-          .style("margin-bottom", "30px");
+          .style("margin-bottom", "100px"); // Further increased margin to prevent overlap with events extending below timeline
 
         // Create cash flow timeline using the component
         cashFlowTimelineInstance = createCashFlowTimeline({
@@ -2459,8 +2459,10 @@ document.addEventListener("DOMContentLoaded", function () {
     combinedChart
       .append("h3")
       .attr("class", "section-header")
-      .style("margin", "30px 0 10px 0")
+      .style("margin", "120px 0 10px 0") // Increased top margin for better separation
       .style("color", "#333")
+      .style("padding-top", "20px") // Additional padding for visual separation
+      .style("border-top", "1px solid #eee") // Subtle border to separate sections
       .text("Combined Financial Overview");
 
     // Set chart dimensions with responsive sizing
