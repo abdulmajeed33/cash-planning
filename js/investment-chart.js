@@ -1160,118 +1160,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return this; // For chaining
     },
   };
-
-  // Create amount range filter container - only if element exists, using safer methods
-  const timelineEl = d3.select("#investment-timeline");
-  const dateRangeSelector = ".date-range-control";
-
-  // Only add the filter controls if the timeline element exists
-  let filterControls;
-  if (timelineEl.node()) {
-    try {
-      // Simply append the filter controls after the date range control
-      // instead of trying to use insertBefore with a complex selector
-      filterControls = timelineEl
-        .append("div")
-        .attr("class", "amount-range-control")
-        .style("margin", "20px 0")
-        .style("padding", "15px")
-        .style("background", "#f5f5f5")
-        .style("border-radius", "8px")
-        .style("border", "1px solid #ddd")
-        .style("display", "none"); // Hide the amount filter for now
-
-      // Move it after the date range control if possible
-      const dateRangeEl = document.querySelector(dateRangeSelector);
-      if (dateRangeEl && dateRangeEl.nextSibling && filterControls.node()) {
-        dateRangeEl.parentNode.insertBefore(
-          filterControls.node(),
-          dateRangeEl.nextSibling
-        );
-      }
-    } catch (e) {
-      console.error("Error creating amount filter controls:", e);
-      // Fallback - just append to the timeline
-      filterControls = timelineEl
-        .append("div")
-        .attr("class", "amount-range-control")
-        .style("margin", "20px 0")
-        .style("padding", "15px")
-        .style("background", "#f5f5f5")
-        .style("border-radius", "8px")
-        .style("border", "1px solid #ddd");
-    }
-
-    // Only proceed if filterControls was successfully created
-    if (filterControls) {
-      // Add title
-      filterControls
-        .append("h4")
-        .text("Filter by Transaction Amount:")
-        .style("margin-top", "0");
-
-      // Create amount filter row
-      const amountFilterRow = filterControls
-        .append("div")
-        .style("display", "flex")
-        .style("align-items", "center")
-        .style("gap", "10px")
-        .style("margin-bottom", "10px");
-
-      // Add checkbox to enable/disable filter
-      amountFilterRow
-        .append("input")
-        .attr("type", "checkbox")
-        .attr("id", "enable-amount-filter")
-        .style("margin", "0");
-
-      amountFilterRow
-        .append("label")
-        .attr("for", "enable-amount-filter")
-        .text("Enable Amount Filter")
-        .style("margin", "0");
-
-      // Create amount inputs row
-      const amountInputsRow = filterControls
-        .append("div")
-        .style("display", "flex")
-        .style("gap", "10px")
-        .style("margin-bottom", "10px");
-
-      // Add min amount input
-      amountInputsRow.append("div").style("flex", "1").html(`
-          <label for="min-amount">Min Amount ($)</label>
-          <input type="number" id="min-amount" min="0" value="0" class="form-control" style="width: 100%">
-        `);
-
-      // Add max amount input
-      amountInputsRow.append("div").style("flex", "1").html(`
-          <label for="max-amount">Max Amount ($)</label>
-          <input type="number" id="max-amount" min="0" value="" placeholder="No maximum" class="form-control" style="width: 100%">
-        `);
-
-      // Add apply button
-      filterControls
-        .append("button")
-        .attr("id", "apply-amount-filter")
-        .attr("class", "btn btn-primary")
-        .text("Apply Amount Filter")
-        .style("margin-right", "10px");
-
-      // Add reset button
-      filterControls
-        .append("button")
-        .attr("id", "reset-amount-filter")
-        .attr("class", "btn btn-secondary")
-        .text("Reset");
-
-      // Add event listeners for amount filter controls
-      d3.select("#apply-amount-filter").on("click", updateAmountFilter);
-      d3.select("#reset-amount-filter").on("click", resetAmountFilter);
-    }
-  }
-
-  // Date preset handler functions
   function set1Month() {
     const now = new Date();
     
@@ -1348,6 +1236,9 @@ document.addEventListener("DOMContentLoaded", function () {
         dateRangeEl.nextSibling
       );
     }
+
+    // Add amount filter controls after the toggles
+    addAmountFilterControls();
   }
 
   /**
@@ -1520,6 +1411,120 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Update the chart with current toggle states
     updateInvestmentVisualization();
+  }
+
+  /**
+   * Creates amount range filter controls
+   * Adds controls to filter transactions by amount range
+   */
+  function addAmountFilterControls() {
+    const timelineEl = d3.select("#investment-timeline");
+    
+    if (!timelineEl.node()) {
+      console.warn("Timeline element not found, skipping amount filter creation");
+      return;
+    }
+
+    // Create amount filter container
+    const filterControls = timelineEl
+      .append("div")
+      .attr("class", "amount-range-control")
+      .style("margin", "15px 0")
+      .style("padding", "15px")
+      .style("background", "#f8f9fa")
+      .style("border-radius", "8px")
+      .style("border", "1px solid #e9ecef");
+
+    // Add title
+    filterControls
+      .append("h4")
+      .text("Amount Range Filter:")
+      .style("margin-top", "0")
+      .style("color", "#495057")
+      .style("font-size", "14px")
+      .style("font-weight", "600");
+
+    // Add description
+    filterControls
+      .append("p")
+      .text("Filter payments by amount range. Applies to capital transactions and operational transactions (excluding recurring payments).")
+      .style("margin", "5px 0 15px 0")
+      .style("font-size", "12px")
+      .style("color", "#6c757d")
+      .style("line-height", "1.4");
+
+    // Create amount filter row
+    const amountFilterRow = filterControls
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "10px")
+      .style("margin-bottom", "10px");
+
+    // Add checkbox to enable/disable filter
+    amountFilterRow
+      .append("input")
+      .attr("type", "checkbox")
+      .attr("id", "enable-amount-filter")
+      .style("margin", "0");
+
+    amountFilterRow
+      .append("label")
+      .attr("for", "enable-amount-filter")
+      .text("Enable Amount Filter")
+      .style("margin", "0")
+      .style("font-weight", "500");
+
+    // Create amount inputs row
+    const amountInputsRow = filterControls
+      .append("div")
+      .style("display", "flex")
+      .style("gap", "10px")
+      .style("margin-bottom", "10px");
+
+    // Add min amount input
+    amountInputsRow.append("div").style("flex", "1").html(`
+        <label for="min-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Min Amount ($)</label>
+        <input type="number" id="min-amount" min="0" value="0" class="form-control" style="width: 100%; margin-top: 2px;">
+      `);
+
+    // Add max amount input
+    amountInputsRow.append("div").style("flex", "1").html(`
+        <label for="max-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Max Amount ($)</label>
+        <input type="number" id="max-amount" min="0" value="" placeholder="No maximum" class="form-control" style="width: 100%; margin-top: 2px;">
+      `);
+
+    // Add apply button
+    filterControls
+      .append("button")
+      .attr("id", "apply-amount-filter")
+      .attr("class", "btn btn-primary")
+      .text("Apply Filter")
+      .style("margin-right", "10px")
+      .style("font-size", "12px")
+      .style("padding", "6px 12px");
+
+    // Add reset button
+    filterControls
+      .append("button")
+      .attr("id", "reset-amount-filter")
+      .attr("class", "btn btn-secondary")
+      .text("Reset")
+      .style("font-size", "12px")
+      .style("padding", "6px 12px");
+
+    // Add event listeners for amount filter controls
+    d3.select("#apply-amount-filter").on("click", updateAmountFilter);
+    d3.select("#reset-amount-filter").on("click", resetAmountFilter);
+
+    // Move the filter controls to appear after the toggles
+    const togglesEl = document.querySelector(".transaction-type-toggles");
+    if (togglesEl && togglesEl.nextSibling && filterControls.node()) {
+      togglesEl.parentNode.insertBefore(
+        filterControls.node(),
+        togglesEl.nextSibling
+      );
+    }
   }
 
   function set3Months() {
@@ -1942,6 +1947,10 @@ document.addEventListener("DOMContentLoaded", function () {
       const filterMax =
         maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
 
+      // Count recurring payments separately
+      const recurringPayments = visibleCashFlowEvents.filter(event => event.type === 'recurringPayment');
+      const nonRecurringCashFlowEvents = visibleCashFlowEvents.filter(event => event.type !== 'recurringPayment');
+
       const filterMsg = investmentChart
         .append("div")
         .attr("class", "filter-status")
@@ -1962,8 +1971,13 @@ document.addEventListener("DOMContentLoaded", function () {
         .text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
 
       filterMsg
+        .append("br");
+
+      filterMsg
         .append("span")
-        .text(` (Showing ${visibleTransactions.length} investment transactions, ${visibleCashFlowEvents.length} cash flow events)`);
+        .style("font-size", "11px")
+        .style("color", "#666")
+        .text(`Showing ${visibleTransactions.length} capital transactions, ${nonRecurringCashFlowEvents.length} operational transactions (${recurringPayments.length} recurring payments always shown)`);
     }
 
     // Create toggle status message
@@ -3179,9 +3193,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const dateInRange =
         event.date >= startDate && event.date <= endDate;
 
-      // Amount filter (only apply if active)
+      // Amount filter (only apply if active AND not a recurring payment)
+      // Recurring payments are excluded from amount filtering as per requirements
+      const isRecurringPayment = event.type === 'recurringPayment';
       const amountInRange =
         !isFilterActive ||
+        isRecurringPayment || // Always include recurring payments regardless of amount filter
         (Math.abs(event.amount) >= filterMin &&
           Math.abs(event.amount) <= filterMax);
 
