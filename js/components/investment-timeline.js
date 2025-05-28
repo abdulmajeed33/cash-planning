@@ -597,43 +597,29 @@ function createInvestmentTimeline(config) {
             // Store original date for comparison
             const originalDate = new Date(transaction.date);
 
-            // Update date
+            // Update date in the transaction object
             transaction.date = new Date(newDate);
 
-            // Add subtle feedback animation
+            // Calculate the final position for the transaction
+            const finalX = timeScale(newDate);
+            const isSale = transaction.transactionType === "sale";
+            const stackHeight = 30;
+            const verticalOffset = isSale ? stackHeight : -stackHeight;
+            const finalY = investmentTimelineY + verticalOffset;
+
+            // Smooth transition to final position
             d3.select(this)
-              .style("transform", "scale(1.2)")
               .transition()
               .duration(300)
-              .style("transform", "scale(1)");
-
-            // Clear any existing timeouts
-            if (window.investmentUpdateTimeout) {
-              clearTimeout(window.investmentUpdateTimeout);
-            }
-
-            // Store the transaction info for highlighting after redraw
-            const transactionToHighlight = {
-              id: transaction.id,
-              entityId: transaction.entity_id,
-              entityName: transaction.name,
-              transactionType: transaction.transactionType,
-              date: new Date(newDate),
-              amount: transaction.amount,
-            };
-
-            // Save the transaction to the database
-            if (window.investmentChart && window.investmentChart.updateTransaction) {
-              window.investmentChart.updateTransaction(transaction);
-            }
-
-            // Force complete redraw with a small delay to ensure animations complete
-            window.investmentUpdateTimeout = setTimeout(() => {
-              updateInvestmentVisualization();
-
-              // After redraw, highlight the corresponding bar segment
-              highlightBarSegmentForTransaction(transactionToHighlight);
-            }, 50);
+              .ease(d3.easeBackOut.overshoot(1.1))
+              .attr("transform", `translate(${finalX}, ${finalY})`)
+              .on("end", function() {
+                // Update any related timeline dots position
+                updateTimelineDot(transaction, newDate);
+                
+                // Update database asynchronously without affecting UI
+                updateDatabaseInBackground(transaction, originalDate);
+              });
 
             // Show feedback about change
             tooltip.transition().duration(200).style("opacity", 0.9);
@@ -649,14 +635,15 @@ function createInvestmentTimeline(config) {
 
             setTimeout(() => {
               tooltip.transition().duration(500).style("opacity", 0);
-            }, 3000);
-          } else if (isDateInRange(newDate)) {
-            // If only the vertical position changed but date is the same,
-            // we still want to force a redraw to ensure proper position
-            updateInvestmentVisualization();
-          } else {
-            // If no change or invalid target, reset position
-            updateInvestmentVisualization();
+            }, 2000);
+
+          } else if (!isDateInRange(newDate)) {
+            // If dropped outside valid date range, smoothly return to original position
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .ease(d3.easeBackOut)
+              .attr("transform", `translate(${timeScale(transaction.date)}, ${verticalPosition})`);
           }
 
           // Remove the connector and indicators
@@ -664,10 +651,97 @@ function createInvestmentTimeline(config) {
           investmentSvg.select(".current-date-indicator").remove();
           investmentSvg.select(".target-date-indicator").remove();
 
-          // Reset cursor
-          d3.select(this).style("cursor", "grab");
+          // Reset cursor and remove dragging class
+          d3.select(this)
+            .style("cursor", "grab")
+            .classed("dragging", false);
+
+          // Restore delete buttons smoothly
+          setTimeout(() => {
+            d3.selectAll(".delete-button-group")
+              .transition()
+              .duration(150)
+              .style("opacity", 1)
+              .style("pointer-events", "auto");
+          }, 100);
         })
     );
+  }
+
+  // Helper function to update timeline dot position smoothly
+  function updateTimelineDot(transaction, newDate) {
+    const newX = timeScale(newDate);
+    
+    // Find and update the corresponding timeline dot
+    investmentSvg.selectAll(".timeline-point")
+      .filter(function() {
+        const dotTransactionId = d3.select(this).attr("data-transaction-id");
+        return dotTransactionId == transaction.id;
+      })
+      .transition()
+      .duration(300)
+      .ease(d3.easeBackOut)
+      .attr("cx", newX);
+  }
+
+  // Helper function to update database in background without affecting UI
+  function updateDatabaseInBackground(transaction, originalDate) {
+    // Save the transaction to the database
+    if (window.investmentChart && window.investmentChart.updateTransaction) {
+      try {
+        window.investmentChart.updateTransaction(transaction);
+        
+        // Create transaction info for potential bar segment highlighting
+        const transactionToHighlight = {
+          id: transaction.id,
+          entityId: transaction.entity_id,
+          entityName: transaction.name,
+          transactionType: transaction.transactionType,
+          date: new Date(transaction.date),
+          amount: transaction.amount,
+        };
+
+        // Delay bar segment highlighting to avoid interference with drag animations
+        setTimeout(() => {
+          if (highlightBarSegmentForTransaction) {
+            highlightBarSegmentForTransaction(transactionToHighlight);
+          }
+        }, 400);
+
+      } catch (error) {
+        console.error("Error updating transaction:", error);
+        
+        // Revert the date change if database update fails
+        transaction.date = originalDate;
+        
+        // Smoothly move back to original position
+        const originalX = timeScale(originalDate);
+        const isSale = transaction.transactionType === "sale";
+        const stackHeight = 30;
+        const verticalOffset = isSale ? stackHeight : -stackHeight;
+        const originalY = investmentTimelineY + verticalOffset;
+        
+        const transactionGroup = investmentSvg.select(`[data-transaction-id="${transaction.id}"]`);
+        if (!transactionGroup.empty()) {
+          transactionGroup
+            .transition()
+            .duration(300)
+            .ease(d3.easeBackOut)
+            .attr("transform", `translate(${originalX}, ${originalY})`);
+        }
+        
+        // Show error feedback
+        tooltip.transition().duration(200).style("opacity", 0.9);
+        tooltip
+          .html(`<strong>Error:</strong> Failed to update transaction`)
+          .style("background", "#f8d7da")
+          .style("color", "#721c24");
+        
+        setTimeout(() => {
+          tooltip.transition().duration(500).style("opacity", 0);
+        }, 3000);
+      }
+    }
   }
 
   // Return API for external control

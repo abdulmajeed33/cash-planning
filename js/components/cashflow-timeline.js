@@ -526,9 +526,21 @@ function createCashFlowTimeline(config) {
         .on("drag", function (dragEvent) {
           // Update position while dragging
           const x = dragEvent.x;
-          const y = dragEvent.y;
+          
+          // Constrain Y position to keep events near the timeline
+          // Determine Y position based on event amount (positive vs negative)
+          const isPositiveAmount = event.amount > 0;
+          const yPos = isPositiveAmount
+            ? Math.min(cashFlowTimelineY - 30, dragEvent.y) // Keep positive amounts above timeline
+            : Math.max(cashFlowTimelineY + 30, dragEvent.y); // Keep negative amounts below timeline
 
-          d3.select(this).attr("transform", `translate(${x}, ${y})`);
+          // Apply constraints to prevent events from going too far outside the timeline
+          const constrainedY = Math.max(
+            Math.min(yPos, cashFlowTimelineY + 60), // Don't go too far below
+            cashFlowTimelineY - 60 // Don't go too far above
+          );
+
+          d3.select(this).attr("transform", `translate(${x}, ${constrainedY})`);
 
           // Get target date at current position
           const targetDate = getDateFromPosition(x);
@@ -540,8 +552,8 @@ function createCashFlowTimeline(config) {
             .style("left", dragEvent.sourceEvent.pageX + 10 + "px")
             .style("top", dragEvent.sourceEvent.pageY - 30 + "px");
 
-          // Update the connector
-          const trianglePath = `M ${x} ${y} L ${timeScale(event.date)} ${cashFlowTimelineY}`;
+          // Update the connector - adjust path based on constrained position
+          const trianglePath = `M ${x} ${constrainedY} L ${timeScale(event.date)} ${cashFlowTimelineY}`;
           cashFlowSvg.select(".drag-connector").attr("d", trianglePath);
 
           // Remove previous target indicator
@@ -580,30 +592,30 @@ function createCashFlowTimeline(config) {
             // Store original date for comparison
             const originalDate = new Date(event.date);
 
-            // Update date
+            // Update date in the event object
             event.date = new Date(newDate);
 
-            // Add subtle feedback animation
+            // Calculate the final position for the event
+            const finalX = timeScale(newDate);
+            const isPositive = event.amount > 0;
+            const stackHeight = 25;
+            const stackIndex = 0; // Simplified for smooth transition
+            const verticalOffset = isPositive ? -stackHeight : stackHeight;
+            const finalY = cashFlowTimelineY + verticalOffset;
+
+            // Smooth transition to final position
             d3.select(this)
-              .style("transform", "scale(1.2)")
               .transition()
               .duration(300)
-              .style("transform", "scale(1)");
-
-            // Clear any existing timeouts
-            if (window.cashFlowUpdateTimeout) {
-              clearTimeout(window.cashFlowUpdateTimeout);
-            }
-
-            // Update the cash flow event in the database
-            if (updateCashFlowEvent) {
-              updateCashFlowEvent(event);
-            }
-
-            // Force complete redraw with a small delay to ensure animations complete
-            window.cashFlowUpdateTimeout = setTimeout(() => {
-              updateCashFlowVisualization();
-            }, 50);
+              .ease(d3.easeBackOut.overshoot(1.1))
+              .attr("transform", `translate(${finalX}, ${finalY})`)
+              .on("end", function() {
+                // Update any related timeline dots position
+                updateTimelineDot(event, newDate);
+                
+                // Update database asynchronously without affecting UI
+                updateDatabaseInBackground(event, originalDate);
+              });
 
             // Show feedback about change
             tooltip.transition().duration(200).style("opacity", 0.9);
@@ -619,14 +631,15 @@ function createCashFlowTimeline(config) {
 
             setTimeout(() => {
               tooltip.transition().duration(500).style("opacity", 0);
-            }, 3000);
-          } else if (isDateInRange(newDate)) {
-            // If only the vertical position changed but date is the same,
-            // we still want to force a redraw to ensure proper position
-            updateCashFlowVisualization();
-          } else {
-            // If no change or invalid target, reset position
-            updateCashFlowVisualization();
+            }, 2000);
+
+          } else if (!isDateInRange(newDate)) {
+            // If dropped outside valid date range, smoothly return to original position
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .ease(d3.easeBackOut)
+              .attr("transform", `translate(${timeScale(event.date)}, ${verticalPosition})`);
           }
 
           // Remove the connector and indicators
@@ -634,8 +647,19 @@ function createCashFlowTimeline(config) {
           cashFlowSvg.select(".current-date-indicator").remove();
           cashFlowSvg.select(".target-date-indicator").remove();
 
-          // Reset cursor
-          d3.select(this).style("cursor", "grab");
+          // Reset cursor and remove dragging class
+          d3.select(this)
+            .style("cursor", "grab")
+            .classed("dragging", false);
+
+          // Restore delete buttons smoothly
+          setTimeout(() => {
+            d3.selectAll(".delete-button-group")
+              .transition()
+              .duration(150)
+              .style("opacity", 1)
+              .style("pointer-events", "auto");
+          }, 100);
         })
     );
   }
@@ -648,6 +672,63 @@ function createCashFlowTimeline(config) {
       'supplierPayment': 'Supplier Payment'
     };
     return typeLabels[type] || type;
+  }
+
+  // Helper function to update timeline dot position smoothly
+  function updateTimelineDot(event, newDate) {
+    const newX = timeScale(newDate);
+    
+    // Find and update the corresponding timeline dot
+    cashFlowSvg.selectAll(".timeline-point")
+      .filter(function() {
+        const dotEventId = d3.select(this).attr("data-event-id");
+        return dotEventId == event.id;
+      })
+      .transition()
+      .duration(300)
+      .ease(d3.easeBackOut)
+      .attr("cx", newX);
+  }
+
+  // Helper function to update database in background without affecting UI
+  function updateDatabaseInBackground(event, originalDate) {
+    if (updateCashFlowEvent) {
+      try {
+        updateCashFlowEvent(event);
+      } catch (error) {
+        console.error("Error updating cash flow event:", error);
+        
+        // Revert the date change if database update fails
+        event.date = originalDate;
+        
+        // Smoothly move back to original position
+        const originalX = timeScale(originalDate);
+        const isPositive = event.amount > 0;
+        const stackHeight = 25;
+        const verticalOffset = isPositive ? -stackHeight : stackHeight;
+        const originalY = cashFlowTimelineY + verticalOffset;
+        
+        const eventGroup = cashFlowSvg.select(`[data-event-id="${event.id}"]`);
+        if (!eventGroup.empty()) {
+          eventGroup
+            .transition()
+            .duration(300)
+            .ease(d3.easeBackOut)
+            .attr("transform", `translate(${originalX}, ${originalY})`);
+        }
+        
+        // Show error feedback
+        tooltip.transition().duration(200).style("opacity", 0.9);
+        tooltip
+          .html(`<strong>Error:</strong> Failed to update event`)
+          .style("background", "#f8d7da")
+          .style("color", "#721c24");
+        
+        setTimeout(() => {
+          tooltip.transition().duration(500).style("opacity", 0);
+        }, 3000);
+      }
+    }
   }
 
   // Return object with methods for external control
