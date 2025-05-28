@@ -371,10 +371,10 @@ document.addEventListener("DOMContentLoaded", function () {
         ...sampleInvestments.map((inv) => addData(STORES.investments, inv)),
         ...sampleLands.map((land) => addData(STORES.lands, land)),
         ...sampleTransactions.map((tx) => addData(STORES.transactions, tx)),
-        ...sampleRecurringPayments.map((payment) => addData(STORES.recurringPayments, payment)),
-        ...sampleNonRecurringPayments.map((payment) => addData(STORES.nonRecurringPayments, payment)),
-        ...sampleInvoices.map((invoice) => addData(STORES.invoices, invoice)),
-        ...sampleSupplierPayments.map((payment) => addData(STORES.supplierPayments, payment)),
+        // ...sampleRecurringPayments.map((payment) => addData(STORES.recurringPayments, payment)),
+        // ...sampleNonRecurringPayments.map((payment) => addData(STORES.nonRecurringPayments, payment)),
+        // ...sampleInvoices.map((invoice) => addData(STORES.invoices, invoice)),
+        // ...sampleSupplierPayments.map((payment) => addData(STORES.supplierPayments, payment)),
       ]);
       console.log("Sample data added successfully");
     } catch (error) {
