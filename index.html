@@ -338,30 +338,30 @@
           <div class="investment-section">
             <div class="chart-description">
               <p style="margin-bottom: 20px;">
-
                 This chart displays capital transactions over time.
                 Transactions include fund purchases/sales and land
                 purchases/sales. Click on a transaction in the chart to edit it.
               </p>
+            </div>
 
             <div class="date-range-control">
               <div class="date-inputs">
-              <div class="date-presets">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
-                  <div style="display: flex; align-items: center; flex-wrap: wrap;">
-                    <div style="margin-right: 12px; font-size: 14px; font-weight: 500; color: #555;">Quick Select:</div>
-                    <button type="button" class="date-preset-btn" id="btn-1-month">1 Month</button>
-                    <button type="button" class="date-preset-btn" id="btn-3-months">3 Months</button>
-                    <button type="button" class="date-preset-btn" id="btn-6-months">6 Months</button>
-                    <button type="button" class="date-preset-btn" id="btn-1-year">1 Year</button>
-                  </div>
-                  <div style="display: flex; align-items: center;">
-                    <label for="opening-balance" style="margin-right: 8px; font-weight: 500; white-space: nowrap;">Opening Cash Balance:</label>
-                    <input type="number" id="opening-balance" placeholder="Enter amount" value="50000" style="margin-right: 8px;">
-                    <button id="apply-opening-balance">Apply</button>
+                <div class="date-presets">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                      <div style="margin-right: 12px; font-size: 14px; font-weight: 500; color: #555;">Quick Select:</div>
+                      <button type="button" class="date-preset-btn" id="btn-1-month">1 Month</button>
+                      <button type="button" class="date-preset-btn" id="btn-3-months">3 Months</button>
+                      <button type="button" class="date-preset-btn" id="btn-6-months">6 Months</button>
+                      <button type="button" class="date-preset-btn" id="btn-1-year">1 Year</button>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                      <label for="opening-balance" style="margin-right: 8px; font-weight: 500; white-space: nowrap;">Opening Cash Balance:</label>
+                      <input type="number" id="opening-balance" placeholder="Enter amount" value="50000" style="margin-right: 8px;">
+                      <button id="apply-opening-balance">Apply</button>
+                    </div>
                   </div>
                 </div>
-              </div>
                 <div class="form-group">
                   <label for="start-date">Start Date:</label>
                   <input type="date" id="start-date" />
@@ -373,10 +373,45 @@
                 <button id="apply-dates">Apply</button>
               </div>
             </div>
-            <div style="margin-bottom: 60px;" id="investment-chart"></div>
-            <div id="combined-chart" style="margin-top: 180px;"></div>
-            <div id="investment-legend" class="transaction-legend"></div>
 
+            <!-- Legend Section - Positioned at the top for better visibility -->
+            <div id="investment-legend" class="transaction-legend" style="margin: 20px 0;"></div>
+
+            <!-- Main Chart Container with proper structure -->
+            <div class="chart-container" style="position: relative;">
+              
+              <!-- Filter and Toggle Status Messages -->
+              <div id="filter-status-container" style="margin-bottom: 20px;"></div>
+              
+              <!-- Investment Timeline Section -->
+              <div id="investment-timeline-section" class="timeline-section" style="margin-bottom: 40px;">
+                <!-- This will be populated by JavaScript -->
+              </div>
+              
+              <!-- Cash Flow Timeline Section -->
+              <div id="cashflow-timeline-section" class="timeline-section" style="margin-bottom: 40px;">
+                <!-- This will be populated by JavaScript -->
+              </div>
+              
+              <!-- Section Separator -->
+              <div id="section-separator" class="section-separator" style="margin: 40px 0; display: none;">
+                <hr style="border: none; border-top: 2px solid #e9ecef; margin: 20px 0;">
+                <div style="text-align: center; margin-top: -12px;">
+                  <span style="background: #fff; padding: 0 15px; color: #6c757d; font-size: 12px; font-weight: 500;">
+                    Financial Overview
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Combined Chart Section -->
+              <div id="combined-chart-section" class="chart-section" style="margin-top: 20px;">
+                <div id="combined-chart"></div>
+              </div>
+              
+              <!-- No Data Message Container -->
+              <div id="no-data-container" style="display: none;"></div>
+              
+            </div>
           </div>
         </div>
       </section>

@@ -2151,8 +2151,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to draw the investment chart
   function drawInvestmentChart() {
-    const investmentChart = d3.select("#investment-chart");
-    investmentChart.html("");
+    // Clear all containers
+    const filterStatusContainer = d3.select("#filter-status-container");
+    const investmentTimelineSection = d3.select("#investment-timeline-section");
+    const cashflowTimelineSection = d3.select("#cashflow-timeline-section");
+    const sectionSeparator = d3.select("#section-separator");
+    const combinedChartSection = d3.select("#combined-chart-section");
+    const noDataContainer = d3.select("#no-data-container");
+    const legendContainer = d3.select("#investment-legend");
+
+    // Clear all containers
+    filterStatusContainer.html("");
+    investmentTimelineSection.html("");
+    cashflowTimelineSection.html("");
+    combinedChartSection.html("");
+    noDataContainer.html("");
 
     // Filter transactions and cash flow events first to determine what sections will be shown
     const visibleTransactions = filterTransactions(transactionData);
@@ -2163,89 +2176,143 @@ document.addEventListener("DOMContentLoaded", function () {
     const hasOperationalTransactions = showOperationalTransactions && visibleCashFlowEvents.length > 0;
     const hasAnyData = hasCapitalTransactions || hasOperationalTransactions;
 
-    // Only create legend if there's data to display
+    // Handle legend
     if (hasAnyData) {
-      // Create the legend at the top of the chart section
-      const legendItems = [
-        { type: "fund-buy", label: "Fund Purchase" },
-        { type: "fund-sale", label: "Fund Sale" },
-        { type: "land-buy", label: "Land Purchase" },
-        { type: "land-sale", label: "Land Sale" },
-        // Cash flow legend items
-        { type: "recurringPayment", label: "Recurring Payment" },
-        { type: "nonRecurringPayment", label: "Non-Recurring Payment" },
-        { type: "invoice", label: "Invoice" },
-        { type: "supplierPayment", label: "Supplier Payment" },
-      ];
-
-      // Color scale for different investment types (defined early so it can be used in legend)
-      const color = d3
-        .scaleOrdinal()
-        .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
-        .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
-
-      // Populate the legend at the top
-      const topLegend = d3.select("#investment-legend");
-      topLegend.html(""); // Clear any existing content
-
-      legendItems.forEach((item) => {
-        const legendItem = topLegend.append("div").attr("class", "legend-item");
-
-        legendItem
-          .append("div")
-          .attr("class", "color-box")
-          .style("background-color", color(item.type));
-
-        legendItem
-          .append("span")
-          .html(`${item.label}`);
-      });
-
-      // Add closing balance to legend
-      const balanceLegendItem = topLegend
-        .append("div")
-        .attr("class", "legend-item balance-legend-item");
-
-      balanceLegendItem
-        .append("div")
-        .attr("class", "color-box")
-        .style("background-color", "#FF9800");
-
-      balanceLegendItem
-        .append("span")
-        .html(`Closing Balance`);
-
-      // Add divider line explanation to legend
-      const dividerLegendItem = topLegend
-        .append("div")
-        .attr("class", "legend-item")
-        .style("margin-top", "8px");
-
-      // Create a small line to demonstrate the divider
-      dividerLegendItem
-        .append("div")
-        .attr("class", "color-box")
-        .html(
-          `<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`
-        )
-        .style("background", "transparent");
-
-      dividerLegendItem
-        .append("span")
-        .html(
-          `<small>Dashed lines separate transactions on different dates</small>`
-        );
+      createLegend(legendContainer);
     } else {
-      // Clear legend when no data is available
-      const topLegend = d3.select("#investment-legend");
-      topLegend.html("");
+      legendContainer.html("").style("display", "none");
     }
 
+    // Create filter and toggle status messages
+    createStatusMessages(filterStatusContainer, visibleTransactions, visibleCashFlowEvents);
+
+    // Track sections created for proper spacing
+    let sectionsCreated = 0;
+
+    // Handle Investment Timeline Section
+    if (showCapitalTransactions) {
+      createInvestmentTimelineSection(investmentTimelineSection, visibleTransactions);
+      if (hasCapitalTransactions) sectionsCreated++;
+    } else {
+      investmentTimelineSection.style("display", "none");
+      // Clean up timeline instance if capital transactions are disabled
+      if (timelineInstance) {
+        timelineInstance.destroy();
+        timelineInstance = null;
+      }
+    }
+
+    // Handle Cash Flow Timeline Section
+    if (showOperationalTransactions) {
+      createCashFlowTimelineSection(cashflowTimelineSection, visibleCashFlowEvents, sectionsCreated);
+      if (hasOperationalTransactions) sectionsCreated++;
+    } else {
+      cashflowTimelineSection.style("display", "none");
+      // Clean up cash flow timeline instance if operational transactions are disabled
+      if (cashFlowTimelineInstance) {
+        cashFlowTimelineInstance.destroy();
+        cashFlowTimelineInstance = null;
+      }
+    }
+
+    // Handle section separator and combined chart
+    if (sectionsCreated > 0) {
+      // Show separator
+      sectionSeparator.style("display", "block");
+      
+      // Create combined chart
+      createCombinedChart(combinedChartSection, visibleTransactions, visibleCashFlowEvents);
+      
+      // Hide no data container
+      noDataContainer.style("display", "none");
+    } else {
+      // Hide separator and combined chart
+      sectionSeparator.style("display", "none");
+      combinedChartSection.html("");
+      
+      // Show comprehensive no-data message
+      createNoDataMessage(noDataContainer);
+    }
+  }
+
+  // Helper function to create legend
+  function createLegend(container) {
+    const legendItems = [
+      { type: "fund-buy", label: "Fund Purchase" },
+      { type: "fund-sale", label: "Fund Sale" },
+      { type: "land-buy", label: "Land Purchase" },
+      { type: "land-sale", label: "Land Sale" },
+      { type: "recurringPayment", label: "Recurring Payment" },
+      { type: "nonRecurringPayment", label: "Non-Recurring Payment" },
+      { type: "invoice", label: "Invoice" },
+      { type: "supplierPayment", label: "Supplier Payment" },
+    ];
+
+    const color = d3
+      .scaleOrdinal()
+      .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
+      .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
+
+    container
+      .style("display", "flex")
+      .style("flex-wrap", "wrap")
+      .style("gap", "15px")
+      .style("align-items", "center")
+      .style("justify-content", "center")
+      .style("padding", "15px")
+      .style("background", "#f8f9fa")
+      .style("border-radius", "8px")
+      .style("border", "1px solid #e9ecef");
+
+    legendItems.forEach((item) => {
+      const legendItem = container.append("div").attr("class", "legend-item");
+      
+      legendItem
+        .append("div")
+        .attr("class", "color-box")
+        .style("background-color", color(item.type));
+
+      legendItem
+        .append("span")
+        .html(`${item.label}`);
+    });
+
+    // Add closing balance to legend
+    const balanceLegendItem = container
+      .append("div")
+      .attr("class", "legend-item balance-legend-item");
+
+    balanceLegendItem
+      .append("div")
+      .attr("class", "color-box")
+      .style("background-color", "#FF9800");
+
+    balanceLegendItem
+      .append("span")
+      .html(`Closing Balance`);
+
+    // Add divider line explanation to legend
+    const dividerLegendItem = container
+      .append("div")
+      .attr("class", "legend-item")
+      .style("margin-top", "8px");
+
+    dividerLegendItem
+      .append("div")
+      .attr("class", "color-box")
+      .html(`<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`)
+      .style("background", "transparent");
+
+    dividerLegendItem
+      .append("span")
+      .html(`<small>Dashed lines separate transactions on different dates</small>`);
+  }
+
+  // Helper function to create status messages
+  function createStatusMessages(container, visibleTransactions, visibleCashFlowEvents) {
     // Create filter status message
     const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox
-      ? filterCheckbox.checked
-      : amountFilterActive;
+    const isFilterActive = filterCheckbox ? filterCheckbox.checked : amountFilterActive;
 
     if (isFilterActive) {
       const filterMin = document.getElementById("min-amount")
@@ -2253,14 +2320,12 @@ document.addEventListener("DOMContentLoaded", function () {
         : minAmount;
 
       const maxInput = document.getElementById("max-amount");
-      const filterMax =
-        maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
+      const filterMax = maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
 
-      // Count recurring payments separately
       const recurringPayments = visibleCashFlowEvents.filter(event => event.type === 'recurringPayment');
       const nonRecurringCashFlowEvents = visibleCashFlowEvents.filter(event => event.type !== 'recurringPayment');
 
-      const filterMsg = investmentChart
+      const filterMsg = container
         .append("div")
         .attr("class", "filter-status")
         .style("margin-bottom", "10px")
@@ -2271,17 +2336,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       filterMsg.append("strong").text("Amount filter active: ");
 
-      const maxDisplay =
-        filterMax === Infinity
-          ? "No maximum"
-          : `$${filterMax.toLocaleString()}`;
-      filterMsg
-        .append("span")
-        .text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
-
-      filterMsg
-        .append("br");
-
+      const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
+      filterMsg.append("span").text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
+      filterMsg.append("br");
       filterMsg
         .append("span")
         .style("font-size", "11px")
@@ -2290,10 +2347,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Create toggle status message
-    const toggleStatusMsg = investmentChart
+    const toggleStatusMsg = container
       .append("div")
       .attr("class", "toggle-status")
-      .style("margin-bottom", "20px") // Consistent bottom margin
+      .style("margin-bottom", "20px")
       .style("padding", "5px 10px")
       .style("background", "#e3f2fd")
       .style("border-left", "4px solid #2196F3")
@@ -2304,221 +2361,203 @@ document.addEventListener("DOMContentLoaded", function () {
     if (showOperationalTransactions) activeToggles.push("Operational");
 
     toggleStatusMsg.append("strong").text("Viewing: ");
-    toggleStatusMsg
-      .append("span")
-      .text(`${activeToggles.join(" + ")} transactions`);
+    toggleStatusMsg.append("span").text(`${activeToggles.join(" + ")} transactions`);
+  }
 
-    // Track sections created for proper spacing
-    let sectionsCreated = 0;
+  // Helper function to create investment timeline section
+  function createInvestmentTimelineSection(container, visibleTransactions) {
+    container.style("display", "block");
+    
+    // Add section header
+    container
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", "20px 0 10px 0")
+      .style("color", "#333")
+      .text("Investment Timeline");
 
-    // Add section header for investment timeline (only if capital transactions are enabled)
-    if (showCapitalTransactions) {
-      investmentChart
-        .append("h3")
-        .attr("class", "section-header")
-        .style("margin", sectionsCreated === 0 ? "20px 0 10px 0" : "40px 0 10px 0") // More space if not first section
-        .style("color", "#333")
-        .text("Investment Timeline");
-
-      sectionsCreated++;
-
-      // Process the investment transaction data for display
-      if (visibleTransactions.length === 0) {
-        investmentChart
-          .append("div")
-          .attr("class", "no-data-message")
-          .style("margin-bottom", "40px") // Consistent spacing
-          .style("text-align", "center")
-          .style("padding", "20px")
-          .style("color", "#666")
-          .style("font-style", "italic")
-          .text(
-            "No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction."
-          );
-      } else {
-        // Clean up any existing timeline instance
-        if (timelineInstance) {
-          timelineInstance.destroy();
-          timelineInstance = null;
-        }
-
-        // Create investment timeline container
-        const investmentTimelineContainer = investmentChart
-          .append("div")
-          .attr("id", "investment-timeline-container")
-          .style("margin-bottom", "40px"); // Consistent margin
-
-        // Create investment timeline using the component
-        timelineInstance = createInvestmentTimeline({
-          containerId: "investment-timeline-container",
-          transactions: visibleTransactions,
-          timeScale: timeScale,
-          startDate: startDate,
-          endDate: endDate,
-          dimensions: {
-            svgWidth: svgWidth,
-            timelineStart: timelineStart,
-            timelineEnd: timelineEnd,
-            timelineLength: timelineLength
-          },
-          tooltip: tooltip,
-          dateLabel: dateLabel,
-          transactionEmojis: transactionEmojis,
-          dateFormat: dateFormat,
-          getDateFromPosition: getDateFromPosition,
-          isDateInRange: isDateInRange,
-          groupTransactionsByProximity: groupTransactionsByProximity,
-          showTransactionModal: showTransactionModal,
-          deleteTransaction: deleteTransaction,
-          updateInvestmentVisualization: updateInvestmentVisualization,
-          highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
-        });
-      }
+    if (visibleTransactions.length === 0) {
+      container
+        .append("div")
+        .attr("class", "no-data-message")
+        .style("margin-bottom", "40px")
+        .style("text-align", "center")
+        .style("padding", "20px")
+        .style("color", "#666")
+        .style("font-style", "italic")
+        .text("No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction.");
     } else {
-      // Clean up timeline instance if capital transactions are disabled
+      // Clean up any existing timeline instance
       if (timelineInstance) {
         timelineInstance.destroy();
         timelineInstance = null;
       }
+
+      // Create investment timeline container
+      const investmentTimelineContainer = container
+        .append("div")
+        .attr("id", "investment-timeline-container");
+
+      // Create investment timeline using the component
+      timelineInstance = createInvestmentTimeline({
+        containerId: "investment-timeline-container",
+        transactions: visibleTransactions,
+        timeScale: timeScale,
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: {
+          svgWidth: svgWidth,
+          timelineStart: timelineStart,
+          timelineEnd: timelineEnd,
+          timelineLength: timelineLength
+        },
+        tooltip: tooltip,
+        dateLabel: dateLabel,
+        transactionEmojis: transactionEmojis,
+        dateFormat: dateFormat,
+        getDateFromPosition: getDateFromPosition,
+        isDateInRange: isDateInRange,
+        groupTransactionsByProximity: groupTransactionsByProximity,
+        showTransactionModal: showTransactionModal,
+        deleteTransaction: deleteTransaction,
+        updateInvestmentVisualization: updateInvestmentVisualization,
+        highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
+      });
     }
+  }
 
-    // Add section header for cash flow timeline (only if operational transactions are enabled)
-    if (showOperationalTransactions) {
-      investmentChart
-        .append("h3")
-        .attr("class", "section-header")
-        .style("margin", sectionsCreated === 0 ? "20px 0 10px 0" : "40px 0 10px 0") // More space if not first section
-        .style("color", "#333")
-        .text("Cash Flow Timeline");
+  // Helper function to create cash flow timeline section
+  function createCashFlowTimelineSection(container, visibleCashFlowEvents, sectionsCreated) {
+    container.style("display", "block");
+    
+    // Add section header
+    container
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", sectionsCreated === 0 ? "20px 0 10px 0" : "40px 0 10px 0")
+      .style("color", "#333")
+      .text("Cash Flow Timeline");
 
-      sectionsCreated++;
-
+    if (visibleCashFlowEvents.length === 0) {
+      container
+        .append("div")
+        .attr("class", "no-data-message")
+        .style("margin-bottom", "40px")
+        .style("text-align", "center")
+        .style("padding", "20px")
+        .style("color", "#666")
+        .style("font-style", "italic")
+        .text("No cash flow events in the selected range.");
+    } else {
       // Clean up any existing cash flow timeline instance
       if (cashFlowTimelineInstance) {
         cashFlowTimelineInstance.destroy();
         cashFlowTimelineInstance = null;
       }
 
-      // Process the cash flow data for display
-      if (visibleCashFlowEvents.length === 0) {
-        investmentChart
-          .append("div")
-          .attr("class", "no-data-message")
-          .style("margin-bottom", "40px") // Consistent spacing
-          .style("text-align", "center")
-          .style("padding", "20px")
-          .style("color", "#666")
-          .style("font-style", "italic")
-          .text("No cash flow events in the selected range.");
-      } else {
-        // Only create the timeline container and component when there are events to display
-        const cashFlowTimelineContainer = investmentChart
-          .append("div")
-          .attr("id", "cashflow-timeline-container")
-          .style("margin-bottom", "40px"); // Consistent margin
-
-        // Create cash flow timeline using the component
-        cashFlowTimelineInstance = createCashFlowTimeline({
-          containerId: "cashflow-timeline-container",
-          events: visibleCashFlowEvents,
-          timeScale: timeScale,
-          startDate: startDate,
-          endDate: endDate,
-          dimensions: {
-            svgWidth: svgWidth,
-            timelineStart: timelineStart,
-            timelineEnd: timelineEnd,
-            timelineLength: timelineLength
-          },
-          tooltip: tooltip,
-          dateLabel: dateLabel,
-          transactionEmojis: transactionEmojis,
-          transactionColors: cashFlowColors,
-          dateFormat: dateFormat,
-          getDateFromPosition: getDateFromPosition,
-          isDateInRange: isDateInRange,
-          groupEventsByProximity: groupEventsByProximity,
-          deleteCashFlowEvent: deleteCashFlowEvent,
-          updateCashFlowEvent: updateCashFlowEvent,
-          updateCashFlowVisualization: updateInvestmentVisualization
-        });
-      }
-    } else {
-      // Clean up cash flow timeline instance if operational transactions are disabled
-      if (cashFlowTimelineInstance) {
-        cashFlowTimelineInstance.destroy();
-        cashFlowTimelineInstance = null;
-      }
-    }
-
-    // Now draw the combined bar chart below both timelines with dynamic spacing
-    drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents, sectionsCreated);
-
-    // If no sections were created, show a comprehensive no-data message
-    if (sectionsCreated === 0) {
-      investmentChart
+      // Create cash flow timeline container
+      const cashFlowTimelineContainer = container
         .append("div")
-        .attr("class", "comprehensive-no-data")
-        .style("text-align", "center")
-        .style("padding", "60px 20px")
-        .style("background", "#f8f9fa")
-        .style("border-radius", "8px")
-        .style("border", "2px dashed #dee2e6")
-        .style("margin", "40px 0")
-        .html(`
-          <h3 style="color: #6c757d; margin-bottom: 20px;">No Data Available</h3>
-          <p style="color: #6c757d; margin-bottom: 15px; font-size: 16px;">
-            ${!showCapitalTransactions && !showOperationalTransactions 
-              ? "Both Capital and Operational transaction types are currently disabled." 
-              : "No transactions match the current filter criteria."}
-          </p>
-          <div style="margin-top: 20px;">
-            ${!showCapitalTransactions && !showOperationalTransactions 
-              ? `<p style="color: #495057; margin-bottom: 10px;">Enable transaction types using the toggle switches above.</p>`
-              : `<p style="color: #495057; margin-bottom: 10px;">Try adjusting your filters or date range to see more data.</p>`}
-            <p style="color: #495057; font-size: 14px;">
-              You can also click on any timeline area to add new transactions.
-            </p>
-          </div>
-        `);
+        .attr("id", "cashflow-timeline-container");
+
+      // Create cash flow timeline using the component
+      cashFlowTimelineInstance = createCashFlowTimeline({
+        containerId: "cashflow-timeline-container",
+        events: visibleCashFlowEvents,
+        timeScale: timeScale,
+        startDate: startDate,
+        endDate: endDate,
+        dimensions: {
+          svgWidth: svgWidth,
+          timelineStart: timelineStart,
+          timelineEnd: timelineEnd,
+          timelineLength: timelineLength
+        },
+        tooltip: tooltip,
+        dateLabel: dateLabel,
+        transactionEmojis: transactionEmojis,
+        transactionColors: cashFlowColors,
+        dateFormat: dateFormat,
+        getDateFromPosition: getDateFromPosition,
+        isDateInRange: isDateInRange,
+        groupEventsByProximity: groupEventsByProximity,
+        deleteCashFlowEvent: deleteCashFlowEvent,
+        updateCashFlowEvent: updateCashFlowEvent,
+        updateCashFlowVisualization: updateInvestmentVisualization
+      });
     }
+  }
+
+  // Helper function to create combined chart
+  function createCombinedChart(container, visibleTransactions, visibleCashFlowEvents) {
+    if (visibleTransactions.length === 0 && visibleCashFlowEvents.length === 0) {
+      container.html("");
+      return;
+    }
+
+    // Clear container
+    container.html("");
+
+    // Add combined chart section header
+    container
+      .append("h3")
+      .attr("class", "section-header")
+      .style("margin", "20px 0")
+      .style("color", "#333")
+      .style("padding-top", "20px")
+      .text("Combined Financial Overview");
+
+    // Create the combined chart
+    const combinedChart = container.append("div").attr("id", "combined-chart");
+    
+    // Call the existing combined chart function with the new structure
+    drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents, 1);
+  }
+
+  // Helper function to create no data message
+  function createNoDataMessage(container) {
+    container
+      .style("display", "block")
+      .html("")
+      .append("div")
+      .attr("class", "comprehensive-no-data")
+      .style("text-align", "center")
+      .style("padding", "60px 20px")
+      .style("background", "#f8f9fa")
+      .style("border-radius", "8px")
+      .style("border", "2px dashed #dee2e6")
+      .style("margin", "40px 0")
+      .html(`
+        <h3 style="color: #6c757d; margin-bottom: 20px;">No Data Available</h3>
+        <p style="color: #6c757d; margin-bottom: 15px; font-size: 16px;">
+          ${!showCapitalTransactions && !showOperationalTransactions 
+            ? "Both Capital and Operational transaction types are currently disabled." 
+            : "No transactions match the current filter criteria."}
+        </p>
+        <div style="margin-top: 20px;">
+          ${!showCapitalTransactions && !showOperationalTransactions 
+            ? `<p style="color: #495057; margin-bottom: 10px;">Enable transaction types using the toggle switches above.</p>`
+            : `<p style="color: #495057; margin-bottom: 10px;">Try adjusting your filters or date range to see more data.</p>`}
+          <p style="color: #495057; font-size: 14px;">
+            You can also click on any timeline area to add new transactions.
+          </p>
+        </div>
+      `);
   }
 
   // Function to draw combined bar chart showing both investment transactions and cash flow events
   function drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents, sectionsCreated) {
     if (visibleTransactions.length === 0 && visibleCashFlowEvents.length === 0) {
-      // Show a message when no data is available
-      const combinedChart = d3.select("#combined-chart");
-      combinedChart.selectAll("*").remove();
-      
-      combinedChart
-        .append("div")
-        .attr("class", "no-data-message")
-        .style("text-align", "center")
-        .style("padding", "40px")
-        .style("color", "#666")
-        .html("<h3>No data to display</h3><p>No transactions match the current filter criteria.</p>");
-      
       return; // No data to display
     }
 
-    // Clear any existing content in the combined chart container
+    // Get the combined chart container
     const combinedChart = d3.select("#combined-chart");
     combinedChart.selectAll("*").remove();
 
-    // Add combined chart section header to the combined chart container
-    combinedChart
-      .append("h3")
-      .attr("class", "section-header")
-      .style("margin", sectionsCreated === 0 ? "20px 0 10px 0" : "40px 0 10px 0") // More space if not first section
-      .style("color", "#333")
-      .style("padding-top", "20px") // Additional padding for visual separation
-      .style("border-top", "1px solid #eee") // Subtle border to separate sections
-      .text("Combined Financial Overview");
-
     // Set chart dimensions with responsive sizing
     const containerWidth = combinedChart.node().getBoundingClientRect().width || 1000;
-    const margin = { top: 20, right: 50, bottom: 80, left: 80 };
+    const margin = { top: 30, right: 50, bottom: 80, left: 80 };
     const width = Math.max(containerWidth - margin.left - margin.right, 600);
     const height = 400 - margin.top - margin.bottom;
 
