@@ -2459,7 +2459,7 @@ document.addEventListener("DOMContentLoaded", function () {
     combinedChart
       .append("h3")
       .attr("class", "section-header")
-      .style("margin", "120px 0 10px 0") // Increased top margin for better separation
+      .style("margin", "200px 0 10px 0") // Increased top margin for better separation
       .style("color", "#333")
       .style("padding-top", "20px") // Additional padding for visual separation
       .style("border-top", "1px solid #eee") // Subtle border to separate sections
