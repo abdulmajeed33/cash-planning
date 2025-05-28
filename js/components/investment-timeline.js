@@ -285,6 +285,7 @@ function createInvestmentTimeline(config) {
       .attr("r", 5)
       .attr("fill", dotColor)
       .attr("data-entity-name", group.transactions[0].name)
+      .attr("data-transaction-id", group.transactions[0].id)
       .attr("data-date", group.date.toISOString())
       .attr("data-id", group.transactions[0].id);
 

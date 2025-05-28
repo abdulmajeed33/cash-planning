@@ -1200,7 +1200,7 @@ document.addEventListener("DOMContentLoaded", function () {
    * Adds switches to show/hide capital and operational transactions
    */
   function addTransactionTypeToggles() {
-    const timelineEl = d3.select("#investment-timeline");
+  const timelineEl = d3.select("#investment-timeline");
     
     if (!timelineEl.node()) {
       console.warn("Timeline element not found, skipping toggle creation");
@@ -1209,12 +1209,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create toggle container
     const toggleContainer = timelineEl
-      .append("div")
+        .append("div")
       .attr("class", "transaction-type-toggles")
       .style("margin", "15px 0")
-      .style("padding", "15px")
+        .style("padding", "15px")
       .style("background", "#f8f9fa")
-      .style("border-radius", "8px")
+        .style("border-radius", "8px")
       .style("border", "1px solid #e9ecef")
       .style("display", "flex")
       .style("align-items", "center")
@@ -1253,11 +1253,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // Move the toggle container to appear after date controls
     const dateRangeEl = document.querySelector(".date-range-control");
     if (dateRangeEl && dateRangeEl.nextSibling && toggleContainer.node()) {
-      dateRangeEl.parentNode.insertBefore(
+        dateRangeEl.parentNode.insertBefore(
         toggleContainer.node(),
-        dateRangeEl.nextSibling
-      );
-    }
+          dateRangeEl.nextSibling
+        );
+      }
 
     // Add amount filter controls after the toggles
     addAmountFilterControls();
@@ -1449,17 +1449,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create amount filter container
     const filterControls = timelineEl
-      .append("div")
-      .attr("class", "amount-range-control")
+        .append("div")
+        .attr("class", "amount-range-control")
       .style("margin", "15px 0")
-      .style("padding", "15px")
+        .style("padding", "15px")
       .style("background", "#f8f9fa")
-      .style("border-radius", "8px")
+        .style("border-radius", "8px")
       .style("border", "1px solid #e9ecef");
 
-    // Add title
-    filterControls
-      .append("h4")
+      // Add title
+      filterControls
+        .append("h4")
       .text("Amount Range Filter:")
       .style("margin-top", "0")
       .style("color", "#495057")
@@ -1477,22 +1477,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create main enable/disable row
     const enableFilterRow = filterControls
-      .append("div")
-      .style("display", "flex")
-      .style("align-items", "center")
-      .style("gap", "10px")
+        .append("div")
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "10px")
       .style("margin-bottom", "15px");
 
     enableFilterRow
-      .append("input")
-      .attr("type", "checkbox")
-      .attr("id", "enable-amount-filter")
-      .style("margin", "0");
+        .append("input")
+        .attr("type", "checkbox")
+        .attr("id", "enable-amount-filter")
+        .style("margin", "0");
 
     enableFilterRow
-      .append("label")
-      .attr("for", "enable-amount-filter")
-      .text("Enable Amount Filter")
+        .append("label")
+        .attr("for", "enable-amount-filter")
+        .text("Enable Amount Filter")
       .style("margin", "0")
       .style("font-weight", "500")
       .style("font-size", "13px");
@@ -1500,21 +1500,21 @@ document.addEventListener("DOMContentLoaded", function () {
     // Create category selection section
     addCategorySelectionControls(filterControls);
 
-    // Create amount inputs row
-    const amountInputsRow = filterControls
-      .append("div")
-      .style("display", "flex")
-      .style("gap", "10px")
+      // Create amount inputs row
+      const amountInputsRow = filterControls
+        .append("div")
+        .style("display", "flex")
+        .style("gap", "10px")
       .style("margin-bottom", "15px");
 
-    // Add min amount input
-    amountInputsRow.append("div").style("flex", "1").html(`
+      // Add min amount input
+      amountInputsRow.append("div").style("flex", "1").html(`
         <label for="min-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Min Amount ($)</label>
         <input type="number" id="min-amount" min="0" value="0" class="form-control" style="width: 100%; margin-top: 2px;">
-      `);
+        `);
 
-    // Add max amount input
-    amountInputsRow.append("div").style("flex", "1").html(`
+      // Add max amount input
+      amountInputsRow.append("div").style("flex", "1").html(`
         <label for="max-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Max Amount ($)</label>
         <input type="number" id="max-amount" min="0" value="" placeholder="No maximum" class="form-control" style="width: 100%; margin-top: 2px;">
       `);
@@ -1526,20 +1526,20 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("gap", "10px")
       .style("align-items", "center");
 
-    // Add apply button
+      // Add apply button
     buttonsRow
-      .append("button")
-      .attr("id", "apply-amount-filter")
-      .attr("class", "btn btn-primary")
+        .append("button")
+        .attr("id", "apply-amount-filter")
+        .attr("class", "btn btn-primary")
       .text("Apply Filter")
       .style("font-size", "12px")
       .style("padding", "6px 12px");
 
-    // Add reset button
+      // Add reset button
     buttonsRow
-      .append("button")
-      .attr("id", "reset-amount-filter")
-      .attr("class", "btn btn-secondary")
+        .append("button")
+        .attr("id", "reset-amount-filter")
+        .attr("class", "btn btn-secondary")
       .text("Reset")
       .style("font-size", "12px")
       .style("padding", "6px 12px");
@@ -1694,8 +1694,8 @@ document.addEventListener("DOMContentLoaded", function () {
    */
   function setupAmountFilterEventListeners() {
     // Main filter controls
-    d3.select("#apply-amount-filter").on("click", updateAmountFilter);
-    d3.select("#reset-amount-filter").on("click", resetAmountFilter);
+      d3.select("#apply-amount-filter").on("click", updateAmountFilter);
+      d3.select("#reset-amount-filter").on("click", resetAmountFilter);
 
     // Category checkboxes
     d3.selectAll(".category-filter-checkbox").on("change", function() {
@@ -1847,7 +1847,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Check if this role is close to the average of the current group
         const groupAvgTime = currentGroup.date.getTime();
         const daysDiff = Math.abs(roleTime - groupAvgTime) / (1000 * 60 * 60 * 24);
-        
+
         if (daysDiff <= dayThreshold) {
           // Add to current group and update average date
           currentGroup.roles.push(role);
@@ -2046,10 +2046,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Force a small delay to ensure DOM cleanup is complete
     setTimeout(() => {
-      // Then redraw the chart
-      drawInvestmentChart();
+    // Then redraw the chart
+    drawInvestmentChart();
     }, 10);
   }
+
+  // Expose the updateInvestmentVisualization function to the global scope
+  // so that other components (like Cash Flow Timeline) can call it
+  window.updateInvestmentVisualization = updateInvestmentVisualization;
 
   // Function to update date range
   function updateDateRange() {
@@ -2309,7 +2313,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("align-items", "center")
         .style("gap", "5px")
         .style("white-space", "nowrap");
-      
+
       legendItem
         .append("div")
         .attr("class", "color-box")
@@ -2463,42 +2467,42 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("font-style", "italic")
         .text("No investment transactions in the selected range. Click anywhere on the timeline below to add a new transaction.");
     } else {
-      // Clean up any existing timeline instance
-      if (timelineInstance) {
-        timelineInstance.destroy();
-        timelineInstance = null;
-      }
+    // Clean up any existing timeline instance
+    if (timelineInstance) {
+      timelineInstance.destroy();
+      timelineInstance = null;
+    }
 
-      // Create investment timeline container
+    // Create investment timeline container
       const investmentTimelineContainer = container
-        .append("div")
+      .append("div")
         .attr("id", "investment-timeline-container");
 
-      // Create investment timeline using the component
-      timelineInstance = createInvestmentTimeline({
-        containerId: "investment-timeline-container",
-        transactions: visibleTransactions,
-        timeScale: timeScale,
-        startDate: startDate,
-        endDate: endDate,
-        dimensions: {
-          svgWidth: svgWidth,
-          timelineStart: timelineStart,
-          timelineEnd: timelineEnd,
-          timelineLength: timelineLength
-        },
-        tooltip: tooltip,
-        dateLabel: dateLabel,
-        transactionEmojis: transactionEmojis,
-        dateFormat: dateFormat,
-        getDateFromPosition: getDateFromPosition,
-        isDateInRange: isDateInRange,
-        groupTransactionsByProximity: groupTransactionsByProximity,
-        showTransactionModal: showTransactionModal,
-        deleteTransaction: deleteTransaction,
-        updateInvestmentVisualization: updateInvestmentVisualization,
-        highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
-      });
+    // Create investment timeline using the component
+    timelineInstance = createInvestmentTimeline({
+      containerId: "investment-timeline-container",
+      transactions: visibleTransactions,
+      timeScale: timeScale,
+      startDate: startDate,
+      endDate: endDate,
+      dimensions: {
+        svgWidth: svgWidth,
+        timelineStart: timelineStart,
+        timelineEnd: timelineEnd,
+        timelineLength: timelineLength
+      },
+      tooltip: tooltip,
+      dateLabel: dateLabel,
+      transactionEmojis: transactionEmojis,
+      dateFormat: dateFormat,
+      getDateFromPosition: getDateFromPosition,
+      isDateInRange: isDateInRange,
+      groupTransactionsByProximity: groupTransactionsByProximity,
+      showTransactionModal: showTransactionModal,
+      deleteTransaction: deleteTransaction,
+      updateInvestmentVisualization: updateInvestmentVisualization,
+      highlightBarSegmentForTransaction: highlightBarSegmentForTransaction
+    });
     }
   }
 
@@ -2525,42 +2529,42 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("font-style", "italic")
         .text("No cash flow events in the selected range.");
     } else {
-      // Clean up any existing cash flow timeline instance
-      if (cashFlowTimelineInstance) {
-        cashFlowTimelineInstance.destroy();
-        cashFlowTimelineInstance = null;
-      }
+    // Clean up any existing cash flow timeline instance
+    if (cashFlowTimelineInstance) {
+      cashFlowTimelineInstance.destroy();
+      cashFlowTimelineInstance = null;
+    }
 
-      // Create cash flow timeline container
+    // Create cash flow timeline container
       const cashFlowTimelineContainer = container
-        .append("div")
+      .append("div")
         .attr("id", "cashflow-timeline-container");
 
-      // Create cash flow timeline using the component
-      cashFlowTimelineInstance = createCashFlowTimeline({
-        containerId: "cashflow-timeline-container",
-        events: visibleCashFlowEvents,
-        timeScale: timeScale,
-        startDate: startDate,
-        endDate: endDate,
-        dimensions: {
-          svgWidth: svgWidth,
-          timelineStart: timelineStart,
-          timelineEnd: timelineEnd,
-          timelineLength: timelineLength
-        },
-        tooltip: tooltip,
-        dateLabel: dateLabel,
-        transactionEmojis: transactionEmojis,
-        transactionColors: cashFlowColors,
-        dateFormat: dateFormat,
-        getDateFromPosition: getDateFromPosition,
-        isDateInRange: isDateInRange,
-        groupEventsByProximity: groupEventsByProximity,
-        deleteCashFlowEvent: deleteCashFlowEvent,
-        updateCashFlowEvent: updateCashFlowEvent,
-        updateCashFlowVisualization: updateInvestmentVisualization
-      });
+    // Create cash flow timeline using the component
+    cashFlowTimelineInstance = createCashFlowTimeline({
+      containerId: "cashflow-timeline-container",
+      events: visibleCashFlowEvents,
+      timeScale: timeScale,
+      startDate: startDate,
+      endDate: endDate,
+      dimensions: {
+        svgWidth: svgWidth,
+        timelineStart: timelineStart,
+        timelineEnd: timelineEnd,
+        timelineLength: timelineLength
+      },
+      tooltip: tooltip,
+      dateLabel: dateLabel,
+      transactionEmojis: transactionEmojis,
+      transactionColors: cashFlowColors,
+      dateFormat: dateFormat,
+      getDateFromPosition: getDateFromPosition,
+      isDateInRange: isDateInRange,
+      groupEventsByProximity: groupEventsByProximity,
+      deleteCashFlowEvent: deleteCashFlowEvent,
+      updateCashFlowEvent: updateCashFlowEvent,
+      updateCashFlowVisualization: updateInvestmentVisualization
+    });
     }
   }
 

@@ -695,6 +695,15 @@ function createCashFlowTimeline(config) {
     if (updateCashFlowEvent) {
       try {
         updateCashFlowEvent(event);
+        
+        // After successful database update, trigger the main chart update
+        // This will refresh the combined chart to reflect the new event date
+        setTimeout(() => {
+          if (typeof window.updateInvestmentVisualization === 'function') {
+            window.updateInvestmentVisualization();
+          }
+        }, 100);
+        
       } catch (error) {
         console.error("Error updating cash flow event:", error);
         
