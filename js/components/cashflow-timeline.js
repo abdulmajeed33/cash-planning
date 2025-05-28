@@ -335,20 +335,22 @@ function createCashFlowTimeline(config) {
       .attr("stroke-width", 2)
       .attr("opacity", 0.9);
 
-    // Add event emoji/icon
+    // Add emoji for event type
     eventGroup
       .append("text")
       .attr("class", "cashflow-event-emoji")
       .attr("x", 0)
       .attr("y", 1)
       .attr("text-anchor", "middle")
-      .attr("font-size", "10px")
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "24px")
+      .attr("transform", "scale(1.5)") // Doubles the emoji size to match investment timeline
       .attr("dy", "0.35em")
       .text(transactionEmojis[event.type] || "💰");
 
     // Add amount label - position based on whether event is above or below timeline
     const amountText = event.amount >= 0 ? `+$${event.amount.toLocaleString()}` : `-$${Math.abs(event.amount).toLocaleString()}`;
-    const labelYOffset = isPositive ? -15 : 20; // Above circle for positive, below for negative
+    const labelYOffset = isPositive ? -15 : 45; // Above circle for positive, below for negative
     
     eventGroup
       .append("text")
