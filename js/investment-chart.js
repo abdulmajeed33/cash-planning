@@ -2178,9 +2178,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Handle legend
     if (hasAnyData) {
+      // Ensure legend container is visible and properly reset
+      legendContainer
+        .style("display", "block")
+        .style("visibility", "visible")
+        .style("opacity", "1");
       createLegend(legendContainer);
     } else {
-      legendContainer.html("").style("display", "none");
+      legendContainer
+        .html("")
+        .style("display", "none")
+        .style("visibility", "hidden")
+        .style("opacity", "0");
     }
 
     // Create filter and toggle status messages
@@ -2237,6 +2246,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Helper function to create legend
   function createLegend(container) {
+    // Clear the container first to prevent duplication
+    container.html("");
+    
+    // Reset all styles to ensure clean state
+    container
+      .attr("class", "transaction-legend")
+      .style("margin", "20px 0")
+      .style("display", "block")
+      .style("visibility", "visible")
+      .style("opacity", "1");
+    
     const legendItems = [
       { type: "fund-buy", label: "Fund Purchase" },
       { type: "fund-sale", label: "Fund Sale" },
@@ -2253,59 +2273,115 @@ document.addEventListener("DOMContentLoaded", function () {
       .domain(["fund-buy", "fund-sale", "land-buy", "land-sale", "recurringPayment", "nonRecurringPayment", "invoice", "supplierPayment"])
       .range(["#F44336", "#4CAF50", "#FF9800", "#2196F3", "#3498db", "#e74c3c", "#2ecc71", "#f39c12"]);
 
+    // Set container styles with important declarations to override any conflicting CSS
     container
-      .style("display", "flex")
-      .style("flex-wrap", "wrap")
-      .style("gap", "15px")
+      .style("display", "flex !important")
+      .style("flex-direction", "column")
       .style("align-items", "center")
       .style("justify-content", "center")
       .style("padding", "15px")
       .style("background", "#f8f9fa")
       .style("border-radius", "8px")
-      .style("border", "1px solid #e9ecef");
+      .style("border", "1px solid #e9ecef")
+      .style("box-sizing", "border-box")
+      .style("width", "100%")
+      .style("max-width", "100%");
 
-    legendItems.forEach((item) => {
-      const legendItem = container.append("div").attr("class", "legend-item");
+    // Create a wrapper div for all legend items to ensure proper layout
+    const legendWrapper = container
+      .append("div")
+      .attr("class", "legend-items-wrapper")
+      .style("display", "flex")
+      .style("flex-wrap", "wrap")
+      .style("gap", "15px")
+      .style("align-items", "center")
+      .style("justify-content", "center")
+      .style("width", "100%")
+      .style("max-width", "100%");
+
+    // Add main legend items
+    legendItems.forEach((item, index) => {
+      const legendItem = legendWrapper
+        .append("div")
+        .attr("class", `legend-item legend-item-${index}`)
+        .attr("data-type", item.type)
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "5px")
+        .style("white-space", "nowrap");
       
       legendItem
         .append("div")
         .attr("class", "color-box")
-        .style("background-color", color(item.type));
+        .style("width", "12px")
+        .style("height", "12px")
+        .style("border-radius", "2px")
+        .style("background-color", color(item.type))
+        .style("flex-shrink", "0");
 
       legendItem
         .append("span")
-        .html(`${item.label}`);
+        .style("font-size", "12px")
+        .style("color", "#333")
+        .style("font-weight", "400")
+        .text(item.label);
     });
 
     // Add closing balance to legend
-    const balanceLegendItem = container
+    const balanceLegendItem = legendWrapper
       .append("div")
-      .attr("class", "legend-item balance-legend-item");
+      .attr("class", "legend-item balance-legend-item")
+      .attr("data-type", "closing-balance")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "5px")
+      .style("white-space", "nowrap");
 
     balanceLegendItem
       .append("div")
       .attr("class", "color-box")
-      .style("background-color", "#FF9800");
+      .style("width", "12px")
+      .style("height", "12px")
+      .style("border-radius", "2px")
+      .style("background-color", "#FF9800")
+      .style("flex-shrink", "0");
 
     balanceLegendItem
       .append("span")
-      .html(`Closing Balance`);
+      .style("font-size", "12px")
+      .style("color", "#333")
+      .style("font-weight", "400")
+      .text("Closing Balance");
 
-    // Add divider line explanation to legend
+    // Add divider line explanation to legend (on a new line)
     const dividerLegendItem = container
       .append("div")
-      .attr("class", "legend-item")
-      .style("margin-top", "8px");
+      .attr("class", "legend-item divider-explanation")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "8px")
+      .style("margin-top", "10px")
+      .style("justify-content", "center")
+      .style("width", "100%");
 
+    // Create a small line to demonstrate the divider
     dividerLegendItem
       .append("div")
-      .attr("class", "color-box")
-      .html(`<div style="width: 100%; height: 2px; background: white; border-top: 1px dashed #666; margin-top: 8px;"></div>`)
-      .style("background", "transparent");
+      .style("width", "30px")
+      .style("height", "2px")
+      .style("border-top", "1px dashed #666")
+      .style("background", "transparent")
+      .style("flex-shrink", "0");
 
     dividerLegendItem
       .append("span")
-      .html(`<small>Dashed lines separate transactions on different dates</small>`);
+      .style("font-size", "11px")
+      .style("color", "#666")
+      .style("font-style", "italic")
+      .style("text-align", "center")
+      .text("Dashed lines separate transactions on different dates");
+
+    console.log("Legend created with", legendItems.length + 1, "main items plus divider explanation");
   }
 
   // Helper function to create status messages
@@ -3642,4 +3718,8 @@ document.addEventListener("DOMContentLoaded", function () {
       return dateInRange && amountInRange;
     });
   }
+
+  // Helper function to create legend (defined at end of file)
+
+  // Helper function to create status messages
 });
