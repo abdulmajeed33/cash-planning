@@ -1846,9 +1846,8 @@ document.addEventListener("DOMContentLoaded", function () {
       } else {
         // Check if this role is close to the average of the current group
         const groupAvgTime = currentGroup.date.getTime();
-        const daysDiff =
-          Math.abs(roleTime - groupAvgTime) / (1000 * 60 * 60 * 24);
-
+        const daysDiff = Math.abs(roleTime - groupAvgTime) / (1000 * 60 * 60 * 24);
+        
         if (daysDiff <= dayThreshold) {
           // Add to current group and update average date
           currentGroup.roles.push(role);
@@ -2022,8 +2021,34 @@ document.addEventListener("DOMContentLoaded", function () {
     // Use selectAll and remove to ensure complete DOM cleanup
     investmentChart.selectAll("*").remove();
 
-    // Then redraw the chart
-    drawInvestmentChart();
+    // Also clear the combined chart to prevent overlapping
+    const combinedChart = d3.select("#combined-chart");
+    combinedChart.selectAll("*").remove();
+
+    // Clear any existing timeline instances to prevent conflicts
+    if (window.investmentTimelineInstance) {
+      try {
+        window.investmentTimelineInstance.destroy();
+      } catch (e) {
+        console.warn("Error destroying investment timeline instance:", e);
+      }
+      window.investmentTimelineInstance = null;
+    }
+
+    if (window.cashFlowTimelineInstance) {
+      try {
+        window.cashFlowTimelineInstance.destroy();
+      } catch (e) {
+        console.warn("Error destroying cash flow timeline instance:", e);
+      }
+      window.cashFlowTimelineInstance = null;
+    }
+
+    // Force a small delay to ensure DOM cleanup is complete
+    setTimeout(() => {
+      // Then redraw the chart
+      drawInvestmentChart();
+    }, 10);
   }
 
   // Function to update date range
@@ -2346,54 +2371,56 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("color", "#333")
         .text("Cash Flow Timeline");
 
-      // Process the cash flow data for display
-      if (visibleCashFlowEvents.length === 0) {
-        investmentChart
-          .append("div")
-          .attr("class", "no-data-message")
-          .style("margin-bottom", "20px")
-          .text(
-            "No cash flow events in the selected range."
-          );
-      }
-
       // Clean up any existing cash flow timeline instance
       if (cashFlowTimelineInstance) {
         cashFlowTimelineInstance.destroy();
         cashFlowTimelineInstance = null;
       }
 
-      // Create cash flow timeline container
-      const cashFlowTimelineContainer = investmentChart
-        .append("div")
-        .attr("id", "cashflow-timeline-container")
-        .style("margin-bottom", "30px");
+      // Process the cash flow data for display
+      if (visibleCashFlowEvents.length === 0) {
+        investmentChart
+          .append("div")
+          .attr("class", "no-data-message")
+          .style("margin-bottom", "20px")
+          .style("text-align", "center")
+          .style("padding", "20px")
+          .style("color", "#666")
+          .style("font-style", "italic")
+          .text("No cash flow events in the selected range.");
+      } else {
+        // Only create the timeline container and component when there are events to display
+        const cashFlowTimelineContainer = investmentChart
+          .append("div")
+          .attr("id", "cashflow-timeline-container")
+          .style("margin-bottom", "30px");
 
-      // Create cash flow timeline using the component
-      cashFlowTimelineInstance = createCashFlowTimeline({
-        containerId: "cashflow-timeline-container",
-        events: visibleCashFlowEvents,
-        timeScale: timeScale,
-        startDate: startDate,
-        endDate: endDate,
-        dimensions: {
-          svgWidth: svgWidth,
-          timelineStart: timelineStart,
-          timelineEnd: timelineEnd,
-          timelineLength: timelineLength
-        },
-        tooltip: tooltip,
-        dateLabel: dateLabel,
-        transactionEmojis: transactionEmojis,
-        transactionColors: cashFlowColors,
-        dateFormat: dateFormat,
-        getDateFromPosition: getDateFromPosition,
-        isDateInRange: isDateInRange,
-        groupEventsByProximity: groupEventsByProximity,
-        deleteCashFlowEvent: deleteCashFlowEvent,
-        updateCashFlowEvent: updateCashFlowEvent,
-        updateCashFlowVisualization: updateInvestmentVisualization
-      });
+        // Create cash flow timeline using the component
+        cashFlowTimelineInstance = createCashFlowTimeline({
+          containerId: "cashflow-timeline-container",
+          events: visibleCashFlowEvents,
+          timeScale: timeScale,
+          startDate: startDate,
+          endDate: endDate,
+          dimensions: {
+            svgWidth: svgWidth,
+            timelineStart: timelineStart,
+            timelineEnd: timelineEnd,
+            timelineLength: timelineLength
+          },
+          tooltip: tooltip,
+          dateLabel: dateLabel,
+          transactionEmojis: transactionEmojis,
+          transactionColors: cashFlowColors,
+          dateFormat: dateFormat,
+          getDateFromPosition: getDateFromPosition,
+          isDateInRange: isDateInRange,
+          groupEventsByProximity: groupEventsByProximity,
+          deleteCashFlowEvent: deleteCashFlowEvent,
+          updateCashFlowEvent: updateCashFlowEvent,
+          updateCashFlowVisualization: updateInvestmentVisualization
+        });
+      }
     } else {
       // Clean up cash flow timeline instance if operational transactions are disabled
       if (cashFlowTimelineInstance) {
@@ -2409,6 +2436,18 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to draw combined bar chart showing both investment transactions and cash flow events
   function drawCombinedBarChart(visibleTransactions, visibleCashFlowEvents) {
     if (visibleTransactions.length === 0 && visibleCashFlowEvents.length === 0) {
+      // Show a message when no data is available
+      const combinedChart = d3.select("#combined-chart");
+      combinedChart.selectAll("*").remove();
+      
+      combinedChart
+        .append("div")
+        .attr("class", "no-data-message")
+        .style("text-align", "center")
+        .style("padding", "40px")
+        .style("color", "#666")
+        .html("<h3>No data to display</h3><p>No transactions match the current filter criteria.</p>");
+      
       return; // No data to display
     }
 
@@ -2424,9 +2463,10 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("color", "#333")
       .text("Combined Financial Overview");
 
-    // Set chart dimensions
-    const margin = { top: 20, right: 50, bottom: 80, left: 60 };
-    const width = 1000 - margin.left - margin.right;
+    // Set chart dimensions with responsive sizing
+    const containerWidth = combinedChart.node().getBoundingClientRect().width || 1000;
+    const margin = { top: 20, right: 50, bottom: 80, left: 80 };
+    const width = Math.max(containerWidth - margin.left - margin.right, 600);
     const height = 400 - margin.top - margin.bottom;
 
     // Create SVG for combined bar chart
@@ -2461,22 +2501,32 @@ document.addEventListener("DOMContentLoaded", function () {
     // Sort all events by date
     allEvents.sort((a, b) => a.date - b.date);
 
-    // Calculate the min and max values for the y-axis
-    const maxValue = Math.max(
-      d3.max(allEvents.filter(e => e.amount > 0), d => d.amount) || 0,
-      d3.max(visibleTransactions.filter(t => t.transactionType === "sale"), d => d.amount) || 0
-    ) * 1.1;
+    // Calculate the min and max values for the y-axis with better safety checks
+    const allAmounts = allEvents.map(e => e.amount).filter(amount => !isNaN(amount) && isFinite(amount));
+    
+    if (allAmounts.length === 0) {
+      console.warn("No valid amounts found in events");
+      return;
+    }
 
-    const minValue = Math.min(
-      d3.min(allEvents.filter(e => e.amount < 0), d => d.amount) || 0,
-      d3.min(visibleTransactions.filter(t => t.transactionType === "buy"), d => d.amount) || 0
-    ) * 1.1;
+    const maxPositive = Math.max(...allAmounts.filter(a => a > 0), 0);
+    const minNegative = Math.min(...allAmounts.filter(a => a < 0), 0);
+    
+    // Add padding to the domain (10% on each side)
+    const maxValue = maxPositive > 0 ? maxPositive * 1.1 : 1000;
+    const minValue = minNegative < 0 ? minNegative * 1.1 : -1000;
+
+    // Ensure we have a reasonable domain even with small values
+    const domainPadding = Math.max(Math.abs(maxValue - minValue) * 0.1, 1000);
+    const finalMaxValue = Math.max(maxValue, domainPadding);
+    const finalMinValue = Math.min(minValue, -domainPadding);
 
     // Create y scale that includes negative values
     const y = d3
       .scaleLinear()
-      .domain([minValue, maxValue])
-      .range([height, 0]);
+      .domain([finalMinValue, finalMaxValue])
+      .range([height, 0])
+      .nice(); // This makes the scale endpoints nice round numbers
 
     // Calculate the position of the zero line
     const zeroLineY = y(0);
@@ -2487,18 +2537,22 @@ document.addEventListener("DOMContentLoaded", function () {
       .domain([startDate, endDate])
       .range([0, width]);
 
-    // Calculate bar width based on time scale
+    // Calculate bar width based on time scale with better spacing
     const calculateBarWidth = (date) => {
-      const currentMonth = new Date(date);
-      const nextMonth = new Date(date);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      if (nextMonth > endDate) {
-        nextMonth.setTime(endDate.getTime());
+      const timeDiff = endDate.getTime() - startDate.getTime();
+      const daysDiff = timeDiff / (1000 * 60 * 60 * 24);
+      
+      // Adaptive bar width based on time range
+      let baseWidth;
+      if (daysDiff <= 30) {
+        baseWidth = width / Math.max(daysDiff, 1) * 0.8;
+      } else if (daysDiff <= 90) {
+        baseWidth = width / Math.max(daysDiff / 3, 1) * 0.6;
+      } else {
+        baseWidth = width / Math.max(daysDiff / 7, 1) * 0.4;
       }
-
-      const monthWidth = xTime(nextMonth) - xTime(currentMonth);
-      return Math.min(Math.max(monthWidth * 0.6, 15), 60);
+      
+      return Math.min(Math.max(baseWidth, 8), 60);
     };
 
     // Create time axis
@@ -2649,8 +2703,8 @@ document.addEventListener("DOMContentLoaded", function () {
     balanceData.push({ date: endDate, balance: runningBalance });
 
     // Update Y scale to include balance data
-    const maxBalance = Math.max(maxValue, d3.max(balanceData, d => d.balance) || 0);
-    const minBalance = Math.min(minValue, d3.min(balanceData, d => d.balance) || 0);
+    const maxBalance = Math.max(finalMaxValue, d3.max(balanceData, d => d.balance) || 0);
+    const minBalance = Math.min(finalMinValue, d3.min(balanceData, d => d.balance) || 0);
     y.domain([minBalance, maxBalance * 1.1]);
 
     // Redraw Y axis with updated scale
