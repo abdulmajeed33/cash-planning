@@ -1743,51 +1743,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialize the chart when the DOM is loaded
   // Initialize the chart when the cash flow tab is shown on page load or clicked
-  const cashflowTabButton = document.querySelector(".tab-button[data-tab='cashflow-timeline']");
+  // const cashflowTabButton = document.querySelector(".tab-button[data-tab='cashflow-timeline']");
   
-  // Add tab switching initialization
-  cashflowTabButton.addEventListener("click", function() {
-    if (!this.classList.contains("initialized")) {
-      initCashFlowChart();
-      this.classList.add("initialized");
-    }
-  });
+  // // Add tab switching initialization
+  // cashflowTabButton.addEventListener("click", function() {
+  //   if (!this.classList.contains("initialized")) {
+  //     initCashFlowChart();
+  //     this.classList.add("initialized");
+  //   }
+  // });
   
-  // If the cash flow tab is already active on page load, initialize the chart
-  if (cashflowTabButton.classList.contains("active")) {
-    initCashFlowChart();
-    cashflowTabButton.classList.add("initialized");
-  }
+  // // If the cash flow tab is already active on page load, initialize the chart
+  // if (cashflowTabButton.classList.contains("active")) {
+  //   initCashFlowChart();
+  //   cashflowTabButton.classList.add("initialized");
+  // }
   
-  // Ensure we have tab switching functionality
-  if (!window.tabSwitchingInitialized) {
-    const tabButtons = document.querySelectorAll(".tab-button");
-    const tabContents = document.querySelectorAll(".tab-content");
+  // // Ensure we have tab switching functionality
+  // if (!window.tabSwitchingInitialized) {
+  //   const tabButtons = document.querySelectorAll(".tab-button");
+  //   const tabContents = document.querySelectorAll(".tab-content");
     
-    tabButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        const tabId = button.getAttribute("data-tab");
+  //   tabButtons.forEach((button) => {
+  //     button.addEventListener("click", () => {
+  //       const tabId = button.getAttribute("data-tab");
         
-        // Update active button
-        tabButtons.forEach((btn) => btn.classList.remove("active"));
-        button.classList.add("active");
+  //       // Update active button
+  //       tabButtons.forEach((btn) => btn.classList.remove("active"));
+  //       button.classList.add("active");
         
-        // Update active content
-        tabContents.forEach((content) => content.classList.remove("active"));
-        document.getElementById(tabId).classList.add("active");
+  //       // Update active content
+  //       tabContents.forEach((content) => content.classList.remove("active"));
+  //       document.getElementById(tabId).classList.add("active");
         
-        // Initialize the appropriate chart based on the tab
-        if (tabId === "investment-timeline" && typeof initInvestmentChart === "function") {
-          initInvestmentChart();
-        } else if (tabId === "cashflow-timeline") {
-          initCashFlowChart();
-        }
-      });
-    });
+  //       // Initialize the appropriate chart based on the tab
+  //       if (tabId === "investment-timeline" && typeof initInvestmentChart === "function") {
+  //         initInvestmentChart();
+  //       } else if (tabId === "cashflow-timeline") {
+  //         initCashFlowChart();
+  //       }
+  //     });
+  //   });
     
-    // Mark tab switching as initialized
-    window.tabSwitchingInitialized = true;
-  }
+  //   // Mark tab switching as initialized
+  //   window.tabSwitchingInitialized = true;
+  // }
 
   // Create sample data for testing
   /*
