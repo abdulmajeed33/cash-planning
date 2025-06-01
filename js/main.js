@@ -71,6 +71,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Initialize the database before loading data
     await initDatabase();
     
+    // Load opening balances from database and update input fields
+    try {
+        const investmentOpeningBalance = await loadSetting('openingBalance', 50000);
+        const cashflowOpeningBalance = await loadSetting('cashflowOpeningBalance', 50000);
+        
+        // Update investment opening balance input
+        const investmentBalanceInput = document.getElementById('opening-balance');
+        if (investmentBalanceInput) {
+            investmentBalanceInput.value = investmentOpeningBalance;
+        }
+        
+        // Update cashflow opening balance input
+        const cashflowBalanceInput = document.getElementById('cashflow-opening-balance');
+        if (cashflowBalanceInput) {
+            cashflowBalanceInput.value = cashflowOpeningBalance;
+        }
+        
+        console.log('Opening balances loaded from database');
+    } catch (error) {
+        console.error('Error loading opening balances:', error);
+    }
+
     // Initial data load
     await Promise.all([
         loadInvestments(),
@@ -84,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // IndexedDB configuration
 const DB_NAME = 'investmentTracker';
-const DB_VERSION = 2; // Increased version for schema update
+const DB_VERSION = 3; // Increased version for schema update to include settings store
 const STORES = {
     investments: 'investments',
     lands: 'lands',
@@ -92,7 +114,8 @@ const STORES = {
     recurringPayments: 'recurringPayments',
     nonRecurringPayments: 'nonRecurringPayments',
     invoices: 'invoices',
-    supplierPayments: 'supplierPayments'
+    supplierPayments: 'supplierPayments',
+    settings: 'settings' // New store for configuration data
 };
 
 let db;
@@ -158,6 +181,12 @@ function initDatabase() {
                 supplierPaymentsStore.createIndex('invoice_code', 'invoice_code', { unique: false });
                 supplierPaymentsStore.createIndex('supplier_name', 'supplier_name', { unique: false });
                 supplierPaymentsStore.createIndex('due_date', 'due_date', { unique: false });
+            }
+            
+            // New store for settings/configuration
+            if (!db.objectStoreNames.contains(STORES.settings)) {
+                const settingsStore = db.createObjectStore(STORES.settings, { keyPath: 'key' });
+                console.log('Settings store created');
             }
             
             console.log('Database schema created in main.js');
@@ -1490,4 +1519,61 @@ function resetSupplierForm() {
     // Remove the cancel button
     const cancelButton = form.querySelector('button.cancel-edit');
     if (cancelButton) cancelButton.remove();
+}
+
+// Settings management functions
+async function saveSetting(key, value) {
+    try {
+        const settingData = { key: key, value: value, updated: new Date().toISOString() };
+        await updateData(STORES.settings, settingData);
+        console.log(`Setting saved: ${key} = ${value}`);
+    } catch (error) {
+        console.error('Error saving setting:', error);
+        throw error;
+    }
+}
+
+async function loadSetting(key, defaultValue = null) {
+    try {
+        const transaction = db.transaction(STORES.settings, 'readonly');
+        const store = transaction.objectStore(STORES.settings);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.get(key);
+            
+            request.onsuccess = event => {
+                const result = event.target.result;
+                if (result) {
+                    console.log(`Setting loaded: ${key} = ${result.value}`);
+                    resolve(result.value);
+                } else {
+                    console.log(`Setting not found: ${key}, using default: ${defaultValue}`);
+                    resolve(defaultValue);
+                }
+            };
+            
+            request.onerror = event => {
+                console.error(`Error loading setting ${key}:`, event.target.error);
+                reject(event.target.error);
+            };
+        });
+    } catch (error) {
+        console.error('Error loading setting:', error);
+        return defaultValue;
+    }
+}
+
+async function loadAllSettings() {
+    try {
+        const settings = await getAllData(STORES.settings);
+        const settingsObj = {};
+        settings.forEach(setting => {
+            settingsObj[setting.key] = setting.value;
+        });
+        console.log('All settings loaded:', settingsObj);
+        return settingsObj;
+    } catch (error) {
+        console.error('Error loading all settings:', error);
+        return {};
+    }
 }

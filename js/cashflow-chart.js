@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   // Initialize database variables and structure
   const DB_NAME = "investmentTracker";
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   const STORES = {
     investments: "investments",
     lands: "lands",
@@ -9,7 +9,8 @@ document.addEventListener("DOMContentLoaded", function () {
     recurringPayments: "recurringPayments",
     nonRecurringPayments: "nonRecurringPayments",
     invoices: "invoices",
-    supplierPayments: "supplierPayments"
+    supplierPayments: "supplierPayments",
+    settings: "settings",
   };
 
   let db;
@@ -219,6 +220,38 @@ document.addEventListener("DOMContentLoaded", function () {
     
     if (!isNaN(newBalance)) {
       openingBalance = newBalance;
+      // Save to database
+      saveSetting('cashflowOpeningBalance', newBalance)
+        .then(() => {
+          // Show success message
+          const successMessage = document.createElement('div');
+          successMessage.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 14px;
+            font-weight: 500;
+          `;
+          successMessage.textContent = `Cashflow opening balance updated to $${newBalance.toLocaleString()}`;
+          document.body.appendChild(successMessage);
+          
+          // Remove message after 3 seconds
+          setTimeout(() => {
+            if (successMessage.parentNode) {
+              successMessage.parentNode.removeChild(successMessage);
+            }
+          }, 3000);
+        })
+        .catch(error => {
+          console.error('Error saving cashflow opening balance:', error);
+          alert('Error saving cashflow opening balance. Please try again.');
+        });
       // Update the chart with the new opening balance
       updateCashFlowVisualization();
     } else {
@@ -297,6 +330,12 @@ document.addEventListener("DOMContentLoaded", function () {
           supplierPaymentsStore.createIndex("invoice_code", "invoice_code", { unique: false });
         }
         
+        // New store for settings/configuration
+        if (!db.objectStoreNames.contains(STORES.settings)) {
+          const settingsStore = db.createObjectStore(STORES.settings, { keyPath: "key" });
+          console.log("Settings store created");
+        }
+        
         console.log("Operational cash flow stores created");
       };
     });
@@ -310,6 +349,16 @@ document.addEventListener("DOMContentLoaded", function () {
       
       // Initialize the database
       await initDatabase();
+      
+      // Load opening balance from database
+      const savedOpeningBalance = await loadSetting('cashflowOpeningBalance', 50000);
+      openingBalance = savedOpeningBalance;
+      
+      // Update the input field with the loaded value
+      const openingBalanceInput = document.getElementById("cashflow-opening-balance");
+      if (openingBalanceInput) {
+        openingBalanceInput.value = openingBalance;
+      }
       
       // Comment out the sample data generation to prevent auto-populating data
       // await ensureSampleCashFlowData();
@@ -1845,5 +1894,61 @@ document.addEventListener("DOMContentLoaded", function () {
         reject(event.target.error);
       };
     });
+  }
+
+  // Settings management functions
+  async function saveSetting(key, value) {
+    try {
+      const settingData = { key: key, value: value, updated: new Date().toISOString() };
+      const transaction = db.transaction(STORES.settings, 'readwrite');
+      const store = transaction.objectStore(STORES.settings);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.put(settingData);
+        
+        request.onsuccess = event => {
+          console.log(`Setting saved: ${key} = ${value}`);
+          resolve(event.target.result);
+        };
+        
+        request.onerror = event => {
+          console.error('Error saving setting:', event.target.error);
+          reject(event.target.error);
+        };
+      });
+    } catch (error) {
+      console.error('Error saving setting:', error);
+      throw error;
+    }
+  }
+
+  async function loadSetting(key, defaultValue = null) {
+    try {
+      const transaction = db.transaction(STORES.settings, 'readonly');
+      const store = transaction.objectStore(STORES.settings);
+      
+      return new Promise((resolve, reject) => {
+        const request = store.get(key);
+        
+        request.onsuccess = event => {
+          const result = event.target.result;
+          if (result) {
+            console.log(`Setting loaded: ${key} = ${result.value}`);
+            resolve(result.value);
+          } else {
+            console.log(`Setting not found: ${key}, using default: ${defaultValue}`);
+            resolve(defaultValue);
+          }
+        };
+        
+        request.onerror = event => {
+          console.error(`Error loading setting ${key}:`, event.target.error);
+          reject(event.target.error);
+        };
+      });
+    } catch (error) {
+      console.error('Error loading setting:', error);
+      return defaultValue;
+    }
   }
 }) 
