@@ -474,6 +474,11 @@ function createCashFlowTimeline(config) {
   }
 
   function addDragBehavior(eventGroup, event, position, verticalPosition) {
+    // Skip drag behavior for recurring payments - they should maintain their scheduled day
+    if (event.type === 'recurringPayment') {
+      return;
+    }
+
     // Make event draggable
     eventGroup.call(
       d3
