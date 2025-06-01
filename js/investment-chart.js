@@ -688,8 +688,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // Cash flow emojis
     "recurringPayment": "💼",
     "nonRecurringPayment": "📋",
-    "invoice": "📥",
-    "supplierPayment": "📤"
+    "invoice": "💵",
+    "supplierPayment": "🚚"
   };
 
   // Cash flow transaction colors

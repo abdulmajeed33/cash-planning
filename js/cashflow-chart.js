@@ -51,8 +51,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const transactionEmojis = {
     "recurringPayment": "💼",
     "nonRecurringPayment": "📋",
-    "invoice": "📥",
-    "supplierPayment": "📤"
+    "invoice": "💵",
+    "supplierPayment": "🚚"
   };
 
   // Color scheme for different transaction types
@@ -1261,7 +1261,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 break;
               case "invoice":
                 eventType = "Invoice";
-                eventTypeIcon = "📥";
+                eventTypeIcon = "💵";
                 break;
               case "supplierPayment":
                 eventType = "Supplier Payment";
@@ -1587,7 +1587,7 @@ document.addEventListener("DOMContentLoaded", function () {
               .html(`
                 <div style="border-bottom:1px solid rgba(255,255,255,0.2); margin-bottom:8px; padding-bottom:6px">
                   <div style="font-size:16px; font-weight:bold; display:flex; align-items:center">
-                    <span style="margin-right:8px">📥</span>
+                    <span style="margin-right:8px">💵</span>
                     <span>${eventData.description}</span>
                   </div>
                 </div>
