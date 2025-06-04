@@ -831,6 +831,46 @@ document.addEventListener("DOMContentLoaded", function () {
     return filteredTransactions;
   }
 
+  // Filter transactions for combined chart (excludes amount filter)
+  function filterTransactionsForCombinedChart(transactions) {
+    if (!transactions || !Array.isArray(transactions)) {
+      console.log("filterTransactionsForCombinedChart: No transactions provided");
+      return [];
+    }
+
+    return transactions.filter((transaction) => {
+      // Make sure transaction object is valid
+      if (!transaction || !transaction.date) {
+        return false;
+      }
+
+      // Transaction type toggle filter - only show if capital transactions are enabled
+      if (!showCapitalTransactions) {
+        return false;
+      }
+
+      // Date filter
+      const dateInRange =
+        transaction.date >= startDate && transaction.date <= endDate;
+
+      // Item inclusion filter - controls which items are included in the data
+      let shouldIncludeItem = false;
+      if (transaction.investmentType === "fund") {
+        shouldIncludeItem = itemInclusionFilter.fundInvestments;
+      } else if (transaction.investmentType === "land") {
+        shouldIncludeItem = itemInclusionFilter.landInvestments;
+      }
+
+      // If item is not included, exclude it completely
+      if (!shouldIncludeItem) {
+        return false;
+      }
+
+      // NO AMOUNT FILTER for combined chart
+      return dateInRange;
+    });
+  }
+
   // Function to fetch all required data for the investment chart
   async function fetchChartData() {
     try {
@@ -1499,7 +1539,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add description
     filterControls
       .append("p")
-      .text("Filter timeline visibility by amount range. This only affects what's shown on the timeline, not what data is included.")
+      .text("Filter timeline visibility by amount range. This only affects what's shown on the timelines, not the combined chart below.")
       .style("margin", "5px 0 15px 0")
       .style("font-size", "12px")
       .style("color", "#6c757d")
@@ -2260,17 +2300,25 @@ document.addEventListener("DOMContentLoaded", function () {
     combinedChartSection.html("");
     noDataContainer.html("");
 
-    // Filter transactions and cash flow events first to determine what sections will be shown
+    // Filter transactions and cash flow events for TIMELINES (includes amount filter)
     const visibleTransactions = filterTransactions(transactionData);
     const visibleCashFlowEvents = filterCashFlowEvents(cashFlowEvents);
 
-    // Determine which sections will be displayed
+    // Filter transactions and cash flow events for COMBINED CHART (excludes amount filter)
+    const combinedChartTransactions = filterTransactionsForCombinedChart(transactionData);
+    const combinedChartCashFlowEvents = filterCashFlowEventsForCombinedChart(cashFlowEvents);
+
+    // Determine which sections will be displayed (based on timeline data)
     const hasCapitalTransactions = showCapitalTransactions && visibleTransactions.length > 0;
     const hasOperationalTransactions = showOperationalTransactions && visibleCashFlowEvents.length > 0;
-    const hasAnyData = hasCapitalTransactions || hasOperationalTransactions;
+    const hasAnyTimelineData = hasCapitalTransactions || hasOperationalTransactions;
 
-    // Handle legend
-    if (hasAnyData) {
+    // Determine if combined chart has data (based on combined chart data)
+    const hasCombinedChartData = (showCapitalTransactions && combinedChartTransactions.length > 0) || 
+                                 (showOperationalTransactions && combinedChartCashFlowEvents.length > 0);
+
+    // Handle legend (show if there's any data in either timelines or combined chart)
+    if (hasAnyTimelineData || hasCombinedChartData) {
       // Ensure legend container is visible and properly reset
       legendContainer
         .style("display", "block")
@@ -2285,7 +2333,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .style("opacity", "0");
     }
 
-    // Create filter and toggle status messages
+    // Create filter and toggle status messages (based on timeline data)
     createStatusMessages(filterStatusContainer, visibleTransactions, visibleCashFlowEvents);
 
     // Track sections created for proper spacing
@@ -2318,12 +2366,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Handle section separator and combined chart
-    if (sectionsCreated > 0) {
+    if (sectionsCreated > 0 || hasCombinedChartData) {
       // Show separator
       sectionSeparator.style("display", "block");
       
-      // Create combined chart
-      createCombinedChart(combinedChartSection, visibleTransactions, visibleCashFlowEvents);
+      // Create combined chart using the unfiltered-by-amount data
+      createCombinedChart(combinedChartSection, combinedChartTransactions, combinedChartCashFlowEvents);
       
       // Hide no data container
       noDataContainer.style("display", "none");
@@ -2532,7 +2580,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("span")
         .style("font-size", "11px")
         .style("color", "#666")
-        .text("Applied to all visible items");
+        .text("Applied to timeline visibility only (not combined chart)");
     }
 
     // Create toggle status message
@@ -3874,6 +3922,57 @@ document.addEventListener("DOMContentLoaded", function () {
           (filterMax === undefined || Math.abs(event.amount) <= filterMax));
 
       return dateInRange && amountInRange;
+    });
+  }
+
+  // Filter cash flow events for combined chart (excludes amount filter)
+  function filterCashFlowEventsForCombinedChart(events) {
+    if (!events || !Array.isArray(events)) {
+      console.log("filterCashFlowEventsForCombinedChart: No events provided");
+      return [];
+    }
+
+    return events.filter((event) => {
+      // Make sure event object is valid
+      if (!event || !event.date) {
+        return false;
+      }
+
+      // Transaction type toggle filter - only show if operational transactions are enabled
+      if (!showOperationalTransactions) {
+        return false;
+      }
+
+      // Date filter
+      const dateInRange =
+        event.date >= startDate && event.date <= endDate;
+
+      // Item inclusion filter - controls which items are included in the data
+      let shouldIncludeItem = false;
+      switch (event.type) {
+        case 'recurringPayment':
+          shouldIncludeItem = itemInclusionFilter.recurringPayments;
+          break;
+        case 'nonRecurringPayment':
+          shouldIncludeItem = itemInclusionFilter.nonRecurringPayments;
+          break;
+        case 'invoice':
+          shouldIncludeItem = itemInclusionFilter.invoices;
+          break;
+        case 'supplierPayment':
+          shouldIncludeItem = itemInclusionFilter.supplierPayments;
+          break;
+        default:
+          shouldIncludeItem = false;
+      }
+
+      // If item is not included, exclude it completely
+      if (!shouldIncludeItem) {
+        return false;
+      }
+
+      // NO AMOUNT FILTER for combined chart
+      return dateInRange;
     });
   }
 
