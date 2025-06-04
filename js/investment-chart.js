@@ -645,7 +645,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Define initial amount range filter (initially inactive)
   let minAmount = 0;
   let maxAmount = Infinity;
-  let amountFilterActive = false;
+  let amountFilterActive = true; // Changed to true by default
 
   // State variables for transaction type toggles
   let showCapitalTransactions = true;
@@ -749,14 +749,20 @@ document.addEventListener("DOMContentLoaded", function () {
   // Filter transactions based on selected date range and filters
   function filterTransactions(transactions) {
     if (!transactions || !Array.isArray(transactions)) {
+      console.log("filterTransactions: No transactions provided");
       return [];
     }
+
+    console.log("=== filterTransactions Debug ===");
+    console.log("Input transactions:", transactions.length);
 
     // Check if amount filter is enabled
     const filterCheckbox = document.getElementById("enable-amount-filter");
     const isAmountFilterActive = filterCheckbox
       ? filterCheckbox.checked
       : amountFilterActive;
+
+    console.log("Amount filter active:", isAmountFilterActive);
 
     // Get current min/max values from inputs if available
     let filterMin = minAmount;
@@ -773,9 +779,11 @@ document.addEventListener("DOMContentLoaded", function () {
       if (maxInput && maxInput.value) {
         filterMax = parseFloat(maxInput.value);
       }
+      
+      console.log("Amount filter range:", filterMin, "to", filterMax);
     }
 
-    return transactions.filter((transaction) => {
+    const filteredTransactions = transactions.filter((transaction) => {
       // Make sure transaction object is valid
       if (!transaction || !transaction.date) {
         return false;
@@ -808,8 +816,19 @@ document.addEventListener("DOMContentLoaded", function () {
         (Math.abs(transaction.amount) >= filterMin &&
           (filterMax === undefined || Math.abs(transaction.amount) <= filterMax));
 
-      return dateInRange && amountInRange;
+      const passes = dateInRange && amountInRange;
+      
+      if (isAmountFilterActive && !amountInRange) {
+        console.log(`Transaction filtered out by amount: ${transaction.name} - $${Math.abs(transaction.amount)} (range: ${filterMin}-${filterMax})`);
+      }
+
+      return passes;
     });
+
+    console.log("Filtered transactions:", filteredTransactions.length);
+    console.log("=== filterTransactions Debug End ===");
+
+    return filteredTransactions;
   }
 
   // Function to fetch all required data for the investment chart
@@ -1498,6 +1517,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("input")
         .attr("type", "checkbox")
         .attr("id", "enable-amount-filter")
+        .property("checked", true) // Set checked by default
         .style("margin", "0");
 
     enableFilterRow
@@ -1922,49 +1942,144 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to update amount range filter
   function updateAmountFilter() {
-    // Get values from inputs
-    amountFilterActive = document.getElementById(
-      "enable-amount-filter"
-    ).checked;
-    minAmount = parseFloat(document.getElementById("min-amount").value) || 0;
-
-    const maxInput = document.getElementById("max-amount");
-    maxAmount =
-      maxInput && maxInput.value ? parseFloat(maxInput.value) : Infinity;
-
-    // Ensure min <= max
-    if (minAmount > maxAmount && maxAmount !== Infinity) {
-      alert("Minimum amount must be less than or equal to maximum amount");
-      return;
+    try {
+      console.log("=== Amount Filter Update Started ===");
+      
+      // Get checkbox state
+      const filterCheckbox = document.getElementById("enable-amount-filter");
+      if (!filterCheckbox) {
+        console.error("Amount filter checkbox not found!");
+        return;
+      }
+      
+      amountFilterActive = filterCheckbox.checked;
+      console.log("Amount filter active:", amountFilterActive);
+      
+      // Get min amount
+      const minInput = document.getElementById("min-amount");
+      if (!minInput) {
+        console.error("Min amount input not found!");
+        return;
+      }
+      
+      minAmount = parseFloat(minInput.value) || 0;
+      console.log("Min amount:", minAmount);
+      
+      // Get max amount
+      const maxInput = document.getElementById("max-amount");
+      if (!maxInput) {
+        console.error("Max amount input not found!");
+        return;
+      }
+      
+      maxAmount = maxInput.value ? parseFloat(maxInput.value) : Infinity;
+      console.log("Max amount:", maxAmount);
+      
+      // Validate range
+      if (minAmount > maxAmount && maxAmount !== Infinity) {
+        alert("Minimum amount must be less than or equal to maximum amount");
+        return;
+      }
+      
+      // Show filter status if active
+      if (amountFilterActive) {
+        const rangeText = maxAmount === Infinity 
+          ? `≥ $${minAmount.toLocaleString()}`
+          : `$${minAmount.toLocaleString()} - $${maxAmount.toLocaleString()}`;
+        
+        console.log(`Amount filter applied: ${rangeText} to all visible items`);
+        
+        // Show user feedback
+        const statusMsg = document.createElement('div');
+        statusMsg.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #2196F3;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+          z-index: 10000;
+          font-size: 14px;
+          font-weight: 500;
+        `;
+        statusMsg.textContent = `Amount filter applied: ${rangeText}`;
+        document.body.appendChild(statusMsg);
+        
+        // Remove message after 3 seconds
+        setTimeout(() => {
+          if (statusMsg.parentNode) {
+            statusMsg.parentNode.removeChild(statusMsg);
+          }
+        }, 3000);
+      } else {
+        console.log("Amount filter disabled");
+      }
+      
+      console.log("=== Updating Visualization ===");
+      // Apply filter
+      updateInvestmentVisualization();
+      
+    } catch (error) {
+      console.error("Error in updateAmountFilter:", error);
+      alert("Error updating amount filter: " + error.message);
     }
-
-    // Show filter status if active
-    if (amountFilterActive) {
-      const rangeText = maxAmount === Infinity 
-        ? `≥ $${minAmount.toLocaleString()}`
-        : `$${minAmount.toLocaleString()} - $${maxAmount.toLocaleString()}`;
-
-      console.log(`Amount filter applied: ${rangeText} to all visible items`);
-    }
-
-    // Apply filter
-    updateInvestmentVisualization();
   }
 
   // Function to reset amount filter
   function resetAmountFilter() {
-    // Reset filter values
-    document.getElementById("enable-amount-filter").checked = false;
-    document.getElementById("min-amount").value = "0";
-    document.getElementById("max-amount").value = "";
-
-    // Reset internal state
-    amountFilterActive = false;
-    minAmount = 0;
-    maxAmount = Infinity;
-
-    // Update visualization
-    updateInvestmentVisualization();
+    try {
+      console.log("=== Amount Filter Reset Started ===");
+      
+      // Reset filter values in UI
+      const filterCheckbox = document.getElementById("enable-amount-filter");
+      const minInput = document.getElementById("min-amount");
+      const maxInput = document.getElementById("max-amount");
+      
+      if (filterCheckbox) filterCheckbox.checked = true; // Reset to default (checked)
+      if (minInput) minInput.value = "0";
+      if (maxInput) maxInput.value = "";
+      
+      // Reset internal state
+      amountFilterActive = true; // Reset to default (true)
+      minAmount = 0;
+      maxAmount = Infinity;
+      
+      console.log("Amount filter reset - Active:", amountFilterActive, "Min:", minAmount, "Max:", maxAmount);
+      
+      // Show user feedback
+      const statusMsg = document.createElement('div');
+      statusMsg.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 10000;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+      statusMsg.textContent = "Amount filter reset";
+      document.body.appendChild(statusMsg);
+      
+      // Remove message after 3 seconds
+      setTimeout(() => {
+        if (statusMsg.parentNode) {
+          statusMsg.parentNode.removeChild(statusMsg);
+        }
+      }, 3000);
+      
+      // Update visualization
+      updateInvestmentVisualization();
+      
+    } catch (error) {
+      console.error("Error in resetAmountFilter:", error);
+      alert("Error resetting amount filter: " + error.message);
+    }
   }
 
   // Function to update the investment visualization
@@ -2399,35 +2514,25 @@ document.addEventListener("DOMContentLoaded", function () {
       const maxInput = document.getElementById("max-amount");
       const filterMax = maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
 
-      const amountFilteredCategories = [];
-      if (amountVisibilityFilter.fundInvestments) amountFilteredCategories.push("Fund Investments");
-      if (amountVisibilityFilter.landInvestments) amountFilteredCategories.push("Land Investments");
-      if (amountVisibilityFilter.recurringPayments) amountFilteredCategories.push("Recurring Payments");
-      if (amountVisibilityFilter.nonRecurringPayments) amountFilteredCategories.push("Non-Recurring Payments");
-      if (amountVisibilityFilter.invoices) amountFilteredCategories.push("Invoices");
-      if (amountVisibilityFilter.supplierPayments) amountFilteredCategories.push("Supplier Payments");
+      const amountFilterMsg = container
+        .append("div")
+        .attr("class", "amount-filter-status")
+        .style("margin-bottom", "10px")
+        .style("padding", "5px 10px")
+        .style("background", "#fff3e0")
+        .style("border-left", "4px solid #ff9800")
+        .style("border-radius", "2px");
 
-      if (amountFilteredCategories.length > 0) {
-        const amountFilterMsg = container
-          .append("div")
-          .attr("class", "amount-filter-status")
-          .style("margin-bottom", "10px")
-          .style("padding", "5px 10px")
-          .style("background", "#fff3e0")
-          .style("border-left", "4px solid #ff9800")
-          .style("border-radius", "2px");
+      amountFilterMsg.append("strong").text("Amount filter active: ");
 
-        amountFilterMsg.append("strong").text("Amount filter active: ");
-
-        const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
-        amountFilterMsg.append("span").text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
-        amountFilterMsg.append("br");
-        amountFilterMsg
-          .append("span")
-          .style("font-size", "11px")
-          .style("color", "#666")
-          .text("Applied to all visible items");
-      }
+      const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
+      amountFilterMsg.append("span").text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
+      amountFilterMsg.append("br");
+      amountFilterMsg
+        .append("span")
+        .style("font-size", "11px")
+        .style("color", "#666")
+        .text("Applied to all visible items");
     }
 
     // Create toggle status message
@@ -3692,14 +3797,20 @@ document.addEventListener("DOMContentLoaded", function () {
   // Filter cash flow events based on selected date range, item inclusion filter, and amount filter
   function filterCashFlowEvents(events) {
     if (!events || !Array.isArray(events)) {
+      console.log("filterCashFlowEvents: No events provided");
       return [];
     }
+
+    console.log("=== filterCashFlowEvents Debug ===");
+    console.log("Input events:", events.length);
 
     // Check if amount filter is enabled
     const filterCheckbox = document.getElementById("enable-amount-filter");
     const isAmountFilterActive = filterCheckbox
       ? filterCheckbox.checked
       : amountFilterActive;
+
+    console.log("Amount filter active:", isAmountFilterActive);
 
     // Get current min/max values from inputs if available
     let filterMin = minAmount;
