@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log(`Section changed to: ${section}`);
         
         // Handle section-specific logic if needed
-        if (section === 'capital-transactions') {
+        if (section === 'planning') {
             // Ensure investment chart is properly initialized
             // This is now handled by the sidebar component
         }

@@ -281,8 +281,8 @@ class SidebarManager {
      */
     handleSectionInit(sectionId) {
         switch (sectionId) {
-            case 'capital-transactions':
-                // Initialize investment chart when switching to capital transactions
+            case 'planning':
+                // Initialize investment chart when switching to planning
                 this.initializeInvestmentChart();
                 break;
             case 'data-entry':
@@ -348,7 +348,7 @@ class SidebarManager {
                     break;
                 case '2':
                     e.preventDefault();
-                    this.switchSection('capital-transactions');
+                    this.switchSection('planning');
                     break;
             }
         }
@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const initialSection = urlParams.get('section');
     
-    if (initialSection && ['data-entry', 'capital-transactions'].includes(initialSection)) {
+    if (initialSection && ['data-entry', 'planning'].includes(initialSection)) {
         window.sidebarManager.switchSection(initialSection, false);
     }
 });

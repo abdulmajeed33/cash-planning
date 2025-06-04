@@ -4,8 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener('sectionChange', (e) => {
     const { section } = e.detail;
     
-    // Initialize investment chart when switching to capital transactions
-    if (section === "capital-transactions") {
+    // Initialize investment chart when switching to planning
+    if (section === "planning") {
       initInvestmentChart();
     }
   });
@@ -3835,9 +3835,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Initialize the chart when the capital transactions section is active on page load
-  // Check if we're currently on the capital transactions section
-  const currentSection = document.getElementById('capital-transactions');
+  // Initialize the chart when the planning section is active on page load
+  // Check if we're currently on the planning section
+  const currentSection = document.getElementById('planning');
   if (currentSection && currentSection.classList.contains('active')) {
     initInvestmentChart();
   }
