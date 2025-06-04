@@ -651,13 +651,13 @@ document.addEventListener("DOMContentLoaded", function () {
   let showCapitalTransactions = true;
   let showOperationalTransactions = true;
 
-  // State variables for category-specific amount filtering
-  let amountFilterCategories = {
+  // State variables for item inclusion filter (separate from amount filter)
+  let itemInclusionFilter = {
     // Capital transactions
     fundInvestments: true,
     landInvestments: true,
     // Operational transactions  
-    recurringPayments: false, // Excluded by default as per original requirement
+    recurringPayments: true, // Changed to true by default
     nonRecurringPayments: true,
     invoices: true,
     supplierPayments: true
@@ -746,7 +746,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // Transaction data array - now can be dynamically updated
   let transactionData = [];
 
-  // Filter transactions based on selected date range and amount filter
+  // Filter transactions based on selected date range and filters
   function filterTransactions(transactions) {
     if (!transactions || !Array.isArray(transactions)) {
       return [];
@@ -754,7 +754,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Check if amount filter is enabled
     const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox
+    const isAmountFilterActive = filterCheckbox
       ? filterCheckbox.checked
       : amountFilterActive;
 
@@ -762,7 +762,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let filterMin = minAmount;
     let filterMax = maxAmount;
 
-    if (isFilterActive) {
+    if (isAmountFilterActive) {
       const minInput = document.getElementById("min-amount");
       const maxInput = document.getElementById("max-amount");
 
@@ -790,20 +790,21 @@ document.addEventListener("DOMContentLoaded", function () {
       const dateInRange =
         transaction.date >= startDate && transaction.date <= endDate;
 
-      // Category-specific amount filter
-      let shouldApplyAmountFilter = false;
-      
-      if (isFilterActive) {
-        // Determine if this transaction's category should be filtered
-        if (transaction.investmentType === "fund") {
-          shouldApplyAmountFilter = amountFilterCategories.fundInvestments;
-        } else if (transaction.investmentType === "land") {
-          shouldApplyAmountFilter = amountFilterCategories.landInvestments;
-        }
+      // Item inclusion filter - controls which items are included in the data
+      let shouldIncludeItem = false;
+      if (transaction.investmentType === "fund") {
+        shouldIncludeItem = itemInclusionFilter.fundInvestments;
+      } else if (transaction.investmentType === "land") {
+        shouldIncludeItem = itemInclusionFilter.landInvestments;
       }
 
-      // Apply amount filter only if the category is selected for filtering
-      const amountInRange = !shouldApplyAmountFilter ||
+      // If item is not included, exclude it completely
+      if (!shouldIncludeItem) {
+        return false;
+      }
+
+      // Amount filter - applies to all items when enabled
+      const amountInRange = !isAmountFilterActive ||
         (Math.abs(transaction.amount) >= filterMin &&
           (filterMax === undefined || Math.abs(transaction.amount) <= filterMax));
 
@@ -1266,7 +1267,10 @@ document.addEventListener("DOMContentLoaded", function () {
         );
       }
 
-    // Add amount filter controls after the toggles
+    // Add item inclusion filter controls after the toggles
+    addItemInclusionFilterControls();
+    
+    // Add amount filter controls after the item inclusion filter
     addAmountFilterControls();
   }
 
@@ -1443,8 +1447,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   /**
-   * Creates enhanced amount range filter controls with category selection
-   * Allows users to select specific categories for amount filtering
+   * Creates simplified amount range filter controls
+   * Allows users to filter timeline visibility based on amount ranges for all items
    */
   function addAmountFilterControls() {
     const timelineEl = d3.select("#investment-timeline");
@@ -1460,9 +1464,9 @@ document.addEventListener("DOMContentLoaded", function () {
         .attr("class", "amount-range-control")
       .style("margin", "15px 0")
         .style("padding", "15px")
-      .style("background", "#f8f9fa")
+      .style("background", "#fff5f5")
         .style("border-radius", "8px")
-      .style("border", "1px solid #e9ecef");
+      .style("border", "1px solid #ffcccc");
 
       // Add title
       filterControls
@@ -1476,7 +1480,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add description
     filterControls
       .append("p")
-      .text("Filter transactions by amount range. Select which categories to apply the filter to.")
+      .text("Filter timeline visibility by amount range. This only affects what's shown on the timeline, not what data is included.")
       .style("margin", "5px 0 15px 0")
       .style("font-size", "12px")
       .style("color", "#6c757d")
@@ -1503,9 +1507,6 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("margin", "0")
       .style("font-weight", "500")
       .style("font-size", "13px");
-
-    // Create category selection section
-    addCategorySelectionControls(filterControls);
 
       // Create amount inputs row
       const amountInputsRow = filterControls
@@ -1551,26 +1552,32 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "12px")
       .style("padding", "6px 12px");
 
-    // Add quick select buttons
-    addQuickSelectButtons(buttonsRow);
-
     // Add event listeners
     setupAmountFilterEventListeners();
 
-    // Move the filter controls to appear after the toggles
-    const togglesEl = document.querySelector(".transaction-type-toggles");
-    if (togglesEl && togglesEl.nextSibling && filterControls.node()) {
-      togglesEl.parentNode.insertBefore(
+    // Move the filter controls to appear after the item inclusion filter
+    const itemFilterEl = document.querySelector(".item-inclusion-control");
+    if (itemFilterEl && itemFilterEl.nextSibling && filterControls.node()) {
+      itemFilterEl.parentNode.insertBefore(
         filterControls.node(),
-        togglesEl.nextSibling
+        itemFilterEl.nextSibling
       );
     }
   }
 
   /**
-   * Creates category selection controls for the amount filter
+   * Sets up event listeners for amount filter controls
    */
-  function addCategorySelectionControls(container) {
+  function setupAmountFilterEventListeners() {
+    // Main filter controls
+      d3.select("#apply-amount-filter").on("click", updateAmountFilter);
+      d3.select("#reset-amount-filter").on("click", resetAmountFilter);
+  }
+
+  /**
+   * Creates category selection controls for the amount visibility filter
+   */
+  function addAmountVisibilityCategoryControls(container) {
     const categorySection = container
       .append("div")
       .style("margin-bottom", "15px")
@@ -1582,7 +1589,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add section title
     categorySection
       .append("h5")
-      .text("Apply filter to:")
+      .text("Apply amount filter to:")
       .style("margin", "0 0 10px 0")
       .style("color", "#495057")
       .style("font-size", "12px")
@@ -1607,8 +1614,8 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "11px")
       .style("font-weight", "600");
 
-    addCategoryCheckbox(capitalColumn, "fund-investments", "Fund Investments", amountFilterCategories.fundInvestments);
-    addCategoryCheckbox(capitalColumn, "land-investments", "Land Investments", amountFilterCategories.landInvestments);
+    addAmountVisibilityCheckbox(capitalColumn, "fund-investments", "Fund Investments", amountVisibilityFilter.fundInvestments);
+    addAmountVisibilityCheckbox(capitalColumn, "land-investments", "Land Investments", amountVisibilityFilter.landInvestments);
 
     // Operational transactions column
     const operationalColumn = categoriesGrid
@@ -1622,16 +1629,16 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "11px")
       .style("font-weight", "600");
 
-    addCategoryCheckbox(operationalColumn, "recurring-payments", "Recurring Payments", amountFilterCategories.recurringPayments);
-    addCategoryCheckbox(operationalColumn, "non-recurring-payments", "Non-Recurring Payments", amountFilterCategories.nonRecurringPayments);
-    addCategoryCheckbox(operationalColumn, "invoices", "Invoices", amountFilterCategories.invoices);
-    addCategoryCheckbox(operationalColumn, "supplier-payments", "Supplier Payments", amountFilterCategories.supplierPayments);
+    addAmountVisibilityCheckbox(operationalColumn, "recurring-payments", "Recurring Payments", amountVisibilityFilter.recurringPayments);
+    addAmountVisibilityCheckbox(operationalColumn, "non-recurring-payments", "Non-Recurring Payments", amountVisibilityFilter.nonRecurringPayments);
+    addAmountVisibilityCheckbox(operationalColumn, "invoices", "Invoices", amountVisibilityFilter.invoices);
+    addAmountVisibilityCheckbox(operationalColumn, "supplier-payments", "Supplier Payments", amountVisibilityFilter.supplierPayments);
   }
 
   /**
-   * Helper function to create category checkboxes
+   * Helper function to create amount visibility checkboxes
    */
-  function addCategoryCheckbox(container, id, label, checked) {
+  function addAmountVisibilityCheckbox(container, id, label, checked) {
     const checkboxRow = container
       .append("div")
       .style("display", "flex")
@@ -1642,15 +1649,15 @@ document.addEventListener("DOMContentLoaded", function () {
     checkboxRow
       .append("input")
       .attr("type", "checkbox")
-      .attr("id", `filter-${id}`)
-      .attr("class", "category-filter-checkbox")
+      .attr("id", `amount-${id}`)
+      .attr("class", "amount-visibility-checkbox")
       .property("checked", checked)
       .style("margin", "0")
       .style("transform", "scale(0.9)");
 
     checkboxRow
       .append("label")
-      .attr("for", `filter-${id}`)
+      .attr("for", `amount-${id}`)
       .text(label)
       .style("margin", "0")
       .style("font-size", "11px")
@@ -1659,9 +1666,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   /**
-   * Adds quick select buttons for common filter scenarios
+   * Adds quick select buttons for amount visibility filter
    */
-  function addQuickSelectButtons(container) {
+  function addAmountVisibilityQuickSelectButtons(container) {
     const quickSelectContainer = container
       .append("div")
       .style("margin-left", "auto")
@@ -1675,7 +1682,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("All")
       .style("font-size", "10px")
       .style("padding", "4px 8px")
-      .on("click", () => selectAllCategories(true));
+      .on("click", () => selectAllAmountVisibility(true));
 
     // None button
     quickSelectContainer
@@ -1684,7 +1691,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("None")
       .style("font-size", "10px")
       .style("padding", "4px 8px")
-      .on("click", () => selectAllCategories(false));
+      .on("click", () => selectAllAmountVisibility(false));
 
     // Operational only button
     quickSelectContainer
@@ -1693,29 +1700,13 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("Operational")
       .style("font-size", "10px")
       .style("padding", "4px 8px")
-      .on("click", selectOperationalOnly);
+      .on("click", selectOperationalAmountVisibilityOnly);
   }
 
   /**
-   * Sets up event listeners for amount filter controls
+   * Updates the amount visibility filter state based on checkbox changes
    */
-  function setupAmountFilterEventListeners() {
-    // Main filter controls
-      d3.select("#apply-amount-filter").on("click", updateAmountFilter);
-      d3.select("#reset-amount-filter").on("click", resetAmountFilter);
-
-    // Category checkboxes
-    d3.selectAll(".category-filter-checkbox").on("change", function() {
-      const id = this.id.replace("filter-", "");
-      const isChecked = this.checked;
-      updateCategoryFilterState(id, isChecked);
-    });
-  }
-
-  /**
-   * Updates the category filter state based on checkbox changes
-   */
-  function updateCategoryFilterState(categoryId, isChecked) {
+  function updateAmountVisibilityFilterState(categoryId, isChecked) {
     const categoryMap = {
       "fund-investments": "fundInvestments",
       "land-investments": "landInvestments",
@@ -1727,41 +1718,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const stateKey = categoryMap[categoryId];
     if (stateKey) {
-      amountFilterCategories[stateKey] = isChecked;
-      console.log(`Category filter updated: ${stateKey} = ${isChecked}`);
+      amountVisibilityFilter[stateKey] = isChecked;
+      console.log(`Amount visibility filter updated: ${stateKey} = ${isChecked}`);
     }
   }
 
   /**
-   * Quick select functions for category checkboxes
+   * Quick select functions for amount visibility checkboxes
    */
-  function selectAllCategories(selectAll) {
-    Object.keys(amountFilterCategories).forEach(key => {
-      amountFilterCategories[key] = selectAll;
+  function selectAllAmountVisibility(selectAll) {
+    Object.keys(amountVisibilityFilter).forEach(key => {
+      amountVisibilityFilter[key] = selectAll;
     });
     
     // Update UI checkboxes
-    d3.selectAll(".category-filter-checkbox").property("checked", selectAll);
+    d3.selectAll(".amount-visibility-checkbox").property("checked", selectAll);
   }
 
-  function selectOperationalOnly() {
+  function selectOperationalAmountVisibilityOnly() {
     // Deselect capital transactions
-    amountFilterCategories.fundInvestments = false;
-    amountFilterCategories.landInvestments = false;
+    amountVisibilityFilter.fundInvestments = false;
+    amountVisibilityFilter.landInvestments = false;
     
-    // Select operational transactions (excluding recurring payments as per original requirement)
-    amountFilterCategories.recurringPayments = false;
-    amountFilterCategories.nonRecurringPayments = true;
-    amountFilterCategories.invoices = true;
-    amountFilterCategories.supplierPayments = true;
+    // Select operational transactions
+    amountVisibilityFilter.recurringPayments = true;
+    amountVisibilityFilter.nonRecurringPayments = true;
+    amountVisibilityFilter.invoices = true;
+    amountVisibilityFilter.supplierPayments = true;
 
     // Update UI checkboxes
-    d3.select("#filter-fund-investments").property("checked", false);
-    d3.select("#filter-land-investments").property("checked", false);
-    d3.select("#filter-recurring-payments").property("checked", false);
-    d3.select("#filter-non-recurring-payments").property("checked", true);
-    d3.select("#filter-invoices").property("checked", true);
-    d3.select("#filter-supplier-payments").property("checked", true);
+    d3.select("#amount-fund-investments").property("checked", false);
+    d3.select("#amount-land-investments").property("checked", false);
+    d3.select("#amount-recurring-payments").property("checked", true);
+    d3.select("#amount-non-recurring-payments").property("checked", true);
+    d3.select("#amount-invoices").property("checked", true);
+    d3.select("#amount-supplier-payments").property("checked", true);
   }
 
   function set3Months() {
@@ -1949,25 +1940,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Show filter status if active
     if (amountFilterActive) {
-      const selectedCategories = [];
-      
-      // Check which categories are selected for filtering
-      if (amountFilterCategories.fundInvestments) selectedCategories.push("Fund Investments");
-      if (amountFilterCategories.landInvestments) selectedCategories.push("Land Investments");
-      if (amountFilterCategories.recurringPayments) selectedCategories.push("Recurring Payments");
-      if (amountFilterCategories.nonRecurringPayments) selectedCategories.push("Non-Recurring Payments");
-      if (amountFilterCategories.invoices) selectedCategories.push("Invoices");
-      if (amountFilterCategories.supplierPayments) selectedCategories.push("Supplier Payments");
-
       const rangeText = maxAmount === Infinity 
         ? `≥ $${minAmount.toLocaleString()}`
         : `$${minAmount.toLocaleString()} - $${maxAmount.toLocaleString()}`;
 
-      if (selectedCategories.length > 0) {
-        console.log(`Amount filter applied (${rangeText}) to: ${selectedCategories.join(", ")}`);
-      } else {
-        console.log("Amount filter is enabled but no categories are selected for filtering");
-      }
+      console.log(`Amount filter applied: ${rangeText} to all visible items`);
     }
 
     // Apply filter
@@ -1980,26 +1957,6 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("enable-amount-filter").checked = false;
     document.getElementById("min-amount").value = "0";
     document.getElementById("max-amount").value = "";
-
-    // Reset category selections to default values
-    amountFilterCategories = {
-      // Capital transactions
-      fundInvestments: true,
-      landInvestments: true,
-      // Operational transactions  
-      recurringPayments: false, // Excluded by default as per original requirement
-      nonRecurringPayments: true,
-      invoices: true,
-      supplierPayments: true
-    };
-
-    // Update UI checkboxes to reflect reset state
-    d3.select("#filter-fund-investments").property("checked", true);
-    d3.select("#filter-land-investments").property("checked", true);
-    d3.select("#filter-recurring-payments").property("checked", false);
-    d3.select("#filter-non-recurring-payments").property("checked", true);
-    d3.select("#filter-invoices").property("checked", true);
-    d3.select("#filter-supplier-payments").property("checked", true);
 
     // Reset internal state
     amountFilterActive = false;
@@ -2407,11 +2364,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Helper function to create status messages
   function createStatusMessages(container, visibleTransactions, visibleCashFlowEvents) {
-    // Create filter status message
-    const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox ? filterCheckbox.checked : amountFilterActive;
+    // Create item inclusion filter status message
+    const includedCategories = [];
+    if (itemInclusionFilter.fundInvestments) includedCategories.push("Fund Investments");
+    if (itemInclusionFilter.landInvestments) includedCategories.push("Land Investments");
+    if (itemInclusionFilter.recurringPayments) includedCategories.push("Recurring Payments");
+    if (itemInclusionFilter.nonRecurringPayments) includedCategories.push("Non-Recurring Payments");
+    if (itemInclusionFilter.invoices) includedCategories.push("Invoices");
+    if (itemInclusionFilter.supplierPayments) includedCategories.push("Supplier Payments");
 
-    if (isFilterActive) {
+    if (includedCategories.length < 6) { // Only show if not all categories are included
+      const itemFilterMsg = container
+        .append("div")
+        .attr("class", "item-filter-status")
+        .style("margin-bottom", "10px")
+        .style("padding", "5px 10px")
+        .style("background", "#e3f2fd")
+        .style("border-left", "4px solid #2196F3")
+        .style("border-radius", "2px");
+
+      itemFilterMsg.append("strong").text("Item filter active: ");
+      itemFilterMsg.append("span").text(`Including ${includedCategories.join(", ")}`);
+    }
+
+    // Create amount visibility filter status message
+    const filterCheckbox = document.getElementById("enable-amount-filter");
+    const isAmountFilterActive = filterCheckbox ? filterCheckbox.checked : amountFilterActive;
+
+    if (isAmountFilterActive) {
       const filterMin = document.getElementById("min-amount")
         ? parseFloat(document.getElementById("min-amount").value) || 0
         : minAmount;
@@ -2419,28 +2399,35 @@ document.addEventListener("DOMContentLoaded", function () {
       const maxInput = document.getElementById("max-amount");
       const filterMax = maxInput && maxInput.value ? parseFloat(maxInput.value) : maxAmount;
 
-      const recurringPayments = visibleCashFlowEvents.filter(event => event.type === 'recurringPayment');
-      const nonRecurringCashFlowEvents = visibleCashFlowEvents.filter(event => event.type !== 'recurringPayment');
+      const amountFilteredCategories = [];
+      if (amountVisibilityFilter.fundInvestments) amountFilteredCategories.push("Fund Investments");
+      if (amountVisibilityFilter.landInvestments) amountFilteredCategories.push("Land Investments");
+      if (amountVisibilityFilter.recurringPayments) amountFilteredCategories.push("Recurring Payments");
+      if (amountVisibilityFilter.nonRecurringPayments) amountFilteredCategories.push("Non-Recurring Payments");
+      if (amountVisibilityFilter.invoices) amountFilteredCategories.push("Invoices");
+      if (amountVisibilityFilter.supplierPayments) amountFilteredCategories.push("Supplier Payments");
 
-      const filterMsg = container
-        .append("div")
-        .attr("class", "filter-status")
-        .style("margin-bottom", "10px")
-        .style("padding", "5px 10px")
-        .style("background", "#e8f5e9")
-        .style("border-left", "4px solid #4CAF50")
-        .style("border-radius", "2px");
+      if (amountFilteredCategories.length > 0) {
+        const amountFilterMsg = container
+          .append("div")
+          .attr("class", "amount-filter-status")
+          .style("margin-bottom", "10px")
+          .style("padding", "5px 10px")
+          .style("background", "#fff3e0")
+          .style("border-left", "4px solid #ff9800")
+          .style("border-radius", "2px");
 
-      filterMsg.append("strong").text("Amount filter active: ");
+        amountFilterMsg.append("strong").text("Amount filter active: ");
 
-      const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
-      filterMsg.append("span").text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
-      filterMsg.append("br");
-      filterMsg
-        .append("span")
-        .style("font-size", "11px")
-        .style("color", "#666")
-        .text(`Showing ${visibleTransactions.length} capital transactions, ${nonRecurringCashFlowEvents.length} operational transactions (${recurringPayments.length} recurring payments always shown)`);
+        const maxDisplay = filterMax === Infinity ? "No maximum" : `$${filterMax.toLocaleString()}`;
+        amountFilterMsg.append("span").text(`$${filterMin.toLocaleString()} to ${maxDisplay}`);
+        amountFilterMsg.append("br");
+        amountFilterMsg
+          .append("span")
+          .style("font-size", "11px")
+          .style("color", "#666")
+          .text("Applied to all visible items");
+      }
     }
 
     // Create toggle status message
@@ -2449,8 +2436,8 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("class", "toggle-status")
       .style("margin-bottom", "20px")
       .style("padding", "5px 10px")
-      .style("background", "#e3f2fd")
-      .style("border-left", "4px solid #2196F3")
+      .style("background", "#e8f5e9")
+      .style("border-left", "4px solid #4CAF50")
       .style("border-radius", "2px");
 
     const activeToggles = [];
@@ -2459,6 +2446,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     toggleStatusMsg.append("strong").text("Viewing: ");
     toggleStatusMsg.append("span").text(`${activeToggles.join(" + ")} transactions`);
+    toggleStatusMsg.append("br");
+    toggleStatusMsg
+      .append("span")
+      .style("font-size", "11px")
+      .style("color", "#666")
+      .text(`Showing ${visibleTransactions.length} capital transactions, ${visibleCashFlowEvents.length} operational transactions`);
   }
 
   // Helper function to create investment timeline section
@@ -3696,7 +3689,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initInvestmentChart();
   }
 
-  // Filter cash flow events based on selected date range, amount filter, and transaction type toggles
+  // Filter cash flow events based on selected date range, item inclusion filter, and amount filter
   function filterCashFlowEvents(events) {
     if (!events || !Array.isArray(events)) {
       return [];
@@ -3704,7 +3697,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Check if amount filter is enabled
     const filterCheckbox = document.getElementById("enable-amount-filter");
-    const isFilterActive = filterCheckbox
+    const isAmountFilterActive = filterCheckbox
       ? filterCheckbox.checked
       : amountFilterActive;
 
@@ -3712,7 +3705,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let filterMin = minAmount;
     let filterMax = maxAmount;
 
-    if (isFilterActive) {
+    if (isAmountFilterActive) {
       const minInput = document.getElementById("min-amount");
       const maxInput = document.getElementById("max-amount");
 
@@ -3740,31 +3733,32 @@ document.addEventListener("DOMContentLoaded", function () {
       const dateInRange =
         event.date >= startDate && event.date <= endDate;
 
-      // Category-specific amount filter
-      let shouldApplyAmountFilter = false;
-      
-      if (isFilterActive) {
-        // Determine if this event's category should be filtered
-        switch (event.type) {
-          case 'recurringPayment':
-            shouldApplyAmountFilter = amountFilterCategories.recurringPayments;
-            break;
-          case 'nonRecurringPayment':
-            shouldApplyAmountFilter = amountFilterCategories.nonRecurringPayments;
-            break;
-          case 'invoice':
-            shouldApplyAmountFilter = amountFilterCategories.invoices;
-            break;
-          case 'supplierPayment':
-            shouldApplyAmountFilter = amountFilterCategories.supplierPayments;
-            break;
-          default:
-            shouldApplyAmountFilter = false;
-        }
+      // Item inclusion filter - controls which items are included in the data
+      let shouldIncludeItem = false;
+      switch (event.type) {
+        case 'recurringPayment':
+          shouldIncludeItem = itemInclusionFilter.recurringPayments;
+          break;
+        case 'nonRecurringPayment':
+          shouldIncludeItem = itemInclusionFilter.nonRecurringPayments;
+          break;
+        case 'invoice':
+          shouldIncludeItem = itemInclusionFilter.invoices;
+          break;
+        case 'supplierPayment':
+          shouldIncludeItem = itemInclusionFilter.supplierPayments;
+          break;
+        default:
+          shouldIncludeItem = false;
       }
 
-      // Apply amount filter only if the category is selected for filtering
-      const amountInRange = !shouldApplyAmountFilter ||
+      // If item is not included, exclude it completely
+      if (!shouldIncludeItem) {
+        return false;
+      }
+
+      // Amount filter - applies to all items when enabled
+      const amountInRange = !isAmountFilterActive ||
         (Math.abs(event.amount) >= filterMin &&
           (filterMax === undefined || Math.abs(event.amount) <= filterMax));
 
@@ -3839,4 +3833,344 @@ document.addEventListener("DOMContentLoaded", function () {
       return defaultValue;
     }
   }
+
+  /**
+   * Creates item inclusion filter controls
+   * Allows users to select which transaction categories to include in the data
+   */
+  function addItemInclusionFilterControls() {
+    const timelineEl = d3.select("#investment-timeline");
+    
+    if (!timelineEl.node()) {
+      console.warn("Timeline element not found, skipping item inclusion filter creation");
+      return;
+    }
+
+    // Create item inclusion filter container
+    const filterControls = timelineEl
+        .append("div")
+        .attr("class", "item-inclusion-control")
+      .style("margin", "15px 0")
+        .style("padding", "15px")
+      .style("background", "#f0f8ff")
+        .style("border-radius", "8px")
+      .style("border", "1px solid #b3d9ff");
+
+      // Add title
+      filterControls
+        .append("h4")
+      .text("Item Filter:")
+      .style("margin-top", "0")
+      .style("color", "#495057")
+      .style("font-size", "14px")
+      .style("font-weight", "600");
+
+    // Add description
+    filterControls
+      .append("p")
+      .text("Select which transaction types to include in the cash flow and timeline displays.")
+      .style("margin", "5px 0 15px 0")
+      .style("font-size", "12px")
+      .style("color", "#6c757d")
+      .style("line-height", "1.4");
+
+    // Create category selection section
+    addItemInclusionCategoryControls(filterControls);
+
+    // Create buttons row
+    const buttonsRow = filterControls
+      .append("div")
+      .style("display", "flex")
+      .style("gap", "10px")
+      .style("align-items", "center")
+      .style("margin-top", "15px");
+
+      // Add apply button
+    buttonsRow
+        .append("button")
+        .attr("id", "apply-item-filter")
+        .attr("class", "btn btn-primary")
+      .text("Apply Filter")
+      .style("font-size", "12px")
+      .style("padding", "6px 12px");
+
+      // Add reset button
+    buttonsRow
+        .append("button")
+        .attr("id", "reset-item-filter")
+        .attr("class", "btn btn-secondary")
+      .text("Reset")
+      .style("font-size", "12px")
+      .style("padding", "6px 12px");
+
+    // Add quick select buttons
+    addItemInclusionQuickSelectButtons(buttonsRow);
+
+    // Add event listeners
+    setupItemInclusionFilterEventListeners();
+
+    // Move the filter controls to appear after the toggles
+    const togglesEl = document.querySelector(".transaction-type-toggles");
+    if (togglesEl && togglesEl.nextSibling && filterControls.node()) {
+      togglesEl.parentNode.insertBefore(
+        filterControls.node(),
+        togglesEl.nextSibling
+      );
+    }
+  }
+
+  /**
+   * Creates category selection controls for the item inclusion filter
+   */
+  function addItemInclusionCategoryControls(container) {
+    const categorySection = container
+      .append("div")
+      .style("margin-bottom", "15px")
+      .style("padding", "10px")
+      .style("background", "#ffffff")
+      .style("border-radius", "6px")
+      .style("border", "1px solid #dee2e6");
+
+    // Add section title
+    categorySection
+      .append("h5")
+      .text("Include in data:")
+      .style("margin", "0 0 10px 0")
+      .style("color", "#495057")
+      .style("font-size", "12px")
+      .style("font-weight", "600");
+
+    // Create two columns for categories
+    const categoriesGrid = categorySection
+      .append("div")
+      .style("display", "grid")
+      .style("grid-template-columns", "1fr 1fr")
+      .style("gap", "15px");
+
+    // Capital transactions column
+    const capitalColumn = categoriesGrid
+      .append("div");
+
+    capitalColumn
+      .append("h6")
+      .text("📈 Capital Transactions")
+      .style("margin", "0 0 8px 0")
+      .style("color", "#495057")
+      .style("font-size", "11px")
+      .style("font-weight", "600");
+
+    addItemInclusionCheckbox(capitalColumn, "fund-investments", "Fund Investments", itemInclusionFilter.fundInvestments);
+    addItemInclusionCheckbox(capitalColumn, "land-investments", "Land Investments", itemInclusionFilter.landInvestments);
+
+    // Operational transactions column
+    const operationalColumn = categoriesGrid
+      .append("div");
+
+    operationalColumn
+      .append("h6")
+      .text("💼 Operational Transactions")
+      .style("margin", "0 0 8px 0")
+      .style("color", "#495057")
+      .style("font-size", "11px")
+      .style("font-weight", "600");
+
+    addItemInclusionCheckbox(operationalColumn, "recurring-payments", "Recurring Payments", itemInclusionFilter.recurringPayments);
+    addItemInclusionCheckbox(operationalColumn, "non-recurring-payments", "Non-Recurring Payments", itemInclusionFilter.nonRecurringPayments);
+    addItemInclusionCheckbox(operationalColumn, "invoices", "Invoices", itemInclusionFilter.invoices);
+    addItemInclusionCheckbox(operationalColumn, "supplier-payments", "Supplier Payments", itemInclusionFilter.supplierPayments);
+  }
+
+  /**
+   * Helper function to create item inclusion checkboxes
+   */
+  function addItemInclusionCheckbox(container, id, label, checked) {
+    const checkboxRow = container
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "6px")
+      .style("margin-bottom", "4px");
+
+    checkboxRow
+      .append("input")
+      .attr("type", "checkbox")
+      .attr("id", `item-${id}`)
+      .attr("class", "item-inclusion-checkbox")
+      .property("checked", checked)
+      .style("margin", "0")
+      .style("transform", "scale(0.9)");
+
+    checkboxRow
+      .append("label")
+      .attr("for", `item-${id}`)
+      .text(label)
+      .style("margin", "0")
+      .style("font-size", "11px")
+      .style("color", "#6c757d")
+      .style("cursor", "pointer");
+  }
+
+  /**
+   * Adds quick select buttons for item inclusion filter
+   */
+  function addItemInclusionQuickSelectButtons(container) {
+    const quickSelectContainer = container
+      .append("div")
+      .style("margin-left", "auto")
+      .style("display", "flex")
+      .style("gap", "5px");
+
+    // All button
+    quickSelectContainer
+      .append("button")
+      .attr("class", "btn btn-outline-secondary")
+      .text("All")
+      .style("font-size", "10px")
+      .style("padding", "4px 8px")
+      .on("click", () => selectAllItemInclusions(true));
+
+    // None button
+    quickSelectContainer
+      .append("button")
+      .attr("class", "btn btn-outline-secondary")
+      .text("None")
+      .style("font-size", "10px")
+      .style("padding", "4px 8px")
+      .on("click", () => selectAllItemInclusions(false));
+
+    // Operational only button
+    quickSelectContainer
+      .append("button")
+      .attr("class", "btn btn-outline-secondary")
+      .text("Operational")
+      .style("font-size", "10px")
+      .style("padding", "4px 8px")
+      .on("click", selectOperationalItemsOnly);
+  }
+
+  /**
+   * Sets up event listeners for item inclusion filter controls
+   */
+  function setupItemInclusionFilterEventListeners() {
+    // Main filter controls
+      d3.select("#apply-item-filter").on("click", updateItemInclusionFilter);
+      d3.select("#reset-item-filter").on("click", resetItemInclusionFilter);
+
+    // Category checkboxes
+    d3.selectAll(".item-inclusion-checkbox").on("change", function() {
+      const id = this.id.replace("item-", "");
+      const isChecked = this.checked;
+      updateItemInclusionFilterState(id, isChecked);
+    });
+  }
+
+  /**
+   * Updates the item inclusion filter state based on checkbox changes
+   */
+  function updateItemInclusionFilterState(categoryId, isChecked) {
+    const categoryMap = {
+      "fund-investments": "fundInvestments",
+      "land-investments": "landInvestments",
+      "recurring-payments": "recurringPayments",
+      "non-recurring-payments": "nonRecurringPayments",
+      "invoices": "invoices",
+      "supplier-payments": "supplierPayments"
+    };
+
+    const stateKey = categoryMap[categoryId];
+    if (stateKey) {
+      itemInclusionFilter[stateKey] = isChecked;
+      console.log(`Item inclusion filter updated: ${stateKey} = ${isChecked}`);
+    }
+  }
+
+  /**
+   * Quick select functions for item inclusion checkboxes
+   */
+  function selectAllItemInclusions(selectAll) {
+    Object.keys(itemInclusionFilter).forEach(key => {
+      itemInclusionFilter[key] = selectAll;
+    });
+    
+    // Update UI checkboxes
+    d3.selectAll(".item-inclusion-checkbox").property("checked", selectAll);
+  }
+
+  function selectOperationalItemsOnly() {
+    // Deselect capital transactions
+    itemInclusionFilter.fundInvestments = false;
+    itemInclusionFilter.landInvestments = false;
+    
+    // Select operational transactions
+    itemInclusionFilter.recurringPayments = true;
+    itemInclusionFilter.nonRecurringPayments = true;
+    itemInclusionFilter.invoices = true;
+    itemInclusionFilter.supplierPayments = true;
+
+    // Update UI checkboxes
+    d3.select("#item-fund-investments").property("checked", false);
+    d3.select("#item-land-investments").property("checked", false);
+    d3.select("#item-recurring-payments").property("checked", true);
+    d3.select("#item-non-recurring-payments").property("checked", true);
+    d3.select("#item-invoices").property("checked", true);
+    d3.select("#item-supplier-payments").property("checked", true);
+  }
+
+  /**
+   * Function to update the item inclusion filter
+   */
+  function updateItemInclusionFilter() {
+    // Show filter status
+    const selectedCategories = [];
+    
+    // Check which categories are selected for inclusion
+    if (itemInclusionFilter.fundInvestments) selectedCategories.push("Fund Investments");
+    if (itemInclusionFilter.landInvestments) selectedCategories.push("Land Investments");
+    if (itemInclusionFilter.recurringPayments) selectedCategories.push("Recurring Payments");
+    if (itemInclusionFilter.nonRecurringPayments) selectedCategories.push("Non-Recurring Payments");
+    if (itemInclusionFilter.invoices) selectedCategories.push("Invoices");
+    if (itemInclusionFilter.supplierPayments) selectedCategories.push("Supplier Payments");
+
+    if (selectedCategories.length > 0) {
+      console.log(`Item inclusion filter applied to: ${selectedCategories.join(", ")}`);
+    } else {
+      console.log("No categories selected for item inclusion");
+    }
+
+    // Apply filter
+    updateInvestmentVisualization();
+  }
+
+  /**
+   * Function to reset item inclusion filter
+   */
+  function resetItemInclusionFilter() {
+    // Reset category selections to default values
+    itemInclusionFilter = {
+      // Capital transactions
+      fundInvestments: true,
+      landInvestments: true,
+      // Operational transactions  
+      recurringPayments: true,
+      nonRecurringPayments: true,
+      invoices: true,
+      supplierPayments: true
+    };
+
+    // Update UI checkboxes to reflect reset state
+    d3.select("#item-fund-investments").property("checked", true);
+    d3.select("#item-land-investments").property("checked", true);
+    d3.select("#item-recurring-payments").property("checked", true);
+    d3.select("#item-non-recurring-payments").property("checked", true);
+    d3.select("#item-invoices").property("checked", true);
+    d3.select("#item-supplier-payments").property("checked", true);
+
+    // Update visualization
+    updateInvestmentVisualization();
+  }
+
+  /**
+   * Creates enhanced amount range filter controls for timeline visibility only
+   * Allows users to filter timeline visibility based on amount ranges
+   */
 });
