@@ -1,6 +1,6 @@
 // Tab functionality
 document.addEventListener('DOMContentLoaded', async function() {
-    // Tab functionality is now handled in investment-chart.js
+    // Tab functionality is now handled by sidebar.js
     
     // Set up accordion functionality
     const accordionHeaders = document.querySelectorAll('.accordion-header');
@@ -102,6 +102,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadInvoices(),
         loadSupplierPayments()
     ]);
+
+    // Listen for section changes from sidebar
+    document.addEventListener('sectionChange', (e) => {
+        const { section } = e.detail;
+        console.log(`Section changed to: ${section}`);
+        
+        // Handle section-specific logic if needed
+        if (section === 'capital-transactions') {
+            // Ensure investment chart is properly initialized
+            // This is now handled by the sidebar component
+        }
+    });
 });
 
 // IndexedDB configuration

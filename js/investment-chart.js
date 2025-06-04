@@ -1,25 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Tab switching logic
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const tabContents = document.querySelectorAll(".tab-content");
-
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const tabId = button.getAttribute("data-tab");
-
-      // Update active button
-      tabButtons.forEach((btn) => btn.classList.remove("active"));
-      button.classList.add("active");
-
-      // Update active content
-      tabContents.forEach((content) => content.classList.remove("active"));
-      document.getElementById(tabId).classList.add("active");
-
-      // Initialize investment chart when switching to that tab
-      if (tabId === "investment-timeline") {
-        initInvestmentChart();
-      }
-    });
+  // Tab switching logic is now handled by sidebar.js
+  // Listen for section changes instead
+  document.addEventListener('sectionChange', (e) => {
+    const { section } = e.detail;
+    
+    // Initialize investment chart when switching to capital transactions
+    if (section === "capital-transactions") {
+      initInvestmentChart();
+    }
   });
 
   // IndexedDB configuration
@@ -1264,6 +1252,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Creates transaction type toggle controls
+  /**
    * Adds switches to show/hide capital and operational transactions
    */
   function addTransactionTypeToggles() {
@@ -1335,12 +1324,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Creates a styled toggle switch component
+  /**
    * @param {d3.Selection} container - Parent container
+  /**
    * @param {string} id - Unique identifier for the toggle
+  /**
    * @param {string} label - Main label text
+  /**
    * @param {string} description - Description text
+  /**
    * @param {boolean} initialState - Initial toggle state
+  /**
    * @param {Function} onChange - Callback function when toggle changes
+  /**
    * @returns {d3.Selection} Toggle element
    */
   function createToggleSwitch(container, id, label, description, initialState, onChange) {
@@ -1397,6 +1393,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Adds CSS styles for toggle switches
+  /**
    * Injects styles only once to avoid duplication
    */
   function addToggleSwitchStyles() {
@@ -1464,6 +1461,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Handles capital transactions toggle change
+  /**
    * @param {boolean} isEnabled - New toggle state
    */
   function onCapitalToggleChange(isEnabled) {
@@ -1474,6 +1472,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Handles operational transactions toggle change
+  /**
    * @param {boolean} isEnabled - New toggle state
    */
   function onOperationalToggleChange(isEnabled) {
@@ -1484,6 +1483,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Updates visualization based on current toggle states
+  /**
    * Provides user feedback and refreshes the chart
    */
   function updateVisualizationWithToggles() {
@@ -1507,6 +1507,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Creates simplified amount range filter controls
+  /**
    * Allows users to filter timeline visibility based on amount ranges for all items
    */
   function addAmountFilterControls() {
@@ -3834,11 +3835,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Initialize the chart when the investment timeline tab is shown on page load
-  if (
-    document.querySelector(".tab-button[data-tab='investment-timeline']")
-      .classList.contains("active")
-  ) {
+  // Initialize the chart when the capital transactions section is active on page load
+  // Check if we're currently on the capital transactions section
+  const currentSection = document.getElementById('capital-transactions');
+  if (currentSection && currentSection.classList.contains('active')) {
     initInvestmentChart();
   }
 
@@ -4046,6 +4046,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /**
    * Creates item inclusion filter controls
+  /**
    * Allows users to select which transaction categories to include in the data
    */
   function addItemInclusionFilterControls() {
@@ -4379,8 +4380,4 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInvestmentVisualization();
   }
 
-  /**
-   * Creates enhanced amount range filter controls for timeline visibility only
-   * Allows users to filter timeline visibility based on amount ranges
-   */
 });

@@ -1,0 +1,371 @@
+/* Sidebar Layout Styles */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 280px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  /* Ensure sidebar is visible by default on desktop */
+  transform: translateX(0);
+  /* Debug: Ensure visibility */
+  display: block !important;
+  visibility: visible !important;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+}
+
+.sidebar-toggle {
+  display: none;
+  flex-direction: column;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-toggle span {
+  width: 20px;
+  height: 2px;
+  background-color: white;
+  margin: 2px 0;
+  transition: 0.3s;
+  border-radius: 1px;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  padding: 1rem 0;
+  /* Debug: Ensure navigation is visible */
+  display: block !important;
+  visibility: visible !important;
+}
+
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Debug: Ensure list is visible */
+  display: block !important;
+  visibility: visible !important;
+}
+
+.nav-item {
+  margin: 0;
+  /* Debug: Ensure items are visible */
+  display: block !important;
+  visibility: visible !important;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+  position: relative;
+  /* Debug: Ensure links are visible */
+  visibility: visible !important;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateX(5px);
+}
+
+.nav-link.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-left-color: #ffd700;
+  font-weight: 600;
+}
+
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #ffd700, #ffed4e);
+}
+
+.nav-icon {
+  font-size: 1.2rem;
+  margin-right: 0.75rem;
+  width: 24px;
+  text-align: center;
+}
+
+.nav-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  padding: 2rem;
+  background-color: #ffffff;
+  min-height: 100vh;
+  transition: margin-left 0.3s ease;
+  /* Debug: Add border to see content area */
+  border-left: 3px solid #007bff;
+}
+
+/* Content Sections */
+.content-section {
+  display: none;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.content-section.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.section-header h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+}
+
+.section-header p {
+  color: #6c757d;
+  font-size: 1.1rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 260px;
+  }
+  
+  .main-content {
+    margin-left: 260px;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+  
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-toggle {
+    display: flex;
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.75rem;
+  }
+  
+  .section-header p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+  }
+  
+  .main-content {
+    padding: 0.75rem;
+  }
+  
+  .section-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .nav-link {
+    padding: 0.875rem 1.25rem;
+  }
+  
+  .nav-icon {
+    font-size: 1.1rem;
+    margin-right: 0.625rem;
+  }
+  
+  .nav-text {
+    font-size: 0.9rem;
+  }
+}
+
+/* Sidebar Animation for Mobile Toggle */
+.sidebar.closing {
+  transform: translateX(-100%);
+}
+
+/* Overlay for mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .sidebar-overlay {
+    display: block;
+  }
+}
+
+/* Enhanced hover effects */
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Accessibility improvements */
+.nav-link:focus {
+  outline: 2px solid #ffd700;
+  outline-offset: -2px;
+}
+
+.sidebar-toggle:focus {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling for sidebar */
+.sidebar {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Loading state for content sections */
+.content-section.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.content-section.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+/* Print styles */
+@media print {
+  .sidebar {
+    display: none;
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 0;
+  }
+} 
