@@ -1223,3 +1223,54 @@ svg {
 .timeline-section:first-of-type {
   margin-top: 30px;
 }
+
+/* Enhanced styles for transaction type toggles */
+.transaction-type-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.transaction-type-toggles h4 {
+    margin: 0 0 0 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+    align-self: flex-start;
+}
+
+.toggles-row {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.toggle-group {
+    background: #ffffff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    flex: 1;
+    min-width: 280px;
+}
+
+/* Responsive design for toggle buttons */
+@media screen and (max-width: 768px) {
+    .transaction-type-toggles {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .toggles-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .toggle-group {
+        min-width: auto;
+        flex: none;
+    }
+}
