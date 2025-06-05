@@ -724,8 +724,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // Add transaction type toggles
-    addTransactionTypeToggles();
   }
 
   // Investment data array - now can be dynamically updated
@@ -1256,42 +1254,53 @@ document.addEventListener("DOMContentLoaded", function () {
    * Adds switches to show/hide capital and operational transactions
    */
   function addTransactionTypeToggles() {
-  const timelineEl = d3.select("#investment-timeline");
+    const timelineEl = d3.select("#investment-chart");
     
     if (!timelineEl.node()) {
-      console.warn("Timeline element not found, skipping toggle creation");
+      console.warn("Investment chart element not found, skipping toggle creation");
       return;
     }
 
-    // Create toggle container
-    const toggleContainer = timelineEl
-        .append("div")
-      .attr("class", "transaction-type-toggles")
-      .style("margin", "15px 0")
-        .style("padding", "15px")
-      .style("background", "#f8f9fa")
-        .style("border-radius", "8px")
-      .style("border", "1px solid #e9ecef")
-      .style("display", "flex")
-      .style("align-items", "center")
-      .style("gap", "30px")
-      .style("flex-wrap", "wrap");
+    // Remove any existing filter controls first
+    timelineEl.selectAll("*").remove();
 
-    // Add section title
+    // Add CSS styles if not already added
+    addToggleSwitchStyles();
+
+    // Create a wrapper container for all filter controls
+    const filtersWrapper = timelineEl
+      .append("div")
+      .attr("class", "filters-wrapper")
+      .style("position", "relative")
+      .style("z-index", "10")
+      .style("margin-bottom", "40px")
+      .style("padding", "20px")
+      .style("background", "#ffffff")
+      .style("border-radius", "12px")
+      .style("box-shadow", "0 2px 8px rgba(0,0,0,0.1)")
+      .style("border", "1px solid #e9ecef");
+
+    // Create container for the toggle controls
+    const toggleContainer = filtersWrapper
+      .append("div")
+      .attr("class", "transaction-type-toggles")
+      .style("margin-bottom", "20px");
+
+    // Add title
     toggleContainer
       .append("h4")
-      .text("View Options:")
-      .style("margin", "0")
+      .text("Transaction Types:")
+      .style("margin", "0 0 15px 0")
       .style("color", "#495057")
-      .style("font-size", "14px")
+      .style("font-size", "16px")
       .style("font-weight", "600");
 
     // Create capital transactions toggle
     const capitalToggle = createToggleSwitch(
       toggleContainer,
-      "capital-toggle",
+      "capital-toggle", 
       "Capital Transactions",
-      "📈 Investments (Funds & Lands)",
+      "📈 Investments & Land (Purchases & Sales)",
       showCapitalTransactions,
       onCapitalToggleChange
     );
@@ -1305,15 +1314,6 @@ document.addEventListener("DOMContentLoaded", function () {
       showOperationalTransactions,
       onOperationalToggleChange
     );
-
-    // Move the toggle container to appear after date controls
-    const dateRangeEl = document.querySelector(".date-range-control");
-    if (dateRangeEl && dateRangeEl.nextSibling && toggleContainer.node()) {
-        dateRangeEl.parentNode.insertBefore(
-        toggleContainer.node(),
-          dateRangeEl.nextSibling
-        );
-      }
 
     // Add item inclusion filter controls after the toggles
     addItemInclusionFilterControls();
@@ -1511,38 +1511,37 @@ document.addEventListener("DOMContentLoaded", function () {
    * Allows users to filter timeline visibility based on amount ranges for all items
    */
   function addAmountFilterControls() {
-    const timelineEl = d3.select("#investment-timeline");
+    const filtersWrapper = d3.select("#investment-chart .filters-wrapper");
     
-    if (!timelineEl.node()) {
-      console.warn("Timeline element not found, skipping amount filter creation");
+    if (!filtersWrapper.node()) {
+      console.warn("Filters wrapper not found, skipping amount filter creation");
       return;
     }
 
+    // Remove any existing amount filter controls first
+    filtersWrapper.select(".amount-range-control").remove();
+
     // Create amount filter container
-    const filterControls = timelineEl
+    const filterControls = filtersWrapper
         .append("div")
         .attr("class", "amount-range-control")
-      .style("margin", "15px 0")
-        .style("padding", "15px")
-      .style("background", "#fff5f5")
-        .style("border-radius", "8px")
-      .style("border", "1px solid #ffcccc");
+      .style("margin-bottom", "20px");
 
       // Add title
       filterControls
         .append("h4")
       .text("Amount Range Filter:")
-      .style("margin-top", "0")
+      .style("margin", "0 0 15px 0")
       .style("color", "#495057")
-      .style("font-size", "14px")
+      .style("font-size", "16px")
       .style("font-weight", "600");
 
     // Add description
     filterControls
       .append("p")
       .text("Filter timeline visibility by amount range. This only affects what's shown on the timelines, not the combined chart below.")
-      .style("margin", "5px 0 15px 0")
-      .style("font-size", "12px")
+      .style("margin", "0 0 15px 0")
+      .style("font-size", "14px")
       .style("color", "#6c757d")
       .style("line-height", "1.4");
 
@@ -1615,15 +1614,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Add event listeners
     setupAmountFilterEventListeners();
-
-    // Move the filter controls to appear after the item inclusion filter
-    const itemFilterEl = document.querySelector(".item-inclusion-control");
-    if (itemFilterEl && itemFilterEl.nextSibling && filterControls.node()) {
-      itemFilterEl.parentNode.insertBefore(
-        filterControls.node(),
-        itemFilterEl.nextSibling
-      );
-    }
   }
 
   /**
@@ -2285,6 +2275,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to draw the investment chart
   function drawInvestmentChart() {
+    // Add transaction type toggles and filter controls first
+    addTransactionTypeToggles();
+    
     // Clear all containers
     const filterStatusContainer = d3.select("#filter-status-container");
     const investmentTimelineSection = d3.select("#investment-timeline-section");
@@ -4050,38 +4043,37 @@ document.addEventListener("DOMContentLoaded", function () {
    * Allows users to select which transaction categories to include in the data
    */
   function addItemInclusionFilterControls() {
-    const timelineEl = d3.select("#investment-timeline");
+    const filtersWrapper = d3.select("#investment-chart .filters-wrapper");
     
-    if (!timelineEl.node()) {
-      console.warn("Timeline element not found, skipping item inclusion filter creation");
+    if (!filtersWrapper.node()) {
+      console.warn("Filters wrapper not found, skipping item inclusion filter creation");
       return;
     }
 
+    // Remove any existing item inclusion filter controls first
+    filtersWrapper.select(".item-inclusion-control").remove();
+
     // Create item inclusion filter container
-    const filterControls = timelineEl
+    const filterControls = filtersWrapper
         .append("div")
         .attr("class", "item-inclusion-control")
-      .style("margin", "15px 0")
-        .style("padding", "15px")
-      .style("background", "#f0f8ff")
-        .style("border-radius", "8px")
-      .style("border", "1px solid #b3d9ff");
+      .style("margin-bottom", "20px");
 
       // Add title
       filterControls
         .append("h4")
       .text("Item Filter:")
-      .style("margin-top", "0")
+      .style("margin", "0 0 15px 0")
       .style("color", "#495057")
-      .style("font-size", "14px")
+      .style("font-size", "16px")
       .style("font-weight", "600");
 
     // Add description
     filterControls
       .append("p")
       .text("Select which transaction types to include in the cash flow and timeline displays.")
-      .style("margin", "5px 0 15px 0")
-      .style("font-size", "12px")
+      .style("margin", "0 0 15px 0")
+      .style("font-size", "14px")
       .style("color", "#6c757d")
       .style("line-height", "1.4");
 
@@ -4119,15 +4111,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Add event listeners
     setupItemInclusionFilterEventListeners();
-
-    // Move the filter controls to appear after the toggles
-    const togglesEl = document.querySelector(".transaction-type-toggles");
-    if (togglesEl && togglesEl.nextSibling && filterControls.node()) {
-      togglesEl.parentNode.insertBefore(
-        filterControls.node(),
-        togglesEl.nextSibling
-      );
-    }
   }
 
   /**

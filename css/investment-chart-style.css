@@ -509,7 +509,16 @@ svg {
 
 #investment-chart {
     position: relative;
-    height: 400px;
+    z-index: 1;
+    margin-bottom: 30px;
+    padding: 0;
+}
+
+#investment-chart .transaction-type-toggles,
+#investment-chart .item-inclusion-control,
+#investment-chart .amount-range-control {
+    position: relative;
+    z-index: 2;
     margin-bottom: 20px;
 }
 
@@ -1201,4 +1210,16 @@ svg {
 .current-date-indicator,
 .target-date-indicator {
   pointer-events: none;
+}
+
+.timeline-section {
+  position: relative;
+  clear: both;
+  margin-top: 20px;
+  margin-bottom: 40px;
+  padding-top: 10px;
+}
+
+.timeline-section:first-of-type {
+  margin-top: 30px;
 }
