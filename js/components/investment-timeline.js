@@ -48,7 +48,7 @@ function createInvestmentTimeline(config) {
 
   const { svgWidth, timelineStart, timelineEnd, timelineLength } = dimensions;
   const investmentTimelineHeight = 150;
-  const investmentTimelineY = 60;
+  const investmentTimelineY = 120;
 
   // Create SVG for investment timeline
   const investmentSvg = d3

@@ -1289,16 +1289,15 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add title
     toggleContainer
       .append("h4")
-      .text("Transaction Types:");
-
-    // Create a row container for the toggle buttons
-    const togglesRow = toggleContainer
-      .append("div")
-      .attr("class", "toggles-row");
+      .text("Transaction Types:")
+      .style("margin", "0 0 15px 0")
+      .style("color", "#495057")
+      .style("font-size", "16px")
+      .style("font-weight", "600");
 
     // Create capital transactions toggle
     const capitalToggle = createToggleSwitch(
-      togglesRow,
+      toggleContainer,
       "capital-toggle", 
       "Capital Transactions",
       "📈 Investments & Land (Purchases & Sales)",
@@ -1308,7 +1307,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create operational transactions toggle
     const operationalToggle = createToggleSwitch(
-      togglesRow,
+      toggleContainer,
       "operational-toggle", 
       "Operational Transactions",
       "💼 Cash Flow (Payments & Invoices)",
