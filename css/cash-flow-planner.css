@@ -2,16 +2,38 @@
 
 .cash-flow-dashboard {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: 650px 1fr;
   gap: 2rem;
   margin-top: 1rem;
 }
 
-/* Left Panel - Input Controls */
+/* Left Panel - Input Controls in 2x2 Grid */
 .left-panel {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 1.2rem;
+}
+
+/* Specific card positioning */
+.opening-balance-card {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.min-balance-card {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.date-range-card {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.net-flow-card {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .input-card {
@@ -22,6 +44,9 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
 }
 
 .input-card:hover {
@@ -386,10 +411,27 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1400px) {
+  .cash-flow-dashboard {
+    grid-template-columns: 600px 1fr;
+    gap: 1.5rem;
+  }
+}
+
 @media (max-width: 1200px) {
   .cash-flow-dashboard {
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+  
+  .left-panel {
+    order: 2;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  .right-panel {
+    order: 1;
   }
 }
 
@@ -401,6 +443,30 @@
   
   .left-panel {
     order: 2;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 1rem;
+  }
+  
+  /* Reset card positioning for mobile - stack vertically */
+  .opening-balance-card {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  
+  .min-balance-card {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  
+  .date-range-card {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  
+  .net-flow-card {
+    grid-column: 1;
+    grid-row: 4;
   }
   
   .right-panel {
@@ -419,6 +485,32 @@
   .cashflow-table th,
   .cashflow-table td {
     padding: 0.5rem;
+  }
+  
+  .input-card {
+    padding: 1.2rem;
+    min-height: 180px;
+  }
+  
+  .input-card h3 {
+    font-size: 1rem;
+  }
+  
+  .balance-amount, .flow-amount {
+    font-size: 1.2rem;
+  }
+  
+  .balance-input-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .apply-btn {
+    width: 100%;
+  }
+  
+  .date-range-group {
+    gap: 0.75rem;
   }
 }
 
