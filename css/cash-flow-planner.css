@@ -1,0 +1,577 @@
+/* Cash Flow Planner Dashboard Styles */
+
+.cash-flow-dashboard {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+/* Left Panel - Input Controls */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.input-card {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.input-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.input-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Card Descriptions */
+.card-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f3f4;
+}
+
+.description-text {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Individual Card Styling */
+.opening-balance-card {
+  border-left: 4px solid #007bff;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.min-balance-card {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #ffffff 0%, #fff8f9 100%);
+}
+
+.date-range-card {
+  border-left: 4px solid #28a745;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+}
+
+.net-flow-card {
+  border-left: 4px solid #17a2b8;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fdff 100%);
+}
+
+/* Opening Cash Balance Input */
+.balance-input-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.balance-input-group input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.balance-input-group input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.apply-btn {
+  padding: 0.75rem 1rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.apply-btn:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.apply-btn:active {
+  transform: translateY(0);
+}
+
+/* Balance and Flow Info Displays */
+.balance-info, .flow-info {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.min-balance-card .balance-info {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
+  border-color: #f8d7da;
+}
+
+.net-flow-card .flow-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+  border-color: #bee5eb;
+}
+
+.balance-amount, .flow-amount {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.min-balance-card .balance-amount {
+  color: #dc3545;
+}
+
+.net-flow-card .flow-amount {
+  color: #17a2b8;
+}
+
+.balance-text, .flow-text {
+  font-size: 0.9rem;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+/* Date Range Selection */
+.date-range-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.date-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.date-input-wrapper label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.date-input-wrapper input {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.date-input-wrapper input:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.25);
+}
+
+/* Card Status Indicators */
+.input-card::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 3px;
+  border-radius: 8px 8px 0 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.opening-balance-card::before {
+  background: linear-gradient(90deg, #007bff, #0056b3);
+}
+
+.min-balance-card::before {
+  background: linear-gradient(90deg, #dc3545, #c82333);
+}
+
+.date-range-card::before {
+  background: linear-gradient(90deg, #28a745, #1e7e34);
+}
+
+.net-flow-card::before {
+  background: linear-gradient(90deg, #17a2b8, #138496);
+}
+
+.input-card:hover::before {
+  opacity: 1;
+}
+
+/* Animation for value updates */
+.balance-amount, .flow-amount {
+  transition: all 0.3s ease;
+}
+
+.balance-amount.updating, .flow-amount.updating {
+  transform: scale(1.05);
+  color: #007bff;
+}
+
+/* Interactive states */
+.input-card.active {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.input-card.error {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+/* Right Panel - Monthly Cashflow Summary Table */
+.right-panel {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.right-panel h3 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.cashflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.cashflow-table th,
+.cashflow-table td {
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+}
+
+.cashflow-table th:last-child,
+.cashflow-table td:last-child {
+  border-right: none;
+}
+
+.cashflow-table thead th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cashflow-table .row-label {
+  text-align: left;
+  font-weight: 500;
+  background-color: #f8f9fa;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  min-width: 150px;
+}
+
+.cashflow-table thead .row-label {
+  z-index: 15;
+}
+
+/* Section Headers in Table */
+.section-divider td {
+  background-color: #e9ecef !important;
+  font-weight: 600;
+  color: #495057;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.section-header-cell {
+  border-top: 2px solid #adb5bd;
+}
+
+/* Row Styling */
+.capital-inflows,
+.capital-outflows {
+  background-color: #f8f9fa;
+}
+
+.operational-inflows,
+.operational-outflows {
+  background-color: #ffffff;
+}
+
+.total-capital-flow {
+  background-color: #e8f4fd;
+  font-weight: 600;
+  border-top: 1px solid #007bff;
+}
+
+.total-operational-flow {
+  background-color: #f0f8ff;
+  font-weight: 600;
+  border-top: 1px solid #17a2b8;
+}
+
+.net-cash-flow {
+  background-color: #e3f2fd;
+  font-weight: 600;
+}
+
+.closing-balance {
+  background-color: #f3e5f5;
+  font-weight: 600;
+}
+
+/* Data Cell Styling */
+.cashflow-table .data-cell {
+  background-color: #ffffff;
+  position: relative;
+}
+
+.cashflow-table .positive-value {
+  color: #28a745;
+}
+
+.cashflow-table .negative-value {
+  color: #dc3545;
+}
+
+.cashflow-table .zero-value {
+  color: #6c757d;
+}
+
+.cashflow-table .total-capital-cell {
+  font-weight: 600;
+  background-color: #e8f4fd !important;
+}
+
+.cashflow-table .total-operational-cell {
+  font-weight: 600;
+  background-color: #f0f8ff !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .cash-flow-dashboard {
+    grid-template-columns: 320px 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .cash-flow-dashboard {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .left-panel {
+    order: 2;
+  }
+  
+  .right-panel {
+    order: 1;
+  }
+  
+  .balance-input-group,
+  .date-range-group {
+    flex-direction: column;
+  }
+  
+  .cashflow-table {
+    font-size: 0.8rem;
+  }
+  
+  .cashflow-table th,
+  .cashflow-table td {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-card {
+    padding: 1rem;
+  }
+  
+  .right-panel {
+    padding: 1rem;
+  }
+  
+  .cashflow-table .row-label {
+    min-width: 120px;
+  }
+}
+
+/* Loading State */
+.cashflow-table.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.cashflow-table.loading::after {
+  content: 'Calculating...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  font-weight: 500;
+  color: #6c757d;
+}
+
+/* Notification System */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 1000;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.notification.show {
+  transform: translateX(0);
+}
+
+.notification.success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border-left: 4px solid #155724;
+}
+
+.notification.error {
+  background: linear-gradient(135deg, #dc3545, #fd7e14);
+  color: white;
+  border-left: 4px solid #721c24;
+}
+
+.notification.info {
+  background: linear-gradient(135deg, #17a2b8, #007bff);
+  color: white;
+  border-left: 4px solid #0c5460;
+}
+
+/* Loading indicators */
+.card-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent
+  );
+  animation: loading-sweep 1.5s infinite;
+}
+
+@keyframes loading-sweep {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Enhanced responsiveness for cards */
+@media (max-width: 768px) {
+  .left-panel {
+    gap: 1rem;
+  }
+  
+  .input-card {
+    padding: 1.2rem;
+  }
+  
+  .input-card h3 {
+    font-size: 1rem;
+  }
+  
+  .balance-amount, .flow-amount {
+    font-size: 1.2rem;
+  }
+  
+  .balance-input-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .apply-btn {
+    width: 100%;
+  }
+  
+  .date-range-group {
+    gap: 0.75rem;
+  }
+}
+
+/* Accessibility improvements */
+.input-card:focus-within {
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.apply-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+input:focus {
+  outline: none;
+}
+
+/* Print styles */
+@media print {
+  .left-panel {
+    display: none;
+  }
+} 

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="./css/investment-chart-style.css" />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/sidebar.css" />
+    <link rel="stylesheet" href="css/cash-flow-planner.css" />
     <!-- Add D3.js for the investment chart -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
   </head>
@@ -38,6 +39,12 @@
               <a href="#" class="nav-link" data-section="planning">
                 <span class="nav-icon">💰</span>
                 <span class="nav-text">Planning</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="#" class="nav-link" data-section="cash-flow-planner">
+                <span class="nav-icon">📈</span>
+                <span class="nav-text">Cash Flow Planner</span>
               </a>
             </li>
           </ul>
@@ -406,6 +413,9 @@
                 </div>
               </div>
 
+              <!-- Legend Section - Positioned at the top for better visibility -->
+              <div id="investment-legend" class="transaction-legend" style="margin: 20px 0;"></div>
+
               <!-- Main Chart Container with proper structure -->
               <div class="chart-container" style="position: relative;">
                 
@@ -440,12 +450,137 @@
                   <div id="combined-chart"></div>
                 </div>
                 
-                <!-- Legend Section - Moved to bottom for better flow -->
-                <div id="investment-legend" class="transaction-legend" style="margin: 20px 0;"></div>
-                
                 <!-- No Data Message Container -->
                 <div id="no-data-container" style="display: none;"></div>
                 
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cash Flow Planner Section -->
+        <section id="cash-flow-planner" class="content-section">
+          <div class="section-header">
+            <h2>Cash Flow Planner</h2>
+            <p>Plan and review your cash flows with detailed monthly analysis</p>
+          </div>
+          
+          <div class="cash-flow-dashboard">
+            <!-- Left Panel - Input Controls -->
+            <div class="left-panel">
+              <!-- 1. Opening Cash Balance Input Card -->
+              <div class="input-card opening-balance-card">
+                <h3>Opening Cash Balance Input</h3>
+                <div class="balance-input-group">
+                  <input type="number" id="opening-balance-input" placeholder="Enter opening balance" value="50000000">
+                  <button id="apply-balance-btn" class="apply-btn">Apply</button>
+                </div>
+                <div class="card-description">
+                  <span class="description-text">Set the starting cash balance for your planning period</span>
+                </div>
+              </div>
+
+              <!-- 2. Minimum Cash Balance Display Card -->
+              <div class="input-card min-balance-card">
+                <h3>Minimum Cash Balance</h3>
+                <div class="balance-info" id="balance-info">
+                  <span class="balance-amount" id="min-balance-display">-25,000,000</span>
+                  <span class="balance-text">Minimum cash balance on <span id="min-balance-date">30-June-2025</span></span>
+                </div>
+                <div class="card-description">
+                  <span class="description-text">Lowest cash balance during the selected period</span>
+                </div>
+              </div>
+
+              <!-- 3. Date Range Selection Card -->
+              <div class="input-card date-range-card">
+                <h3>Date Range Selection</h3>
+                <div class="date-range-group">
+                  <div class="date-input-wrapper">
+                    <label for="cf-start-date">Start Date</label>
+                    <input type="date" id="cf-start-date" value="2025-06-01">
+                  </div>
+                  <div class="date-input-wrapper">
+                    <label for="cf-end-date">End Date</label>
+                    <input type="date" id="cf-end-date" value="2025-08-31">
+                  </div>
+                  <button id="apply-dates-btn" class="apply-btn">Apply</button>
+                </div>
+                <div class="card-description">
+                  <span class="description-text">Select the planning period for cash flow analysis</span>
+                </div>
+              </div>
+
+              <!-- 4. Net Cash Flow Display Card -->
+              <div class="input-card net-flow-card">
+                <h3>Net Cash Flow</h3>
+                <div class="flow-info" id="flow-info">
+                  <span class="flow-amount" id="net-flow-display">100,000,000</span>
+                  <span class="flow-text">Net Cash Flow between <span id="flow-start-date">1-June-2025</span> and <span id="flow-end-date">31-Aug-2025</span></span>
+                </div>
+                <div class="card-description">
+                  <span class="description-text">Total net cash flow for the selected period</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel - Monthly Cashflow Summary Table -->
+            <div class="right-panel">
+              <div class="table-container">
+                <h3>Monthly Cashflow Summary</h3>
+                <div class="table-wrapper">
+                  <table id="monthly-cashflow-table" class="cashflow-table">
+                    <thead>
+                      <tr id="table-header">
+                        <th class="row-label">Month</th>
+                        <!-- Month columns will be dynamically generated -->
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="section-divider">
+                        <td colspan="100%" class="section-header-cell">Capital Cash Flows</td>
+                      </tr>
+                      <tr class="capital-inflows">
+                        <td class="row-label">Inflows ©</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="capital-outflows">
+                        <td class="row-label">Outflows ©</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="total-capital-flow">
+                        <td class="row-label">Total Capital Cash Flow</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="section-divider">
+                        <td colspan="100%" class="section-header-cell">Operational Cash Flows</td>
+                      </tr>
+                      <tr class="operational-inflows">
+                        <td class="row-label">Inflows (O)</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="operational-outflows">
+                        <td class="row-label">Outflows (O)</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="total-operational-flow">
+                        <td class="row-label">Total Operational Cash Flow</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="section-divider">
+                        <td colspan="100%" class="section-header-cell">Summary</td>
+                      </tr>
+                      <tr class="net-cash-flow">
+                        <td class="row-label">Net Cash Flow</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                      <tr class="closing-balance">
+                        <td class="row-label">Closing Cash Balance</td>
+                        <!-- Data cells will be dynamically generated -->
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -458,5 +593,6 @@
     <script src="./js/components/investment-timeline.js"></script>
     <script src="./js/components/cashflow-timeline.js"></script>
     <script src="./js/investment-chart.js"></script>
+    <script src="./js/components/cash-flow-planner.js"></script>
   </body>
 </html>

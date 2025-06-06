@@ -288,6 +288,10 @@ class SidebarManager {
             case 'data-entry':
                 // Any data entry specific initialization
                 break;
+            case 'cash-flow-planner':
+                // Initialize cash flow planner when switching to this section
+                this.initializeCashFlowPlanner();
+                break;
             default:
                 console.warn(`Unknown section: ${sectionId}`);
         }
@@ -309,6 +313,23 @@ class SidebarManager {
     }
 
     /**
+     * Initialize cash flow planner
+     */
+    initializeCashFlowPlanner() {
+        // Initialize or refresh the cash flow planner
+        if (window.cashFlowPlanner) {
+            window.cashFlowPlanner.refresh();
+        } else {
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                if (typeof CashFlowPlanner === 'function') {
+                    window.cashFlowPlanner = new CashFlowPlanner();
+                }
+            }, 100);
+        }
+    }
+
+    /**
      * Update browser history
      */
     updateHistory(sectionId) {
@@ -321,13 +342,21 @@ class SidebarManager {
      * Emit custom event for section change
      */
     emitSectionChangeEvent(sectionId) {
-        const event = new CustomEvent('sectionChange', {
-            detail: {
-                section: sectionId,
-                previousSection: this.currentSection
-            }
+        const eventDetail = {
+            section: sectionId,
+            previousSection: this.currentSection
+        };
+        
+        // Emit both event names for compatibility
+        const sectionChangeEvent = new CustomEvent('sectionChange', {
+            detail: eventDetail
         });
-        document.dispatchEvent(event);
+        document.dispatchEvent(sectionChangeEvent);
+        
+        const sectionChangedEvent = new CustomEvent('sectionChanged', {
+            detail: eventDetail
+        });
+        document.dispatchEvent(sectionChangedEvent);
     }
 
     /**
@@ -349,6 +378,10 @@ class SidebarManager {
                 case '2':
                     e.preventDefault();
                     this.switchSection('planning');
+                    break;
+                case '3':
+                    e.preventDefault();
+                    this.switchSection('cash-flow-planner');
                     break;
             }
         }
@@ -458,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const initialSection = urlParams.get('section');
     
-    if (initialSection && ['data-entry', 'planning'].includes(initialSection)) {
+    if (initialSection && ['data-entry', 'planning', 'cash-flow-planner'].includes(initialSection)) {
         window.sidebarManager.switchSection(initialSection, false);
     }
 });
