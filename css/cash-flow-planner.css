@@ -401,13 +401,27 @@
 }
 
 .cashflow-table .total-capital-cell {
-  font-weight: 600;
+  font-weight: 600 !important;
   background-color: #e8f4fd !important;
 }
 
 .cashflow-table .total-operational-cell {
-  font-weight: 600;
+  font-weight: 600 !important;
   background-color: #f0f8ff !important;
+}
+
+.cashflow-table .net-cash-flow-cell {
+  font-weight: 700 !important;
+  background-color: #fff3cd !important;
+  border-top: 2px solid #ffc107 !important;
+  border-bottom: 2px solid #ffc107 !important;
+}
+
+.cashflow-table .closing-balance-cell {
+  font-weight: 700 !important;
+  background-color: #d1ecf1 !important;
+  border-top: 2px solid #17a2b8 !important;
+  border-bottom: 2px solid #17a2b8 !important;
 }
 
 /* Responsive Design */

@@ -64,14 +64,19 @@ class CashFlowPlanner {
             // Set up event listeners
             this.initializeEventListeners();
             
-            // Initial render
+            // Perform initial calculations and render
             this.updateCalculations();
             this.renderTable();
+            this.updateDisplay();
             
             console.log('Cash Flow Planner initialized successfully');
         } catch (error) {
             console.error('Error initializing Cash Flow Planner:', error);
             this.showError('Failed to initialize Cash Flow Planner');
+            
+            // Still setup event listeners and render with default data
+            this.initializeEventListeners();
+            this.updateDisplay();
         }
     }
 
@@ -202,8 +207,13 @@ class CashFlowPlanner {
     }
 
     updateDisplay() {
+        console.log('Updating display cards...');
+        
+        // Update both display cards
         this.updateMinimumBalanceDisplay();
         this.updateNetCashFlowDisplay();
+        
+        console.log('Display cards updated successfully');
     }
 
     handleBalanceInput() {
@@ -233,15 +243,20 @@ class CashFlowPlanner {
         const value = parseFloat(balanceInput.value);
         
         if (isNaN(value) || value < 0) {
-            this.showError('Please enter a valid opening balance (≥ 0)');
+            this.showError('Please enter a valid opening balance');
             return;
         }
         
+        // Update opening balance
         this.openingBalance = value;
+        
+        console.log('Opening balance applied:', this.openingBalance);
+        
+        // Update calculations and displays
         this.updateCalculations();
         this.renderTable();
-        this.updateMinimumBalanceDisplay();
-        this.updateNetCashFlowDisplay();
+        this.updateDisplay();
+        
         this.showSuccess('Opening balance updated successfully');
     }
 
@@ -274,17 +289,22 @@ class CashFlowPlanner {
             return;
         }
         
-        if (new Date(startDate) > new Date(endDate)) {
+        if (new Date(startDate) >= new Date(endDate)) {
             this.showError('Start date must be before end date');
             return;
         }
         
+        // Update date range
         this.startDate = startDate;
         this.endDate = endDate;
+        
+        console.log('Date range applied:', { startDate: this.startDate, endDate: this.endDate });
+        
+        // Update calculations and displays
         this.updateCalculations();
         this.renderTable();
-        this.updateMinimumBalanceDisplay();
-        this.updateNetCashFlowDisplay();
+        this.updateDisplay();
+        
         this.showSuccess('Date range updated successfully');
     }
 
@@ -359,6 +379,15 @@ class CashFlowPlanner {
      */
     processCashFlowData() {
         console.log('Processing cash flow data...');
+        console.log('Available data:', {
+            investments: this.investments.length,
+            lands: this.lands.length,
+            transactions: this.transactions.length,
+            recurringPayments: this.recurringPayments.length,
+            nonRecurringPayments: this.nonRecurringPayments.length,
+            invoices: this.invoices.length,
+            supplierPayments: this.supplierPayments.length
+        });
         
         // Initialize cash flow data structure
         this.cashFlowData = {
@@ -380,6 +409,20 @@ class CashFlowPlanner {
             this.processOperationalCashFlows();
             
             console.log('Cash flow data processed successfully:', this.cashFlowData);
+            
+            // Log summary of processed data
+            const capitalInflowsCount = Object.keys(this.cashFlowData.capital.inflows).length;
+            const capitalOutflowsCount = Object.keys(this.cashFlowData.capital.outflows).length;
+            const operationalInflowsCount = Object.keys(this.cashFlowData.operational.inflows).length;
+            const operationalOutflowsCount = Object.keys(this.cashFlowData.operational.outflows).length;
+            
+            console.log('Processed cash flow summary:', {
+                capitalInflowsCount,
+                capitalOutflowsCount,
+                operationalInflowsCount,
+                operationalOutflowsCount
+            });
+            
         } catch (error) {
             console.error('Error processing cash flow data:', error);
             // Ensure we still have a valid structure even if processing fails
@@ -400,24 +443,55 @@ class CashFlowPlanner {
      * Process capital transactions from investments and lands
      */
     processCapitalTransactions() {
-        // Process investment and land transactions
+        console.log('Processing capital transactions...');
+        console.log('Date range:', this.startDate, 'to', this.endDate);
+        
+        let processedCount = 0;
+        
         this.transactions.forEach(transaction => {
-            const date = new Date(transaction.transaction_date);
-            const monthKey = this.getMonthKey(date);
+            const transactionDate = new Date(transaction.transaction_date);
             
-            // Only process transactions within date range
-            if (this.isDateInRange(date)) {
-                const amount = Math.abs(parseFloat(transaction.amount));
+            // Check if transaction is within date range
+            if (transactionDate >= this.startDate && transactionDate <= this.endDate) {
+                console.log('Processing transaction:', transaction);
+                
+                const monthKey = `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, '0')}`;
+                const amount = Math.abs(parseFloat(transaction.amount) || 0);
+                
+                console.log('Transaction details:', {
+                    date: transactionDate,
+                    monthKey,
+                    amount,
+                    type: transaction.transaction_type
+                });
                 
                 if (transaction.transaction_type === 'buy') {
-                    // Buy transactions are capital outflows
-                    this.addCashFlow('capital', 'outflows', monthKey, amount);
+                    // Capital outflow (buying investment)
+                    if (!this.cashFlowData.capital.outflows[monthKey]) {
+                        this.cashFlowData.capital.outflows[monthKey] = 0;
+                    }
+                    this.cashFlowData.capital.outflows[monthKey] += amount;
+                    console.log(`Added ${amount} to capital outflows for ${monthKey}`);
                 } else if (transaction.transaction_type === 'sale') {
-                    // Sale transactions are capital inflows
-                    this.addCashFlow('capital', 'inflows', monthKey, amount);
+                    // Capital inflow (selling investment)
+                    if (!this.cashFlowData.capital.inflows[monthKey]) {
+                        this.cashFlowData.capital.inflows[monthKey] = 0;
+                    }
+                    this.cashFlowData.capital.inflows[monthKey] += amount;
+                    console.log(`Added ${amount} to capital inflows for ${monthKey}`);
                 }
+                
+                processedCount++;
+            } else {
+                console.log('Transaction outside date range:', {
+                    date: transactionDate,
+                    startDate: this.startDate,
+                    endDate: this.endDate
+                });
             }
         });
+        
+        console.log(`Processed ${processedCount} capital transactions out of ${this.transactions.length} total transactions`);
     }
 
     /**
@@ -571,11 +645,13 @@ class CashFlowPlanner {
 
         // Calculate net flows and balances for each month
         months.forEach(monthKey => {
+            // Get actual data from cash flow structure
             const capitalIn = this.cashFlowData.capital.inflows[monthKey] || 0;
             const capitalOut = this.cashFlowData.capital.outflows[monthKey] || 0;
             const operationalIn = this.cashFlowData.operational.inflows[monthKey] || 0;
             const operationalOut = this.cashFlowData.operational.outflows[monthKey] || 0;
             
+            // Calculate net flow for this month
             const netFlow = (capitalIn + operationalIn) - (capitalOut + operationalOut);
             runningBalance += netFlow;
             totalNetFlow += netFlow;
@@ -586,13 +662,13 @@ class CashFlowPlanner {
                 minBalanceDate = monthKey;
             }
             
-            // Store calculated values
+            // Store calculated values in monthlyData Map
             this.monthlyData.set(monthKey, {
-                capitalIn,
-                capitalOut,
-                operationalIn,
-                operationalOut,
-                netFlow,
+                capitalIn: capitalIn,
+                capitalOut: capitalOut,
+                operationalIn: operationalIn,
+                operationalOut: operationalOut,
+                netFlow: netFlow,
                 closingBalance: runningBalance
             });
         });
@@ -606,7 +682,10 @@ class CashFlowPlanner {
         const balanceAmountEl = document.querySelector('.balance-amount');
         const balanceTextEl = document.querySelector('.balance-text');
         
-        if (!balanceAmountEl || !balanceTextEl) return;
+        if (!balanceAmountEl || !balanceTextEl) {
+            console.log('Balance display elements not found');
+            return;
+        }
         
         // Calculate minimum balance and date
         const minBalanceData = this.calculateMinimumBalance();
@@ -619,15 +698,30 @@ class CashFlowPlanner {
         balanceAmountEl.textContent = formattedAmount;
         
         // Display the date when minimum occurs
-        const dateText = minBalanceData.date ? 
-            `Occurs on ${this.formatDate(minBalanceData.date)}` : 
-            'No data available for selected period';
+        let dateText;
+        if (minBalanceData.date) {
+            const formattedDate = minBalanceData.date.toLocaleDateString('en-US', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            dateText = `Occurs on ${formattedDate}`;
+        } else {
+            dateText = 'No data available for selected period';
+        }
         balanceTextEl.textContent = dateText;
         
         // Remove animation after a short delay
         setTimeout(() => {
             balanceAmountEl.classList.remove('updating');
         }, 300);
+        
+        console.log('Minimum Balance updated:', {
+            amount: minBalanceData.amount,
+            formatted: formattedAmount,
+            date: minBalanceData.date ? minBalanceData.date.toISOString() : 'No date',
+            dateText: dateText
+        });
     }
 
     updateNetCashFlowDisplay() {
@@ -636,7 +730,7 @@ class CashFlowPlanner {
         
         if (!flowAmountEl || !flowTextEl) return;
         
-        // Calculate net cash flow
+        // Calculate net cash flow for the selected period
         const netCashFlow = this.calculateNetCashFlow();
         
         // Add updating animation
@@ -646,17 +740,34 @@ class CashFlowPlanner {
         const formattedAmount = this.formatCurrency(netCashFlow);
         flowAmountEl.textContent = formattedAmount;
         
-        // Update descriptive text
-        const isPositive = netCashFlow >= 0;
-        const flowDescription = isPositive ? 
-            'Positive cash flow for selected period' : 
-            'Negative cash flow for selected period';
+        // Format dates for display
+        const startDate = new Date(this.startDate);
+        const endDate = new Date(this.endDate);
+        const formattedStartDate = startDate.toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+        const formattedEndDate = endDate.toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+        
+        // Update descriptive text with period information
+        const flowDescription = `Net Cash Flow between ${formattedStartDate} and ${formattedEndDate}`;
         flowTextEl.textContent = flowDescription;
         
         // Remove animation after a short delay
         setTimeout(() => {
             flowAmountEl.classList.remove('updating');
         }, 300);
+        
+        console.log('Net Cash Flow updated:', {
+            amount: netCashFlow,
+            formatted: formattedAmount,
+            period: `${formattedStartDate} to ${formattedEndDate}`
+        });
     }
 
     calculateMinimumBalance() {
@@ -665,19 +776,48 @@ class CashFlowPlanner {
         let minDate = null;
         let runningBalance = this.openingBalance;
         
-        for (const month of months) {
-            const monthlyFlow = this.calculateMonthlyFlow(month);
+        console.log('Calculating minimum balance:', {
+            openingBalance: this.openingBalance,
+            monthsCount: months.length,
+            dateRange: `${this.startDate} to ${this.endDate}`
+        });
+        
+        // Check if opening balance is the minimum
+        if (months.length === 0) {
+            return {
+                amount: minBalance,
+                date: new Date(this.startDate)
+            };
+        }
+        
+        // Iterate through each month to find minimum
+        months.forEach(monthKey => {
+            // Get cash flow data for this month
+            const capitalIn = this.cashFlowData.capital.inflows[monthKey] || 0;
+            const capitalOut = this.cashFlowData.capital.outflows[monthKey] || 0;
+            const operationalIn = this.cashFlowData.operational.inflows[monthKey] || 0;
+            const operationalOut = this.cashFlowData.operational.outflows[monthKey] || 0;
+            
+            const monthlyFlow = (capitalIn + operationalIn) - (capitalOut + operationalOut);
             runningBalance += monthlyFlow;
             
+            // Check if this is the new minimum
             if (runningBalance < minBalance) {
                 minBalance = runningBalance;
-                minDate = new Date(month.year, month.month - 1, 1);
+                // Parse month key to create date
+                const [year, month] = monthKey.split('-').map(Number);
+                minDate = new Date(year, month - 1, 1);
             }
-        }
+            
+            console.log(`Month ${monthKey}:`, {
+                capitalIn, capitalOut, operationalIn, operationalOut,
+                monthlyFlow, runningBalance, currentMin: minBalance
+            });
+        });
         
         return {
             amount: minBalance,
-            date: minDate
+            date: minDate || new Date(this.startDate)
         };
     }
 
@@ -685,41 +825,28 @@ class CashFlowPlanner {
         const months = this.getMonthsInRange();
         let totalFlow = 0;
         
-        for (const month of months) {
-            totalFlow += this.calculateMonthlyFlow(month);
-        }
+        console.log('Calculating net cash flow:', {
+            monthsCount: months.length,
+            cashFlowData: this.cashFlowData
+        });
         
+        months.forEach(monthKey => {
+            const capitalIn = this.cashFlowData.capital.inflows[monthKey] || 0;
+            const capitalOut = this.cashFlowData.capital.outflows[monthKey] || 0;
+            const operationalIn = this.cashFlowData.operational.inflows[monthKey] || 0;
+            const operationalOut = this.cashFlowData.operational.outflows[monthKey] || 0;
+            
+            const monthlyFlow = (capitalIn + operationalIn) - (capitalOut + operationalOut);
+            totalFlow += monthlyFlow;
+            
+            console.log(`Month ${monthKey} cash flow:`, {
+                capitalIn, capitalOut, operationalIn, operationalOut,
+                monthlyFlow, totalFlow
+            });
+        });
+        
+        console.log('Total net cash flow calculated:', totalFlow);
         return totalFlow;
-    }
-
-    calculateMonthlyFlow(month) {
-        let totalInflows = 0;
-        let totalOutflows = 0;
-        
-        const monthKey = `${month.year}-${String(month.month).padStart(2, '0')}`;
-        
-        // Iterate through cash flow data structure
-        for (const categoryKey in this.cashFlowData) {
-            const category = this.cashFlowData[categoryKey];
-            
-            // Check capital flows
-            if (category.capital && category.capital.inflows && category.capital.inflows[monthKey]) {
-                totalInflows += category.capital.inflows[monthKey];
-            }
-            if (category.capital && category.capital.outflows && category.capital.outflows[monthKey]) {
-                totalOutflows += category.capital.outflows[monthKey];
-            }
-            
-            // Check operational flows
-            if (category.operational && category.operational.inflows && category.operational.inflows[monthKey]) {
-                totalInflows += category.operational.inflows[monthKey];
-            }
-            if (category.operational && category.operational.outflows && category.operational.outflows[monthKey]) {
-                totalOutflows += category.operational.outflows[monthKey];
-            }
-        }
-        
-        return totalInflows - totalOutflows;
     }
 
     formatDate(date) {
@@ -903,6 +1030,10 @@ class CashFlowPlanner {
             td.classList.add('total-capital-cell');
         } else if (row && row.classList.contains('total-operational-flow')) {
             td.classList.add('total-operational-cell');
+        } else if (row && row.classList.contains('net-cash-flow')) {
+            td.classList.add('net-cash-flow-cell');
+        } else if (row && row.classList.contains('closing-balance')) {
+            td.classList.add('closing-balance-cell');
         }
         
         row.appendChild(td);
