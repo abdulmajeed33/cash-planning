@@ -103,6 +103,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadSupplierPayments()
     ]);
 
+    // Initialize the Cash Flow Planner component
+    try {
+        const cashFlowPlanner = new CashFlowPlanner();
+        await cashFlowPlanner.init();
+        
+        // Make it globally accessible
+        window.cashFlowPlanner = cashFlowPlanner;
+        
+        console.log('Cash Flow Planner initialized successfully');
+    } catch (error) {
+        console.error('Error initializing Cash Flow Planner:', error);
+    }
+
     // Listen for section changes from sidebar
     document.addEventListener('sectionChange', (e) => {
         const { section } = e.detail;

@@ -1,45 +1,153 @@
 /**
  * Cash Flow Planner Component
- * Handles cash flow planning dashboard functionality
+ * Integrates with the same database as the investment chart
  */
 
 class CashFlowPlanner {
     constructor() {
-        this.openingBalance = 50000000;
-        this.startDate = '2025-06-01';
-        this.endDate = '2025-08-31';
-        this.monthlyData = new Map();
-        this.cashFlowData = {
-            capital: { inflows: {}, outflows: {} },
-            operational: { inflows: {}, outflows: {} }
+        // Database configuration (same as investment chart)
+        this.DB_NAME = "investmentTracker";
+        this.DB_VERSION = 3;
+        this.STORES = {
+            investments: "investments",
+            lands: "lands", 
+            transactions: "transactions",
+            recurringPayments: "recurringPayments",
+            nonRecurringPayments: "nonRecurringPayments",
+            invoices: "invoices",
+            supplierPayments: "supplierPayments",
+            settings: "settings"
         };
         
-        this.init();
+        // Initialize state
+        this.db = null;
+        this.openingBalance = 50000; // Default opening balance
+        this.startDate = '2025-06-01';
+        this.endDate = '2025-08-31';
+        this.monthlyData = new Map(); // Initialize the monthly data Map
+        
+        // Initialize cash flow data structure properly
+        this.cashFlowData = {
+            capital: {
+                inflows: {},
+                outflows: {}
+            },
+            operational: {
+                inflows: {},
+                outflows: {}
+            }
+        };
+        
+        // Data arrays
+        this.investments = [];
+        this.lands = [];
+        this.transactions = [];
+        this.recurringPayments = [];
+        this.nonRecurringPayments = [];
+        this.invoices = [];
+        this.supplierPayments = [];
     }
 
     /**
-     * Initialize the Cash Flow Planner component
+     * Initialize the component
      */
-    init() {
+    async init() {
         console.log('Initializing Cash Flow Planner...');
         
-        // Initialize data
-        this.loadDataFromStorage();
-        
-        // Set up event listeners
-        this.initializeEventListeners();
-        
-        // Initial render
-        this.updateCalculations();
-        this.renderTable();
-        
-        console.log('Cash Flow Planner initialized successfully');
+        try {
+            // Initialize database connection
+            await this.initDatabase();
+            
+            // Load data from database
+            await this.loadDataFromStorage();
+            
+            // Set up event listeners
+            this.initializeEventListeners();
+            
+            // Initial render
+            this.updateCalculations();
+            this.renderTable();
+            
+            console.log('Cash Flow Planner initialized successfully');
+        } catch (error) {
+            console.error('Error initializing Cash Flow Planner:', error);
+            this.showError('Failed to initialize Cash Flow Planner');
+        }
+    }
+
+    /**
+     * Initialize database connection
+     */
+    async initDatabase() {
+        return new Promise((resolve, reject) => {
+            // Check if database is already available globally
+            if (window.db) {
+                this.db = window.db;
+                console.log("Using existing database connection");
+                resolve(this.db);
+                return;
+            }
+
+            // Check if database is available from main.js
+            if (typeof db !== 'undefined' && db) {
+                this.db = db;
+                window.db = this.db;
+                console.log("Using database connection from main.js");
+                resolve(this.db);
+                return;
+            }
+
+            // Create new database connection
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+
+            request.onerror = (event) => {
+                console.error("IndexedDB error:", event.target.error);
+                reject("Error opening database");
+            };
+
+            request.onsuccess = (event) => {
+                this.db = event.target.result;
+                window.db = this.db; // Make it globally available
+                console.log("Database connection established");
+                resolve(this.db);
+            };
+
+            request.onupgradeneeded = (event) => {
+                // Database schema should already be created by investment chart
+                console.log("Database schema already exists");
+            };
+        });
+    }
+
+    /**
+     * Generic function to get all data from a store
+     */
+    async getAllData(storeName) {
+        return new Promise((resolve, reject) => {
+            if (!this.db) {
+                reject("Database not initialized");
+                return;
+            }
+
+            const transaction = this.db.transaction([storeName], "readonly");
+            const store = transaction.objectStore(storeName);
+            const request = store.getAll();
+
+            request.onsuccess = (event) => {
+                resolve(event.target.result);
+            };
+
+            request.onerror = (event) => {
+                console.error(`Error fetching data from ${storeName}:`, event.target.error);
+                reject(event.target.error);
+            };
+        });
     }
 
     initializeEventListeners() {
         // Opening balance input
-        const balanceInput = document.getElementById('opening-balance');
-        const applyBalanceBtn = document.getElementById('apply-balance');
+        const balanceInput = document.getElementById('opening-balance-input');
+        const applyBalanceBtn = document.getElementById('apply-balance-btn');
         
         if (balanceInput && applyBalanceBtn) {
             // Real-time update on input
@@ -54,9 +162,9 @@ class CashFlowPlanner {
         }
         
         // Date range inputs
-        const startDateInput = document.getElementById('start-date');
-        const endDateInput = document.getElementById('end-date');
-        const applyDatesBtn = document.getElementById('apply-dates');
+        const startDateInput = document.getElementById('cf-start-date');
+        const endDateInput = document.getElementById('cf-end-date');
+        const applyDatesBtn = document.getElementById('apply-dates-btn');
         
         if (startDateInput && endDateInput && applyDatesBtn) {
             // Real-time date validation
@@ -76,8 +184,18 @@ class CashFlowPlanner {
 
         // Listen for section changes
         document.addEventListener('sectionChanged', (event) => {
-            this.handleSectionChange(event.detail.sectionId);
+            const sectionId = event.detail.section || event.detail.sectionId;
+            this.handleSectionChange(sectionId);
         });
+
+        // Also listen for the alternative event name for compatibility
+        document.addEventListener('sectionChange', (event) => {
+            const sectionId = event.detail.section || event.detail.sectionId;
+            this.handleSectionChange(sectionId);
+        });
+
+        // Setup data change listeners
+        this.setupDataChangeListeners();
 
         // Initialize with default values
         this.updateDisplay();
@@ -89,7 +207,7 @@ class CashFlowPlanner {
     }
 
     handleBalanceInput() {
-        const balanceInput = document.getElementById('opening-balance');
+        const balanceInput = document.getElementById('opening-balance-input');
         const card = document.querySelector('.opening-balance-card');
         
         // Visual feedback
@@ -111,7 +229,7 @@ class CashFlowPlanner {
     }
 
     applyOpeningBalance() {
-        const balanceInput = document.getElementById('opening-balance');
+        const balanceInput = document.getElementById('opening-balance-input');
         const value = parseFloat(balanceInput.value);
         
         if (isNaN(value) || value < 0) {
@@ -128,8 +246,8 @@ class CashFlowPlanner {
     }
 
     handleDateRangeInput() {
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
+        const startDate = document.getElementById('cf-start-date').value;
+        const endDate = document.getElementById('cf-end-date').value;
         const card = document.querySelector('.date-range-card');
         
         // Visual feedback
@@ -148,8 +266,8 @@ class CashFlowPlanner {
     }
 
     applyDateRange() {
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
+        const startDate = document.getElementById('cf-start-date').value;
+        const endDate = document.getElementById('cf-end-date').value;
         
         if (!startDate || !endDate) {
             this.showError('Please select both start and end dates');
@@ -171,56 +289,133 @@ class CashFlowPlanner {
     }
 
     /**
-     * Load data from localStorage (investments, lands, cash flows)
+     * Load data from IndexedDB storage
      */
-    loadDataFromStorage() {
+    async loadDataFromStorage() {
+        console.log('Loading data from storage...');
+        
         try {
-            // Load investment data
-            const investments = JSON.parse(localStorage.getItem('investments') || '[]');
-            const lands = JSON.parse(localStorage.getItem('lands') || '[]');
-            const recurringPayments = JSON.parse(localStorage.getItem('recurringPayments') || '[]');
-            const nonRecurringPayments = JSON.parse(localStorage.getItem('nonRecurringPayments') || '[]');
-            const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-            const suppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
-
-            // Clear existing data
-            this.cashFlowData = {
-                capital: { inflows: {}, outflows: {} },
-                operational: { inflows: {}, outflows: {} }
-            };
-
-            // Process capital cash flows (investments and lands)
-            this.processCapitalTransactions(investments, lands);
+            // Ensure database is connected before loading data
+            if (!this.db) {
+                console.log('Database not connected, initializing...');
+                await this.initDatabase();
+            }
             
-            // Process operational cash flows
-            this.processOperationalCashFlows(recurringPayments, nonRecurringPayments, invoices, suppliers);
+            // Double-check that database is now available
+            if (!this.db) {
+                throw new Error('Database initialization failed');
+            }
+            
+            // Load all data types in parallel
+            const [
+                investments,
+                lands,
+                transactions,
+                recurringPayments,
+                nonRecurringPayments,
+                invoices,
+                supplierPayments
+            ] = await Promise.all([
+                this.getAllData(this.STORES.investments),
+                this.getAllData(this.STORES.lands),
+                this.getAllData(this.STORES.transactions),
+                this.getAllData(this.STORES.recurringPayments),
+                this.getAllData(this.STORES.nonRecurringPayments),
+                this.getAllData(this.STORES.invoices),
+                this.getAllData(this.STORES.supplierPayments)
+            ]);
+            
+            // Store data in class properties
+            this.investments = investments || [];
+            this.lands = lands || [];
+            this.transactions = transactions || [];
+            this.recurringPayments = recurringPayments || [];
+            this.nonRecurringPayments = nonRecurringPayments || [];
+            this.invoices = invoices || [];
+            this.supplierPayments = supplierPayments || [];
+            
+            console.log('Data loaded successfully:', {
+                investments: this.investments.length,
+                lands: this.lands.length,
+                transactions: this.transactions.length,
+                recurringPayments: this.recurringPayments.length,
+                nonRecurringPayments: this.nonRecurringPayments.length,
+                invoices: this.invoices.length,
+                supplierPayments: this.supplierPayments.length
+            });
+            
+            // Process the loaded data into cash flow format
+            this.processCashFlowData();
             
         } catch (error) {
             console.error('Error loading data from storage:', error);
+            this.showError('Failed to load data from database');
+            throw error;
         }
     }
 
     /**
-     * Process capital transactions (investments and lands)
+     * Process all data into cash flow format
      */
-    processCapitalTransactions(investments, lands) {
-        // Process investments
-        investments.forEach(investment => {
-            const monthKey = this.getMonthKey(new Date());
-            const cashInvestment = parseFloat(investment.cashInvestment) || 0;
-            
-            if (cashInvestment > 0) {
-                this.addCashFlow('capital', 'outflows', monthKey, cashInvestment);
+    processCashFlowData() {
+        console.log('Processing cash flow data...');
+        
+        // Initialize cash flow data structure
+        this.cashFlowData = {
+            capital: {
+                inflows: {},
+                outflows: {}
+            },
+            operational: {
+                inflows: {},
+                outflows: {}
             }
-        });
-
-        // Process lands
-        lands.forEach(land => {
-            const monthKey = this.getMonthKey(new Date());
-            const cashInjection = parseFloat(land.cashInjection) || 0;
+        };
+        
+        try {
+            // Process capital transactions
+            this.processCapitalTransactions();
             
-            if (cashInjection > 0) {
-                this.addCashFlow('capital', 'outflows', monthKey, cashInjection);
+            // Process operational cash flows
+            this.processOperationalCashFlows();
+            
+            console.log('Cash flow data processed successfully:', this.cashFlowData);
+        } catch (error) {
+            console.error('Error processing cash flow data:', error);
+            // Ensure we still have a valid structure even if processing fails
+            this.cashFlowData = {
+                capital: {
+                    inflows: {},
+                    outflows: {}
+                },
+                operational: {
+                    inflows: {},
+                    outflows: {}
+                }
+            };
+        }
+    }
+
+    /**
+     * Process capital transactions from investments and lands
+     */
+    processCapitalTransactions() {
+        // Process investment and land transactions
+        this.transactions.forEach(transaction => {
+            const date = new Date(transaction.transaction_date);
+            const monthKey = this.getMonthKey(date);
+            
+            // Only process transactions within date range
+            if (this.isDateInRange(date)) {
+                const amount = Math.abs(parseFloat(transaction.amount));
+                
+                if (transaction.transaction_type === 'buy') {
+                    // Buy transactions are capital outflows
+                    this.addCashFlow('capital', 'outflows', monthKey, amount);
+                } else if (transaction.transaction_type === 'sale') {
+                    // Sale transactions are capital inflows
+                    this.addCashFlow('capital', 'inflows', monthKey, amount);
+                }
             }
         });
     }
@@ -228,54 +423,98 @@ class CashFlowPlanner {
     /**
      * Process operational cash flows
      */
-    processOperationalCashFlows(recurring, nonRecurring, invoices, suppliers) {
+    processOperationalCashFlows() {
         // Process recurring payments
-        recurring.forEach(payment => {
-            const amount = parseFloat(payment.amount) || 0;
-            this.distributeRecurringPayment(amount, parseInt(payment.dayOfMonth));
-        });
-
-        // Process non-recurring payments
-        nonRecurring.forEach(payment => {
-            const amount = parseFloat(payment.amount) || 0;
-            const monthKey = this.getMonthKey(new Date(payment.paymentDate));
-            this.addCashFlow('operational', 'outflows', monthKey, amount);
-        });
-
-        // Process invoices (inflows)
-        invoices.forEach(invoice => {
-            const amount = parseFloat(invoice.amount) || 0;
-            const monthKey = this.getMonthKey(new Date(invoice.paymentDueDate));
-            this.addCashFlow('operational', 'inflows', monthKey, amount);
-        });
-
-        // Process supplier payments (outflows)
-        suppliers.forEach(supplier => {
-            const amount = parseFloat(supplier.amount) || 0;
-            const monthKey = this.getMonthKey(new Date(supplier.paymentDueDate));
-            this.addCashFlow('operational', 'outflows', monthKey, amount);
-        });
-    }
-
-    /**
-     * Distribute recurring payments across months in the date range
-     */
-    distributeRecurringPayment(amount, dayOfMonth) {
-        const months = this.getMonthsInRange();
+        this.processRecurringPayments();
         
-        months.forEach(monthKey => {
-            this.addCashFlow('operational', 'outflows', monthKey, amount);
+        // Process non-recurring payments
+        this.nonRecurringPayments.forEach(payment => {
+            const date = new Date(payment.payment_date);
+            if (this.isDateInRange(date)) {
+                const monthKey = this.getMonthKey(date);
+                const amount = parseFloat(payment.amount);
+                this.addCashFlow('operational', 'outflows', monthKey, amount);
+            }
+        });
+        
+        // Process invoices (incoming cash)
+        this.invoices.forEach(invoice => {
+            const date = new Date(invoice.due_date);
+            if (this.isDateInRange(date)) {
+                const monthKey = this.getMonthKey(date);
+                const amount = parseFloat(invoice.amount);
+                this.addCashFlow('operational', 'inflows', monthKey, amount);
+            }
+        });
+        
+        // Process supplier payments (outgoing cash)
+        this.supplierPayments.forEach(payment => {
+            const date = new Date(payment.due_date);
+            if (this.isDateInRange(date)) {
+                const monthKey = this.getMonthKey(date);
+                const amount = parseFloat(payment.amount);
+                this.addCashFlow('operational', 'outflows', monthKey, amount);
+            }
         });
     }
 
     /**
-     * Add cash flow to the data structure
+     * Process recurring payments for the date range
+     */
+    processRecurringPayments() {
+        this.recurringPayments.forEach(payment => {
+            const dayOfMonth = parseInt(payment.day_of_month);
+            const amount = parseFloat(payment.amount);
+            
+            // Generate instances for each month in the date range
+            let currentDate = new Date(this.startDate);
+            const endDate = new Date(this.endDate);
+            
+            while (currentDate <= endDate) {
+                // Create payment date for this month
+                const paymentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayOfMonth);
+                
+                // Handle month-end scenarios
+                const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+                if (dayOfMonth > lastDayOfMonth) {
+                    paymentDate.setDate(lastDayOfMonth);
+                }
+                
+                if (paymentDate >= new Date(this.startDate) && paymentDate <= endDate) {
+                    const monthKey = this.getMonthKey(paymentDate);
+                    this.addCashFlow('operational', 'outflows', monthKey, amount);
+                }
+                
+                // Move to next month
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+        });
+    }
+
+    /**
+     * Add cash flow entry
      */
     addCashFlow(type, direction, monthKey, amount) {
+        if (!this.cashFlowData[type]) {
+            this.cashFlowData[type] = { inflows: {}, outflows: {} };
+        }
+        if (!this.cashFlowData[type][direction]) {
+            this.cashFlowData[type][direction] = {};
+        }
         if (!this.cashFlowData[type][direction][monthKey]) {
             this.cashFlowData[type][direction][monthKey] = 0;
         }
+        
         this.cashFlowData[type][direction][monthKey] += amount;
+    }
+
+    /**
+     * Check if date is in range
+     */
+    isDateInRange(date) {
+        const startDate = new Date(this.startDate);
+        const endDate = new Date(this.endDate);
+        return date >= startDate && date <= endDate;
     }
 
     /**
@@ -736,13 +975,82 @@ class CashFlowPlanner {
         };
     }
 
-    handleSectionChange(sectionId) {
+    async handleSectionChange(sectionId) {
         if (sectionId === 'cash-flow-planner') {
-            // Refresh the display when switching to cash flow planner
-            setTimeout(() => {
-                this.updateDisplay();
-            }, 100);
+            console.log('Cash Flow Planner section activated');
+            try {
+                // Ensure database is connected
+                if (!this.db) {
+                    await this.initDatabase();
+                }
+                
+                // Refresh data and display
+                await this.refreshData();
+            } catch (error) {
+                console.error('Error activating Cash Flow Planner:', error);
+                this.showError('Failed to load Cash Flow Planner data');
+            }
         }
+    }
+
+    /**
+     * Refresh data from database
+     */
+    async refreshData() {
+        console.log('Refreshing Cash Flow Planner data...');
+        
+        try {
+            // Ensure database connection is available
+            if (!this.db) {
+                console.log('Database connection not found, attempting to reconnect...');
+                await this.initDatabase();
+            }
+            
+            // Load data from storage
+            await this.loadDataFromStorage();
+            
+            // Update calculations
+            this.updateCalculations();
+            
+            // Re-render the table
+            this.renderTable();
+            
+            // Update display cards
+            this.updateDisplay();
+            
+            console.log('Cash Flow Planner data refreshed successfully');
+            
+        } catch (error) {
+            console.error('Error refreshing Cash Flow Planner data:', error);
+            this.showError('Failed to refresh cash flow data. Please try again.');
+        }
+    }
+
+    /**
+     * Listen for data changes from other components
+     */
+    setupDataChangeListeners() {
+        // Listen for database changes
+        document.addEventListener('dataUpdated', async () => {
+            console.log('Data updated, refreshing cash flow planner');
+            await this.refreshData();
+        });
+
+        // Listen for form submissions from the data entry section
+        const forms = ['investment-form', 'land-form', 'recurring-payment-form', 
+                      'nonrecurring-payment-form', 'invoice-form', 'supplier-form'];
+        
+        forms.forEach(formId => {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.addEventListener('submit', async () => {
+                    // Small delay to ensure data is saved first
+                    setTimeout(async () => {
+                        await this.refreshData();
+                    }, 500);
+                });
+            }
+        });
     }
 }
 
