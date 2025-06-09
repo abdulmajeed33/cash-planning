@@ -1624,7 +1624,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .append("input")
         .attr("type", "checkbox")
         .attr("id", "enable-amount-filter")
-        .property("checked", true) // Set checked by default
+        .property("checked", true) // Default checked state
         .style("margin", "0");
 
     enableFilterRow
@@ -2192,6 +2192,19 @@ document.addEventListener("DOMContentLoaded", function () {
       initTransactionModal();
     }
 
+    // Preserve filter control values before clearing
+    const existingMinInput = document.getElementById("min-amount");
+    const existingMaxInput = document.getElementById("max-amount");
+    const existingCheckbox = document.getElementById("enable-amount-filter");
+    
+    const preservedValues = {
+      minValue: existingMinInput ? existingMinInput.value : "",
+      maxValue: existingMaxInput ? existingMaxInput.value : "",
+      checkboxState: existingCheckbox ? existingCheckbox.checked : true
+    };
+    
+    console.log("Preserving values before redraw:", preservedValues);
+
     // First fully clear the investment chart to ensure complete redraw
     const investmentChart = d3.select("#investment-chart");
 
@@ -2223,8 +2236,34 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Force a small delay to ensure DOM cleanup is complete
     setTimeout(() => {
-    // Then redraw the chart
-    drawInvestmentChart();
+      // Then redraw the chart
+      drawInvestmentChart();
+      
+      // Restore the preserved values after chart is drawn
+      setTimeout(() => {
+        const minInput = document.getElementById("min-amount");
+        const maxInput = document.getElementById("max-amount");
+        const checkbox = document.getElementById("enable-amount-filter");
+        
+        if (minInput && preservedValues.minValue !== "") {
+          minInput.value = preservedValues.minValue;
+          // Trigger input event to ensure any listeners are notified
+          minInput.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log("Restored min value:", preservedValues.minValue);
+        }
+        if (maxInput && preservedValues.maxValue !== "") {
+          maxInput.value = preservedValues.maxValue;
+          // Trigger input event to ensure any listeners are notified
+          maxInput.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log("Restored max value:", preservedValues.maxValue);
+        }
+        if (checkbox) {
+          checkbox.checked = preservedValues.checkboxState;
+          // Trigger change event to ensure any listeners are notified
+          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          console.log("Restored checkbox state:", preservedValues.checkboxState);
+        }
+      }, 100); // Longer delay to ensure all DOM operations are complete
     }, 10);
   }
 
@@ -2295,7 +2334,7 @@ document.addEventListener("DOMContentLoaded", function () {
   async function initInvestmentChart() {
     try {
       // Show loading indicator
-      const investmentChart = d3.select("#investment-chart");
+    const investmentChart = d3.select("#investment-chart");
       investmentChart.html(
         '<div class="loading-indicator">Loading investment data...</div>'
       );
