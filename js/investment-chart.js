@@ -1295,9 +1295,18 @@ document.addEventListener("DOMContentLoaded", function () {
       .style("font-size", "16px")
       .style("font-weight", "600");
 
+    // Create flex container for side-by-side toggles
+    const togglesRow = toggleContainer
+      .append("div")
+      .attr("class", "toggles-row")
+      .style("display", "flex")
+      .style("gap", "30px")
+      .style("flex-wrap", "wrap")
+      .style("align-items", "flex-start");
+
     // Create capital transactions toggle
     const capitalToggle = createToggleSwitch(
-      toggleContainer,
+      togglesRow,
       "capital-toggle", 
       "Capital Transactions",
       "📈 Investments & Land (Purchases & Sales)",
@@ -1307,7 +1316,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create operational transactions toggle
     const operationalToggle = createToggleSwitch(
-      toggleContainer,
+      togglesRow,
       "operational-toggle", 
       "Operational Transactions",
       "💼 Cash Flow (Payments & Invoices)",
@@ -1344,8 +1353,10 @@ document.addEventListener("DOMContentLoaded", function () {
       .append("div")
       .attr("class", "toggle-group")
       .style("display", "flex")
-      .style("align-items", "center")
-      .style("gap", "10px");
+      .style("align-items", "flex-start")
+      .style("gap", "12px")
+      .style("min-width", "200px")
+      .style("flex", "1");
 
     // Create toggle switch HTML
     const toggleHtml = `
@@ -1363,21 +1374,24 @@ document.addEventListener("DOMContentLoaded", function () {
     // Add labels
     const labelContainer = toggleGroup
       .append("div")
-      .attr("class", "toggle-text");
+      .attr("class", "toggle-text")
+      .style("flex", "1");
 
     labelContainer
       .append("div")
       .attr("class", "toggle-main-label")
       .style("font-weight", "600")
       .style("color", "#212529")
-      .style("font-size", "13px")
+      .style("font-size", "14px")
+      .style("margin-bottom", "4px")
       .text(label);
 
     labelContainer
       .append("div")
       .attr("class", "toggle-description")
-      .style("font-size", "11px")
+      .style("font-size", "12px")
       .style("color", "#6c757d")
+      .style("line-height", "1.3")
       .text(description);
 
     // Add event listener
@@ -1404,11 +1418,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const styles = `
       <style id="toggle-switch-styles">
+        .toggles-row {
+          display: flex !important;
+          gap: 30px !important;
+          flex-wrap: wrap !important;
+          align-items: flex-start !important;
+        }
+
+        .toggle-group {
+          display: flex !important;
+          align-items: flex-start !important;
+          gap: 12px !important;
+          min-width: 200px !important;
+          flex: 1 !important;
+          padding: 8px 12px;
+          border-radius: 8px;
+          transition: background-color 0.2s ease;
+        }
+
+        .toggle-group:hover {
+          background-color: #f8f9fa;
+        }
+
         .toggle-switch {
           position: relative;
           display: inline-block;
           width: 44px;
           height: 24px;
+          flex-shrink: 0;
+          margin-top: 2px;
         }
 
         .toggle-switch input {
@@ -1452,6 +1490,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
         .toggle-group:hover .toggle-label {
           box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+
+        .toggle-text {
+          flex: 1 !important;
+        }
+
+        .toggle-main-label {
+          font-weight: 600 !important;
+          color: #212529 !important;
+          font-size: 14px !important;
+          margin-bottom: 4px !important;
+        }
+
+        .toggle-description {
+          font-size: 12px !important;
+          color: #6c757d !important;
+          line-height: 1.3 !important;
+        }
+
+        /* Responsive behavior for smaller screens */
+        @media (max-width: 768px) {
+          .toggles-row {
+            flex-direction: column !important;
+            gap: 15px !important;
+          }
+          
+          .toggle-group {
+            min-width: auto !important;
+          }
         }
       </style>
     `;
