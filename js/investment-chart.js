@@ -2234,37 +2234,28 @@ document.addEventListener("DOMContentLoaded", function () {
       window.cashFlowTimelineInstance = null;
     }
 
-    // Force a small delay to ensure DOM cleanup is complete
-    setTimeout(() => {
-      // Then redraw the chart
-      drawInvestmentChart();
+    // Redraw the chart immediately
+    drawInvestmentChart();
+    
+    // Restore the preserved values with minimal delay
+    requestAnimationFrame(() => {
+      const minInput = document.getElementById("min-amount");
+      const maxInput = document.getElementById("max-amount");
+      const checkbox = document.getElementById("enable-amount-filter");
       
-      // Restore the preserved values after chart is drawn
-      setTimeout(() => {
-        const minInput = document.getElementById("min-amount");
-        const maxInput = document.getElementById("max-amount");
-        const checkbox = document.getElementById("enable-amount-filter");
-        
-        if (minInput && preservedValues.minValue !== "") {
-          minInput.value = preservedValues.minValue;
-          // Trigger input event to ensure any listeners are notified
-          minInput.dispatchEvent(new Event('input', { bubbles: true }));
-          console.log("Restored min value:", preservedValues.minValue);
-        }
-        if (maxInput && preservedValues.maxValue !== "") {
-          maxInput.value = preservedValues.maxValue;
-          // Trigger input event to ensure any listeners are notified
-          maxInput.dispatchEvent(new Event('input', { bubbles: true }));
-          console.log("Restored max value:", preservedValues.maxValue);
-        }
-        if (checkbox) {
-          checkbox.checked = preservedValues.checkboxState;
-          // Trigger change event to ensure any listeners are notified
-          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-          console.log("Restored checkbox state:", preservedValues.checkboxState);
-        }
-      }, 100); // Longer delay to ensure all DOM operations are complete
-    }, 10);
+      if (minInput && preservedValues.minValue !== "") {
+        minInput.value = preservedValues.minValue;
+        console.log("Restored min value:", preservedValues.minValue);
+      }
+      if (maxInput && preservedValues.maxValue !== "") {
+        maxInput.value = preservedValues.maxValue;
+        console.log("Restored max value:", preservedValues.maxValue);
+      }
+      if (checkbox) {
+        checkbox.checked = preservedValues.checkboxState;
+        console.log("Restored checkbox state:", preservedValues.checkboxState);
+      }
+    });
   }
 
   // Expose the updateInvestmentVisualization function to the global scope
