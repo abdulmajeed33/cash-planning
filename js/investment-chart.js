@@ -1249,86 +1249,296 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   /**
-   * Creates transaction type toggle controls
-  /**
-   * Adds switches to show/hide capital and operational transactions
+   * Initialize chart sidebar controls
+   * Moves all chart controls to the dedicated sidebar
    */
-  function addTransactionTypeToggles() {
-    const timelineEl = d3.select("#investment-chart");
-    
-    if (!timelineEl.node()) {
-      console.warn("Investment chart element not found, skipping toggle creation");
+  function initializeChartSidebar() {
+    // Check if chart sidebar is available
+    if (!window.chartSidebarManager) {
+      console.warn("Chart sidebar manager not available");
       return;
     }
 
-    // Remove any existing filter controls first
-    timelineEl.selectAll("*").remove();
+    // Clear existing controls
+    window.chartSidebarManager.clearControls();
 
-    // Add CSS styles if not already added
-    addToggleSwitchStyles();
+    // Add event listener for chart options button
+    const chartOptionsBtn = document.getElementById('chart-options-btn');
+    if (chartOptionsBtn) {
+      chartOptionsBtn.addEventListener('click', () => {
+        window.chartSidebarManager.openSidebar();
+      });
+    }
 
-    // Create a wrapper container for all filter controls
-    const filtersWrapper = timelineEl
-      .append("div")
-      .attr("class", "filters-wrapper")
-      .style("position", "relative")
-      .style("z-index", "10")
-      .style("margin-bottom", "40px")
-      .style("padding", "20px")
-      .style("background", "#ffffff")
-      .style("border-radius", "12px")
-      .style("box-shadow", "0 2px 8px rgba(0,0,0,0.1)")
-      .style("border", "1px solid #e9ecef");
+    // Add all control sections to the sidebar
+    addSidebarTransactionTypeToggles();
+    addSidebarItemInclusionFilterControls();
+    addSidebarAmountFilterControls();
+  }
 
-    // Create container for the toggle controls
-    const toggleContainer = filtersWrapper
-      .append("div")
-      .attr("class", "transaction-type-toggles")
-      .style("margin-bottom", "20px");
+  /**
+   * Adds transaction type toggles to the chart sidebar
+   */
+  function addSidebarTransactionTypeToggles() {
+    if (!window.chartSidebarManager) return;
 
-    // Add title
-    toggleContainer
-      .append("h4")
-      .text("Transaction Types:")
-      .style("margin", "0 0 15px 0")
-      .style("color", "#495057")
-      .style("font-size", "16px")
-      .style("font-weight", "600");
+    const container = window.chartSidebarManager.getContainer();
+    if (!container) return;
 
-    // Create flex container for side-by-side toggles
-    const togglesRow = toggleContainer
-      .append("div")
-      .attr("class", "toggles-row")
-      .style("display", "flex")
-      .style("gap", "30px")
-      .style("flex-wrap", "wrap")
-      .style("align-items", "flex-start");
+    // Create toggle section
+    const section = window.chartSidebarManager.addControlSection(
+      'transaction-toggles-section',
+      'Transaction Types',
+      'Show/hide capital and operational transactions'
+    );
+
+    // Create toggles container
+    const togglesContainer = document.createElement('div');
+    togglesContainer.className = 'toggles-row';
 
     // Create capital transactions toggle
-    const capitalToggle = createToggleSwitch(
-      togglesRow,
-      "capital-toggle", 
-      "Capital Transactions",
-      "📈 Investments & Land (Purchases & Sales)",
-      showCapitalTransactions,
-      onCapitalToggleChange
-    );
+    const capitalToggleHtml = `
+      <div class="toggle-group">
+        <div class="toggle-switch">
+          <input type="checkbox" id="capital-toggle" ${showCapitalTransactions ? 'checked' : ''}>
+          <label for="capital-toggle" class="toggle-label">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-text">
+          <div class="toggle-main-label">Capital Transactions</div>
+          <div class="toggle-description">📈 Investments & Land (Purchases & Sales)</div>
+        </div>
+      </div>
+    `;
 
     // Create operational transactions toggle
-    const operationalToggle = createToggleSwitch(
-      togglesRow,
-      "operational-toggle", 
-      "Operational Transactions",
-      "💼 Cash Flow (Payments & Invoices)",
-      showOperationalTransactions,
-      onOperationalToggleChange
+    const operationalToggleHtml = `
+      <div class="toggle-group">
+        <div class="toggle-switch">
+          <input type="checkbox" id="operational-toggle" ${showOperationalTransactions ? 'checked' : ''}>
+          <label for="operational-toggle" class="toggle-label">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-text">
+          <div class="toggle-main-label">Operational Transactions</div>
+          <div class="toggle-description">💼 Cash Flow (Payments & Invoices)</div>
+        </div>
+      </div>
+    `;
+
+    togglesContainer.innerHTML = capitalToggleHtml + operationalToggleHtml;
+    section.appendChild(togglesContainer);
+
+    // Add event listeners
+    document.getElementById('capital-toggle').addEventListener('change', function() {
+      onCapitalToggleChange(this.checked);
+    });
+
+    document.getElementById('operational-toggle').addEventListener('change', function() {
+      onOperationalToggleChange(this.checked);
+    });
+
+    // Add toggle switch styles
+    addToggleSwitchStyles();
+  }
+
+  /**
+   * Adds item inclusion filter controls to the chart sidebar
+   */
+  function addSidebarItemInclusionFilterControls() {
+    if (!window.chartSidebarManager) return;
+
+    const section = window.chartSidebarManager.addControlSection(
+      'item-inclusion-section',
+      'Item Filter',
+      'Select which transaction types to include in the displays'
     );
 
-    // Add item inclusion filter controls after the toggles
-    addItemInclusionFilterControls();
-    
-    // Add amount filter controls after the item inclusion filter
-    addAmountFilterControls();
+    // Create categories grid
+    const categoriesGrid = document.createElement('div');
+    categoriesGrid.className = 'categories-grid';
+
+    // Capital transactions column
+    const capitalColumn = document.createElement('div');
+    capitalColumn.className = 'category-column';
+    capitalColumn.innerHTML = `
+      <h6>📈 Capital Transactions</h6>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-fund-investments" class="item-inclusion-checkbox" ${itemInclusionFilter.fundInvestments ? 'checked' : ''}>
+        <label for="item-fund-investments">Fund Investments</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-land-investments" class="item-inclusion-checkbox" ${itemInclusionFilter.landInvestments ? 'checked' : ''}>
+        <label for="item-land-investments">Land Investments</label>
+      </div>
+    `;
+
+    // Operational transactions column
+    const operationalColumn = document.createElement('div');
+    operationalColumn.className = 'category-column';
+    operationalColumn.innerHTML = `
+      <h6>💼 Operational Transactions</h6>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-recurring-payments" class="item-inclusion-checkbox" ${itemInclusionFilter.recurringPayments ? 'checked' : ''}>
+        <label for="item-recurring-payments">Recurring Payments</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-non-recurring-payments" class="item-inclusion-checkbox" ${itemInclusionFilter.nonRecurringPayments ? 'checked' : ''}>
+        <label for="item-non-recurring-payments">Non-Recurring Payments</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-invoices" class="item-inclusion-checkbox" ${itemInclusionFilter.invoices ? 'checked' : ''}>
+        <label for="item-invoices">Invoices</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="item-supplier-payments" class="item-inclusion-checkbox" ${itemInclusionFilter.supplierPayments ? 'checked' : ''}>
+        <label for="item-supplier-payments">Supplier Payments</label>
+      </div>
+    `;
+
+    categoriesGrid.appendChild(capitalColumn);
+    categoriesGrid.appendChild(operationalColumn);
+    section.appendChild(categoriesGrid);
+
+    // Add buttons
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.innerHTML = `
+      <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+        <button id="apply-item-filter" class="btn btn-primary">Apply Filter</button>
+        <button id="reset-item-filter" class="btn btn-secondary">Reset</button>
+        <div class="quick-select-buttons">
+          <button class="btn btn-outline-secondary" onclick="selectAllItemInclusions(true)">All</button>
+          <button class="btn btn-outline-secondary" onclick="selectAllItemInclusions(false)">None</button>
+          <button class="btn btn-outline-secondary" onclick="selectOperationalItemsOnly()">Operational</button>
+        </div>
+      </div>
+    `;
+    section.appendChild(buttonsDiv);
+
+    // Add event listeners
+    setupItemInclusionFilterEventListeners();
+  }
+
+  /**
+   * Adds amount filter controls to the chart sidebar
+   */
+  function addSidebarAmountFilterControls() {
+    if (!window.chartSidebarManager) return;
+
+    const section = window.chartSidebarManager.addControlSection(
+      'amount-filter-section',
+      'Amount Range Filter',
+      'Filter timeline visibility by amount range (affects timelines only, not combined chart)'
+    );
+
+    // Create filter enable checkbox
+    const enableFilterDiv = document.createElement('div');
+    enableFilterDiv.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+        <input type="checkbox" id="enable-amount-filter" ${true ? 'checked' : ''}>
+        <label for="enable-amount-filter" style="font-weight: 500; font-size: 13px;">Enable Amount Filter</label>
+      </div>
+    `;
+    section.appendChild(enableFilterDiv);
+
+    // Create amount inputs
+    const amountInputsDiv = document.createElement('div');
+    amountInputsDiv.className = 'amount-inputs-row';
+    amountInputsDiv.innerHTML = `
+      <div>
+        <label for="min-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Min Amount ($)</label>
+        <input type="number" id="min-amount" min="0" value="0" class="form-control">
+      </div>
+      <div>
+        <label for="max-amount" style="font-size: 12px; color: #495057; font-weight: 500;">Max Amount ($)</label>
+        <input type="number" id="max-amount" min="0" placeholder="No maximum" class="form-control">
+      </div>
+    `;
+    section.appendChild(amountInputsDiv);
+
+    // Create buttons
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.innerHTML = `
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="apply-amount-filter" class="btn btn-primary">Apply Filter</button>
+        <button id="reset-amount-filter" class="btn btn-secondary">Reset</button>
+      </div>
+    `;
+    section.appendChild(buttonsDiv);
+
+    // Add event listeners
+    setupAmountFilterEventListeners();
+  }
+
+  /**
+   * Adds date range controls to the chart sidebar
+   */
+  function addSidebarDateRangeControls() {
+    if (!window.chartSidebarManager) return;
+
+    const section = window.chartSidebarManager.addControlSection(
+      'date-range-section',
+      'Date Range',
+      'Set the time period for chart display'
+    );
+
+    // Create date range controls
+    const dateRangeDiv = document.createElement('div');
+    dateRangeDiv.className = 'date-range-controls';
+
+    // Get current date values from main form
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const currentStartDate = startDateInput ? startDateInput.value : '';
+    const currentEndDate = endDateInput ? endDateInput.value : '';
+
+    dateRangeDiv.innerHTML = `
+      <div class="date-input-group">
+        <label for="sidebar-start-date">Start Date</label>
+        <input type="date" id="sidebar-start-date" class="form-control" value="${currentStartDate}">
+      </div>
+      <div class="date-input-group">
+        <label for="sidebar-end-date">End Date</label>
+        <input type="date" id="sidebar-end-date" class="form-control" value="${currentEndDate}">
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="sidebar-apply-dates" class="btn btn-primary">Apply Dates</button>
+      </div>
+      <div class="quick-date-buttons">
+        <button class="btn btn-outline-secondary" onclick="set1Month()">1 Month</button>
+        <button class="btn btn-outline-secondary" onclick="set3Months()">3 Months</button>
+        <button class="btn btn-outline-secondary" onclick="set6Months()">6 Months</button>
+        <button class="btn btn-outline-secondary" onclick="set1Year()">1 Year</button>
+      </div>
+    `;
+    section.appendChild(dateRangeDiv);
+
+    // Add event listener for apply dates
+    document.getElementById('sidebar-apply-dates').addEventListener('click', () => {
+      const sidebarStartDate = document.getElementById('sidebar-start-date').value;
+      const sidebarEndDate = document.getElementById('sidebar-end-date').value;
+      
+      // Update main form inputs
+      if (startDateInput) startDateInput.value = sidebarStartDate;
+      if (endDateInput) endDateInput.value = sidebarEndDate;
+      
+      // Trigger the main date update
+      updateDateRange();
+    });
+
+    // Sync sidebar inputs with main form
+    if (startDateInput) {
+      startDateInput.addEventListener('change', () => {
+        document.getElementById('sidebar-start-date').value = startDateInput.value;
+      });
+    }
+    if (endDateInput) {
+      endDateInput.addEventListener('change', () => {
+        document.getElementById('sidebar-end-date').value = endDateInput.value;
+      });
+    }
   }
 
   /**
@@ -2372,8 +2582,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Function to draw the investment chart
   function drawInvestmentChart() {
-    // Add transaction type toggles and filter controls first
-    addTransactionTypeToggles();
+    // Initialize chart sidebar controls first
+    initializeChartSidebar();
     
     // Clear all containers
     const filterStatusContainer = d3.select("#filter-status-container");

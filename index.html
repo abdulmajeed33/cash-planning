@@ -51,6 +51,21 @@
         </nav>
       </aside>
 
+      <!-- Chart Options Sidebar -->
+      <aside class="chart-sidebar" id="chart-sidebar">
+        <div class="chart-sidebar-header">
+          <h3>Chart Options</h3>
+          <button class="chart-sidebar-close" id="chart-sidebar-close">
+            <span class="close-icon">✕</span>
+          </button>
+        </div>
+        
+        <div class="chart-sidebar-content" id="chart-sidebar-content">
+          <!-- Chart controls will be populated here by JavaScript -->
+          <div id="chart-controls-container"></div>
+        </div>
+      </aside>
+
       <!-- Main Content Area -->
       <main class="main-content">
         <!-- Data Entry Section -->
@@ -398,6 +413,9 @@
                         <label for="opening-balance" style="margin-right: 8px; font-weight: 500; white-space: nowrap;">Opening Cash Balance:</label>
                         <input type="number" id="opening-balance" placeholder="Enter amount" value="50000" style="margin-right: 8px;">
                         <button id="apply-opening-balance">Apply</button>
+                        <button id="chart-options-btn" style="margin-left: 12px; background-color: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+                          ⚙️ Chart Options
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -589,6 +607,7 @@
     </div>
 
     <script src="js/components/sidebar.js"></script>
+    <script src="js/components/chart-sidebar.js"></script>
     <script src="js/main.js"></script>
     <script src="./js/components/investment-timeline.js"></script>
     <script src="./js/components/cashflow-timeline.js"></script>

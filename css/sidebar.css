@@ -352,4 +352,293 @@
     margin-left: 0;
     padding: 0;
   }
+}
+
+/* Chart Options Sidebar */
+.chart-sidebar {
+  position: fixed;
+  top: 0;
+  right: -350px; /* Initially hidden off-screen */
+  width: 350px;
+  height: 100vh;
+  background: #ffffff;
+  border-left: 1px solid #e9ecef;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chart-sidebar.open {
+  right: 0;
+}
+
+.chart-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.chart-sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.chart-sidebar-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-sidebar-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.chart-sidebar-close .close-icon {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.chart-sidebar-content {
+  padding: 20px;
+}
+
+/* Chart controls styling */
+.chart-controls-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.chart-controls-section h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.chart-controls-section p {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+/* Toggle switches in sidebar */
+.chart-sidebar .toggles-row {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chart-sidebar .toggle-group {
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.chart-sidebar .toggle-group:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+/* Form controls in sidebar */
+.chart-sidebar .form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.chart-sidebar .form-control:focus {
+  border-color: #007bff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.chart-sidebar .btn {
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.chart-sidebar .btn-primary {
+  color: #fff;
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.chart-sidebar .btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #004085;
+}
+
+.chart-sidebar .btn-secondary {
+  color: #6c757d;
+  background-color: #fff;
+  border-color: #6c757d;
+}
+
+.chart-sidebar .btn-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+}
+
+.chart-sidebar .btn-outline-secondary {
+  color: #6c757d;
+  background-color: transparent;
+  border-color: #6c757d;
+}
+
+.chart-sidebar .btn-outline-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* Date range controls */
+.chart-sidebar .date-range-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chart-sidebar .date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chart-sidebar .date-input-group label {
+  font-size: 12px;
+  color: #495057;
+  font-weight: 500;
+  margin: 0;
+}
+
+.chart-sidebar .quick-date-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Amount filter controls */
+.chart-sidebar .amount-inputs-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.chart-sidebar .amount-inputs-row > div {
+  flex: 1;
+}
+
+/* Category checkboxes */
+.chart-sidebar .categories-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.chart-sidebar .category-column h6 {
+  margin: 0 0 8px 0;
+  color: #495057;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chart-sidebar .checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.chart-sidebar .checkbox-row input[type="checkbox"] {
+  margin: 0;
+  transform: scale(0.9);
+}
+
+.chart-sidebar .checkbox-row label {
+  margin: 0;
+  font-size: 12px;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+/* Quick select buttons */
+.chart-sidebar .quick-select-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chart-sidebar .quick-select-buttons .btn {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .chart-sidebar {
+    width: 320px;
+    right: -320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-sidebar {
+    width: 100%;
+    right: -100%;
+  }
+  
+  .chart-sidebar.open {
+    right: 0;
+  }
+}
+
+/* Overlay for mobile */
+.chart-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.chart-sidebar-overlay.active {
+  opacity: 1;
+  visibility: visible;
 } 
