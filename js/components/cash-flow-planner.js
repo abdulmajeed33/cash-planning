@@ -448,11 +448,15 @@ class CashFlowPlanner {
         
         let processedCount = 0;
         
+        // Convert start and end dates to Date objects for proper comparison
+        const startDate = new Date(this.startDate);
+        const endDate = new Date(this.endDate);
+        
         this.transactions.forEach(transaction => {
             const transactionDate = new Date(transaction.transaction_date);
             
             // Check if transaction is within date range
-            if (transactionDate >= this.startDate && transactionDate <= this.endDate) {
+            if (transactionDate >= startDate && transactionDate <= endDate) {
                 console.log('Processing transaction:', transaction);
                 
                 const monthKey = `${transactionDate.getFullYear()}-${String(transactionDate.getMonth() + 1).padStart(2, '0')}`;
@@ -485,8 +489,8 @@ class CashFlowPlanner {
             } else {
                 console.log('Transaction outside date range:', {
                     date: transactionDate,
-                    startDate: this.startDate,
-                    endDate: this.endDate
+                    startDate: startDate,
+                    endDate: endDate
                 });
             }
         });
@@ -643,6 +647,13 @@ class CashFlowPlanner {
         let minBalance = this.openingBalance;
         let minBalanceDate = this.startDate;
 
+        console.log('updateCalculations starting:', {
+            openingBalance: this.openingBalance,
+            monthsCount: months.length,
+            months: months,
+            cashFlowData: this.cashFlowData
+        });
+
         // Calculate net flows and balances for each month
         months.forEach(monthKey => {
             // Get actual data from cash flow structure
@@ -655,6 +666,11 @@ class CashFlowPlanner {
             const netFlow = (capitalIn + operationalIn) - (capitalOut + operationalOut);
             runningBalance += netFlow;
             totalNetFlow += netFlow;
+            
+            console.log(`updateCalculations - Month ${monthKey}:`, {
+                capitalIn, capitalOut, operationalIn, operationalOut,
+                netFlow, runningBalance, totalNetFlow
+            });
             
             // Track minimum balance
             if (runningBalance < minBalance) {
@@ -671,6 +687,14 @@ class CashFlowPlanner {
                 netFlow: netFlow,
                 closingBalance: runningBalance
             });
+        });
+
+        console.log('updateCalculations completed:', {
+            totalNetFlow,
+            finalBalance: runningBalance,
+            minBalance,
+            minBalanceDate,
+            monthlyDataSize: this.monthlyData.size
         });
 
         // Update displays
@@ -773,25 +797,30 @@ class CashFlowPlanner {
     calculateMinimumBalance() {
         const months = this.getMonthsInRange();
         let minBalance = this.openingBalance;
-        let minDate = null;
+        let minDate = new Date(this.startDate);
         let runningBalance = this.openingBalance;
         
         console.log('Calculating minimum balance:', {
             openingBalance: this.openingBalance,
             monthsCount: months.length,
-            dateRange: `${this.startDate} to ${this.endDate}`
+            dateRange: `${this.startDate} to ${this.endDate}`,
+            cashFlowData: this.cashFlowData
         });
         
-        // Check if opening balance is the minimum
+        // If no months in range, return opening balance
         if (months.length === 0) {
+            console.log('No months in date range, returning opening balance');
             return {
                 amount: minBalance,
-                date: new Date(this.startDate)
+                date: minDate
             };
         }
         
+        // Track minimum including opening balance
+        console.log(`Initial balance: ${runningBalance} (will be considered as minimum)`);
+        
         // Iterate through each month to find minimum
-        months.forEach(monthKey => {
+        months.forEach((monthKey, index) => {
             // Get cash flow data for this month
             const capitalIn = this.cashFlowData.capital.inflows[monthKey] || 0;
             const capitalOut = this.cashFlowData.capital.outflows[monthKey] || 0;
@@ -799,25 +828,40 @@ class CashFlowPlanner {
             const operationalOut = this.cashFlowData.operational.outflows[monthKey] || 0;
             
             const monthlyFlow = (capitalIn + operationalIn) - (capitalOut + operationalOut);
+            
+            // Update running balance
             runningBalance += monthlyFlow;
+            
+            console.log(`Month ${monthKey} (${index + 1}/${months.length}):`, {
+                capitalIn, 
+                capitalOut, 
+                operationalIn, 
+                operationalOut,
+                monthlyFlow, 
+                runningBalance, 
+                currentMin: minBalance,
+                isNewMinimum: runningBalance < minBalance
+            });
             
             // Check if this is the new minimum
             if (runningBalance < minBalance) {
                 minBalance = runningBalance;
-                // Parse month key to create date
+                // Parse month key to create date (end of month)
                 const [year, month] = monthKey.split('-').map(Number);
-                minDate = new Date(year, month - 1, 1);
+                minDate = new Date(year, month - 1, new Date(year, month, 0).getDate()); // Last day of month
+                console.log(`New minimum found: ${minBalance} on ${minDate.toDateString()}`);
             }
-            
-            console.log(`Month ${monthKey}:`, {
-                capitalIn, capitalOut, operationalIn, operationalOut,
-                monthlyFlow, runningBalance, currentMin: minBalance
-            });
+        });
+        
+        console.log('Final minimum balance calculation result:', {
+            amount: minBalance,
+            date: minDate.toDateString(),
+            wasOpeningBalanceMinimum: minBalance === this.openingBalance
         });
         
         return {
             amount: minBalance,
-            date: minDate || new Date(this.startDate)
+            date: minDate
         };
     }
 
@@ -1112,11 +1156,15 @@ class CashFlowPlanner {
             try {
                 // Ensure database is connected
                 if (!this.db) {
+                    console.log('Database not connected, initializing...');
                     await this.initDatabase();
                 }
                 
                 // Refresh data and display
+                console.log('Refreshing data for Cash Flow Planner...');
                 await this.refreshData();
+                
+                console.log('Cash Flow Planner section activation completed successfully');
             } catch (error) {
                 console.error('Error activating Cash Flow Planner:', error);
                 this.showError('Failed to load Cash Flow Planner data');
@@ -1188,12 +1236,15 @@ class CashFlowPlanner {
 // Initialize Cash Flow Planner when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize only when the cash flow planner section is active
-    document.addEventListener('sectionChanged', (event) => {
+    document.addEventListener('sectionChanged', async (event) => {
         if (event.detail.section === 'cash-flow-planner') {
             if (!window.cashFlowPlanner) {
+                console.log('Creating new Cash Flow Planner instance');
                 window.cashFlowPlanner = new CashFlowPlanner();
+                await window.cashFlowPlanner.init();
             } else {
-                window.cashFlowPlanner.refresh();
+                console.log('Refreshing existing Cash Flow Planner instance');
+                await window.cashFlowPlanner.refreshData();
             }
         }
     });
@@ -1201,7 +1252,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize immediately if the section is already active
     const activeSection = document.querySelector('.content-section.active');
     if (activeSection && activeSection.id === 'cash-flow-planner') {
+        console.log('Cash Flow Planner section is already active, initializing immediately');
         window.cashFlowPlanner = new CashFlowPlanner();
+        window.cashFlowPlanner.init();
     }
 });
 
