@@ -250,6 +250,12 @@ class ChartSidebarManager {
             this.isOpen = true;
             this.justOpened = true; // Set flag to prevent immediate closing
             
+            // Add class to main content to prevent overlap
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent && !this.isMobile) {
+                mainContent.classList.add('chart-sidebar-open');
+            }
+            
             // Clear the flag after a short delay
             setTimeout(() => {
                 this.justOpened = false;
@@ -324,6 +330,12 @@ class ChartSidebarManager {
             this.sidebar.classList.remove('open');
             this.isOpen = false;
             
+            // Remove class from main content
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.classList.remove('chart-sidebar-open');
+            }
+            
             // Hide overlay if active
             if (this.overlay) {
                 this.overlay.classList.remove('active');
@@ -372,6 +384,12 @@ class ChartSidebarManager {
         this.isOpen = true;
         this.sidebar.classList.add('open');
         
+        // Add class to main content to prevent overlap
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent && !this.isMobile) {
+            mainContent.classList.add('chart-sidebar-open');
+        }
+        
         if (this.isMobile) {
             this.overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -394,6 +412,12 @@ class ChartSidebarManager {
         this.sidebar.classList.remove('open');
         this.overlay.classList.remove('active');
         document.body.style.overflow = '';
+        
+        // Remove class from main content
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.classList.remove('chart-sidebar-open');
+        }
         
         // Clear any inline width styles to allow proper CSS transition
         if (this.sidebar) {
@@ -572,6 +596,11 @@ class ChartSidebarManager {
         // Update sidebar width
         this.sidebar.style.width = newWidth + 'px';
         
+        // Update CSS custom property for dynamic width
+        if (!this.isMobile && this.isOpen) {
+            document.documentElement.style.setProperty('--chart-sidebar-width', newWidth + 'px');
+        }
+        
         e.preventDefault();
     }
 
@@ -606,6 +635,8 @@ class ChartSidebarManager {
             const width = parseInt(savedWidth);
             if (width >= this.minWidth && width <= this.maxWidth) {
                 this.sidebar.style.width = width + 'px';
+                // Update CSS custom property for consistent styling
+                document.documentElement.style.setProperty('--chart-sidebar-width', width + 'px');
                 console.log('Loaded saved sidebar width:', width);
             }
         }

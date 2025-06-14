@@ -129,7 +129,12 @@
   padding: 2rem;
   background-color: #ffffff;
   min-height: 100vh;
-  transition: margin-left 0.3s ease;
+  transition: margin-left 0.3s ease, margin-right 0.3s ease;
+}
+
+/* Adjust main content when chart sidebar is open */
+.main-content.chart-sidebar-open {
+  margin-right: var(--chart-sidebar-width);
 }
 
 /* Content Sections */
@@ -354,12 +359,17 @@
   }
 }
 
+/* CSS Custom Properties for dynamic sidebar width */
+:root {
+  --chart-sidebar-width: 350px;
+}
+
 /* Chart Options Sidebar */
 .chart-sidebar {
   position: fixed;
   top: 0;
-  right: -350px; /* Initially hidden off-screen */
-  width: 350px;
+  right: calc(-1 * var(--chart-sidebar-width)); /* Initially hidden off-screen */
+  width: var(--chart-sidebar-width);
   height: 100vh;
   background: #ffffff;
   border-left: 1px solid #e9ecef;
@@ -687,13 +697,21 @@
 
 /* Responsive design */
 @media (max-width: 1200px) {
+  :root {
+    --chart-sidebar-width: 320px;
+  }
+  
   .chart-sidebar {
-    width: 320px;
-    right: -320px;
+    width: var(--chart-sidebar-width);
+    right: calc(-1 * var(--chart-sidebar-width));
   }
 }
 
 @media (max-width: 768px) {
+  :root {
+    --chart-sidebar-width: 100%;
+  }
+  
   .chart-sidebar {
     width: 100% !important;
     right: -100%;
@@ -702,10 +720,14 @@
   .chart-sidebar.open {
     right: 0;
   }
-
+  
   /* Hide resize handle on mobile */
   .chart-sidebar-resize-handle {
     display: none;
+  }
+  
+  .main-content.chart-sidebar-open {
+    margin-right: 0; /* No margin adjustment on mobile - sidebar covers full screen */
   }
 }
 
@@ -726,4 +748,17 @@
 .chart-sidebar-overlay.active {
   opacity: 1;
   visibility: visible;
+}
+
+/* Responsive adjustments for chart sidebar */
+@media (max-width: 1200px) {
+  .main-content.chart-sidebar-open {
+    margin-right: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content.chart-sidebar-open {
+    margin-right: 0; /* No margin adjustment on mobile - sidebar covers full screen */
+  }
 } 
