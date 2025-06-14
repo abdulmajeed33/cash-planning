@@ -36,8 +36,9 @@ class ChartSidebarManager {
         this.setupResponsive();
         this.createOverlay();
         
-        // Hide sidebar by default on initialization
+        // Hide sidebar and arrow by default on initialization
         this.hideSidebar();
+        this.hideChartOptionsArrow();
         
         // Check current section after a short delay to ensure main sidebar is ready
         setTimeout(() => {
@@ -76,6 +77,14 @@ class ChartSidebarManager {
         if (this.sidebarClose) {
             this.sidebarClose.addEventListener('click', () => {
                 this.closeSidebar();
+            });
+        }
+
+        // Chart options arrow indicator
+        const chartOptionsArrow = document.getElementById('chart-options-arrow');
+        if (chartOptionsArrow) {
+            chartOptionsArrow.addEventListener('click', () => {
+                this.openSidebar();
             });
         }
 
@@ -268,8 +277,8 @@ class ChartSidebarManager {
             }
         }
         
-        // Show chart options button
-        this.showChartOptionsButton();
+        // Show chart options arrow
+        this.showChartOptionsArrow();
         
         // Initialize chart sidebar controls when entering planning section
         this.initializeChartControls();
@@ -343,14 +352,40 @@ class ChartSidebarManager {
             document.body.style.overflow = '';
         }
         
-        // Hide chart options button
-        this.hideChartOptionsButton();
+        // Hide chart options arrow
+        this.hideChartOptionsArrow();
     }
 
     /**
-     * Show the chart options button
+     * Show the chart options arrow indicator
+     */
+    showChartOptionsArrow() {
+        const chartOptionsArrow = document.getElementById('chart-options-arrow');
+        if (chartOptionsArrow) {
+            chartOptionsArrow.style.display = 'flex';
+            console.log('Chart options arrow shown');
+        }
+    }
+
+    /**
+     * Hide the chart options arrow indicator
+     */
+    hideChartOptionsArrow() {
+        const chartOptionsArrow = document.getElementById('chart-options-arrow');
+        if (chartOptionsArrow) {
+            chartOptionsArrow.style.display = 'none';
+            console.log('Chart options arrow hidden');
+        }
+    }
+
+    /**
+     * Show the chart options button (deprecated - keeping for compatibility)
      */
     showChartOptionsButton() {
+        // Show arrow indicator instead
+        this.showChartOptionsArrow();
+        
+        // Legacy button support
         const chartOptionsBtn = document.getElementById('chart-options-btn');
         if (chartOptionsBtn) {
             chartOptionsBtn.style.display = 'flex';
@@ -359,9 +394,13 @@ class ChartSidebarManager {
     }
 
     /**
-     * Hide the chart options button
+     * Hide the chart options button (deprecated - keeping for compatibility)
      */
     hideChartOptionsButton() {
+        // Hide arrow indicator instead
+        this.hideChartOptionsArrow();
+        
+        // Legacy button support
         const chartOptionsBtn = document.getElementById('chart-options-btn');
         if (chartOptionsBtn) {
             chartOptionsBtn.style.display = 'none';
@@ -450,7 +489,13 @@ class ChartSidebarManager {
             return;
         }
 
-        // Don't close if clicking on the chart options button (to open sidebar)
+        // Don't close if clicking on the chart options arrow indicator
+        const chartOptionsArrow = document.getElementById('chart-options-arrow');
+        if (chartOptionsArrow && (e.target === chartOptionsArrow || chartOptionsArrow.contains(e.target))) {
+            return;
+        }
+
+        // Don't close if clicking on the chart options button (legacy support)
         const chartOptionsBtn = document.getElementById('chart-options-btn');
         if (chartOptionsBtn && (e.target === chartOptionsBtn || chartOptionsBtn.contains(e.target))) {
             return;

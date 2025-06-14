@@ -1262,14 +1262,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Clear existing controls
     window.chartSidebarManager.clearControls();
 
-    // Add event listener for chart options button
-    const chartOptionsBtn = document.getElementById('chart-options-btn');
-    if (chartOptionsBtn) {
-      chartOptionsBtn.addEventListener('click', () => {
-        window.chartSidebarManager.openSidebar();
-      });
-    }
-
     // Add all control sections to the sidebar
     addSidebarTransactionTypeToggles();
     addSidebarItemInclusionFilterControls();
