@@ -300,7 +300,10 @@ class CashFlowPlanner {
         
         console.log('Date range applied:', { startDate: this.startDate, endDate: this.endDate });
         
-        // Update calculations and displays
+        // IMPORTANT: Reprocess cash flow data for the new date range
+        this.processCashFlowData();
+        
+        // Then update calculations and displays
         this.updateCalculations();
         this.renderTable();
         this.updateDisplay();
