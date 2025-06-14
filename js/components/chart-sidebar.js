@@ -9,11 +9,20 @@ class ChartSidebarManager {
         this.sidebarClose = null;
         this.overlay = null;
         this.container = null;
+        this.resizeHandle = null;
         this.isOpen = false;
         this.isMobile = false;
         this.currentSection = 'data-entry'; // Default section
         this.isActive = false; // Only active in planning section
         this.justOpened = false; // Flag to prevent immediate closing
+        
+        // Resize functionality properties
+        this.isResizing = false;
+        this.startX = 0;
+        this.startWidth = 0;
+        this.minWidth = 250;
+        this.maxWidth = 600;
+        this.defaultWidth = 350;
         
         this.init();
     }
@@ -45,11 +54,13 @@ class ChartSidebarManager {
         this.sidebar = document.getElementById('chart-sidebar');
         this.sidebarClose = document.getElementById('chart-sidebar-close');
         this.container = document.getElementById('chart-controls-container');
+        this.resizeHandle = document.getElementById('chart-sidebar-resize-handle');
         
         console.log('Chart sidebar elements setup:');
         console.log('- Sidebar element:', this.sidebar ? 'Found' : 'NOT FOUND');
         console.log('- Close button:', this.sidebarClose ? 'Found' : 'NOT FOUND');
         console.log('- Container:', this.container ? 'Found' : 'NOT FOUND');
+        console.log('- Resize handle:', this.resizeHandle ? 'Found' : 'NOT FOUND');
         
         if (!this.sidebar) {
             console.error('Chart sidebar element not found');
@@ -68,6 +79,22 @@ class ChartSidebarManager {
             });
         }
 
+        // Resize handle events
+        if (this.resizeHandle) {
+            this.resizeHandle.addEventListener('mousedown', (e) => {
+                this.startResize(e);
+            });
+        }
+
+        // Global mouse events for resizing
+        document.addEventListener('mousemove', (e) => {
+            this.handleResize(e);
+        });
+
+        document.addEventListener('mouseup', () => {
+            this.stopResize();
+        });
+
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             this.handleKeyboardNavigation(e);
@@ -75,7 +102,7 @@ class ChartSidebarManager {
 
         // Window resize handling
         window.addEventListener('resize', () => {
-            this.handleResize();
+            this.handleWindowResize();
         });
 
         // Click outside to close sidebar (only when active)
@@ -133,7 +160,7 @@ class ChartSidebarManager {
     /**
      * Handle window resize
      */
-    handleResize() {
+    handleWindowResize() {
         const wasMobile = this.isMobile;
         this.checkMobile();
         
@@ -214,6 +241,9 @@ class ChartSidebarManager {
     showSidebar() {
         if (this.sidebar) {
             this.sidebar.style.display = 'block';
+            
+            // Load saved width before showing
+            this.loadSavedWidth();
             
             // Automatically open the sidebar when entering planning section
             this.sidebar.classList.add('open');
@@ -336,6 +366,9 @@ class ChartSidebarManager {
             return;
         }
         
+        // Load saved width before opening
+        this.loadSavedWidth();
+        
         this.isOpen = true;
         this.sidebar.classList.add('open');
         
@@ -361,6 +394,11 @@ class ChartSidebarManager {
         this.sidebar.classList.remove('open');
         this.overlay.classList.remove('active');
         document.body.style.overflow = '';
+        
+        // Clear any inline width styles to allow proper CSS transition
+        if (this.sidebar) {
+            this.sidebar.style.width = '';
+        }
         
         console.log('Chart sidebar closed');
     }
@@ -391,6 +429,11 @@ class ChartSidebarManager {
         // Don't close if clicking on the chart options button (to open sidebar)
         const chartOptionsBtn = document.getElementById('chart-options-btn');
         if (chartOptionsBtn && (e.target === chartOptionsBtn || chartOptionsBtn.contains(e.target))) {
+            return;
+        }
+
+        // Don't close if clicking on the resize handle
+        if (this.resizeHandle && (e.target === this.resizeHandle || this.resizeHandle.contains(e.target))) {
             return;
         }
 
@@ -494,6 +537,78 @@ class ChartSidebarManager {
         document.body.style.overflow = '';
 
         console.log('Chart Sidebar Manager destroyed');
+    }
+
+    /**
+     * Start resizing the sidebar
+     */
+    startResize(e) {
+        if (!this.isActive || this.isMobile) return;
+        
+        this.isResizing = true;
+        this.startX = e.clientX;
+        this.startWidth = this.sidebar.offsetWidth;
+        
+        // Add resizing class to disable transitions
+        this.sidebar.classList.add('resizing');
+        
+        // Prevent text selection during resize
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        
+        e.preventDefault();
+        console.log('Started resizing sidebar');
+    }
+
+    /**
+     * Handle sidebar resize
+     */
+    handleResize(e) {
+        if (!this.isResizing) return;
+        
+        const deltaX = this.startX - e.clientX;
+        const newWidth = Math.max(this.minWidth, Math.min(this.maxWidth, this.startWidth + deltaX));
+        
+        // Update sidebar width
+        this.sidebar.style.width = newWidth + 'px';
+        
+        e.preventDefault();
+    }
+
+    /**
+     * Stop resizing the sidebar
+     */
+    stopResize() {
+        if (!this.isResizing) return;
+        
+        this.isResizing = false;
+        
+        // Remove resizing class to re-enable transitions
+        this.sidebar.classList.remove('resizing');
+        
+        // Restore normal cursor and text selection
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        // Save the new width to localStorage for persistence
+        const currentWidth = this.sidebar.offsetWidth;
+        localStorage.setItem('chartSidebarWidth', currentWidth.toString());
+        
+        console.log('Stopped resizing sidebar, new width:', currentWidth);
+    }
+
+    /**
+     * Load saved sidebar width from localStorage
+     */
+    loadSavedWidth() {
+        const savedWidth = localStorage.getItem('chartSidebarWidth');
+        if (savedWidth && !this.isMobile) {
+            const width = parseInt(savedWidth);
+            if (width >= this.minWidth && width <= this.maxWidth) {
+                this.sidebar.style.width = width + 'px';
+                console.log('Loaded saved sidebar width:', width);
+            }
+        }
     }
 }
 

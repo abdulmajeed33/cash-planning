@@ -368,10 +368,53 @@
   transition: right 0.3s ease;
   overflow-y: auto;
   overflow-x: hidden;
+  min-width: 250px;
+  max-width: 600px;
 }
 
 .chart-sidebar.open {
   right: 0;
+}
+
+/* Resize handle for chart sidebar */
+.chart-sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  z-index: 1001;
+  transition: background-color 0.2s ease;
+}
+
+.chart-sidebar-resize-handle:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  opacity: 0.7;
+}
+
+.chart-sidebar-resize-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 30px;
+  background: #dee2e6;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chart-sidebar-resize-handle:hover::before {
+  opacity: 1;
+}
+
+/* Disable transition during resize */
+.chart-sidebar.resizing {
+  transition: none;
 }
 
 .chart-sidebar-header {
@@ -615,12 +658,17 @@
 
 @media (max-width: 768px) {
   .chart-sidebar {
-    width: 100%;
+    width: 100% !important;
     right: -100%;
   }
   
   .chart-sidebar.open {
     right: 0;
+  }
+
+  /* Hide resize handle on mobile */
+  .chart-sidebar-resize-handle {
+    display: none;
   }
 }
 
