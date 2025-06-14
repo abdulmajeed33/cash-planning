@@ -2535,7 +2535,7 @@ document.addEventListener("DOMContentLoaded", function () {
   async function initInvestmentChart() {
     try {
       // Show loading indicator
-    const investmentChart = d3.select("#investment-chart");
+      const investmentChart = d3.select("#investment-chart");
       investmentChart.html(
         '<div class="loading-indicator">Loading investment data...</div>'
       );
@@ -4670,4 +4670,14 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInvestmentVisualization();
   }
 
+});
+
+// Make functions globally accessible
+window.initInvestmentChart = initInvestmentChart;
+window.initializeChartSidebar = initializeChartSidebar;
+
+// Listen for manual initialization events
+document.addEventListener('initializeChart', () => {
+  console.log('Manual chart initialization triggered');
+  initInvestmentChart();
 });

@@ -302,13 +302,31 @@ class SidebarManager {
      */
     initializeInvestmentChart() {
         // Check if the investment chart initialization function exists
-        if (typeof initInvestmentChart === 'function') {
+        if (typeof window.initInvestmentChart === 'function') {
+            console.log('Initializing investment chart via window...');
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                window.initInvestmentChart();
+            }, 100);
+        } else if (typeof initInvestmentChart === 'function') {
+            console.log('Initializing investment chart directly...');
             // Small delay to ensure DOM is ready
             setTimeout(() => {
                 initInvestmentChart();
             }, 100);
         } else {
             console.warn('Investment chart initialization function not found');
+            // Try to manually trigger chart initialization
+            setTimeout(() => {
+                // Check if there's a chart container and try to initialize
+                const chartContainer = document.getElementById('investment-chart');
+                if (chartContainer) {
+                    console.log('Chart container found, attempting manual initialization...');
+                    // Dispatch a custom event that the chart script might listen for
+                    const event = new CustomEvent('initializeChart');
+                    document.dispatchEvent(event);
+                }
+            }, 200);
         }
     }
 

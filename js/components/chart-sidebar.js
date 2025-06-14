@@ -11,6 +11,9 @@ class ChartSidebarManager {
         this.container = null;
         this.isOpen = false;
         this.isMobile = false;
+        this.currentSection = 'data-entry'; // Default section
+        this.isActive = false; // Only active in planning section
+        this.justOpened = false; // Flag to prevent immediate closing
         
         this.init();
     }
@@ -23,6 +26,14 @@ class ChartSidebarManager {
         this.setupEventListeners();
         this.setupResponsive();
         this.createOverlay();
+        
+        // Hide sidebar by default on initialization
+        this.hideSidebar();
+        
+        // Check current section after a short delay to ensure main sidebar is ready
+        setTimeout(() => {
+            this.checkCurrentSection();
+        }, 100);
         
         console.log('Chart Sidebar Manager initialized');
     }
@@ -67,9 +78,21 @@ class ChartSidebarManager {
             this.handleResize();
         });
 
-        // Click outside to close sidebar
+        // Click outside to close sidebar (only when active)
         document.addEventListener('click', (e) => {
-            this.handleClickOutside(e);
+            if (this.isActive) {
+                this.handleClickOutside(e);
+            }
+        });
+
+        // Listen for section changes
+        document.addEventListener('sectionChange', (e) => {
+            this.handleSectionChange(e.detail.section);
+        });
+
+        // Also listen for the alternative event name
+        document.addEventListener('sectionChanged', (e) => {
+            this.handleSectionChange(e.detail.section);
         });
     }
 
@@ -81,17 +104,8 @@ class ChartSidebarManager {
         
         console.log('Chart sidebar responsive setup - window width:', window.innerWidth, 'isMobile:', this.isMobile);
         
-        // Initial responsive setup
-        if (this.isMobile) {
-            this.sidebar.classList.remove('open');
-            this.isOpen = false;
-            console.log('Mobile detected - chart sidebar hidden');
-        } else {
-            // On desktop, open sidebar by default
-            this.sidebar.classList.add('open');
-            this.isOpen = true;
-            console.log('Desktop detected - chart sidebar opened by default');
-        }
+        // Don't set initial state here - let checkCurrentSection handle it
+        // This prevents the sidebar from showing before we know the current section
     }
 
     /**
@@ -137,9 +151,191 @@ class ChartSidebarManager {
     }
 
     /**
-     * Open sidebar
+     * Check current section on initialization
+     */
+    checkCurrentSection() {
+        // Wait for sidebar manager to be ready
+        if (!window.sidebarManager) {
+            // If sidebar manager not ready, try again after a short delay
+            setTimeout(() => {
+                this.checkCurrentSection();
+            }, 50);
+            return;
+        }
+
+        // Get current section from sidebar manager
+        this.currentSection = window.sidebarManager.getCurrentSection();
+        
+        // Double-check with DOM if needed
+        if (!this.currentSection) {
+            const activeSection = document.querySelector('.content-section.active');
+            if (activeSection) {
+                this.currentSection = activeSection.id;
+            } else {
+                // If no active section found, default to data-entry
+                this.currentSection = 'data-entry';
+            }
+        }
+        
+        this.updateActiveState();
+        console.log('Chart sidebar current section:', this.currentSection, 'isActive:', this.isActive);
+    }
+
+    /**
+     * Handle section changes
+     */
+    handleSectionChange(newSection) {
+        console.log('Chart sidebar section change:', newSection);
+        this.currentSection = newSection;
+        this.updateActiveState();
+    }
+
+    /**
+     * Update active state based on current section
+     */
+    updateActiveState() {
+        const wasActive = this.isActive;
+        this.isActive = this.currentSection === 'planning';
+        
+        if (this.isActive && !wasActive) {
+            // Entering planning section - show sidebar
+            this.showSidebar();
+            console.log('Chart sidebar activated for planning section');
+        } else if (!this.isActive && wasActive) {
+            // Leaving planning section - hide sidebar
+            this.hideSidebar();
+            console.log('Chart sidebar deactivated - left planning section');
+        }
+    }
+
+    /**
+     * Show the sidebar (make it visible in DOM)
+     */
+    showSidebar() {
+        if (this.sidebar) {
+            this.sidebar.style.display = 'block';
+            
+            // Automatically open the sidebar when entering planning section
+            this.sidebar.classList.add('open');
+            this.isOpen = true;
+            this.justOpened = true; // Set flag to prevent immediate closing
+            
+            // Clear the flag after a short delay
+            setTimeout(() => {
+                this.justOpened = false;
+            }, 500);
+            
+            // Handle mobile overlay if needed
+            if (this.isMobile) {
+                this.overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        // Show chart options button
+        this.showChartOptionsButton();
+        
+        // Initialize chart sidebar controls when entering planning section
+        this.initializeChartControls();
+    }
+
+    /**
+     * Initialize chart controls when entering planning section
+     */
+    initializeChartControls() {
+        // Check if the chart sidebar initialization function exists
+        if (typeof window.initializeChartSidebar === 'function') {
+            console.log('Initializing chart sidebar controls via window...');
+            setTimeout(() => {
+                window.initializeChartSidebar();
+            }, 50);
+        } else if (typeof initializeChartSidebar === 'function') {
+            console.log('Initializing chart sidebar controls directly...');
+            setTimeout(() => {
+                initializeChartSidebar();
+            }, 50);
+        } else {
+            console.log('Chart sidebar initialization function not found, checking if chart is already initialized...');
+            
+            // Check if the chart container has content (chart already initialized)
+            const chartContainer = document.getElementById('investment-chart');
+            if (chartContainer && chartContainer.innerHTML.trim() !== '') {
+                console.log('Chart already initialized, just initializing sidebar controls...');
+                // Chart is already there, just try to initialize sidebar controls
+                setTimeout(() => {
+                    if (typeof window.initializeChartSidebar === 'function') {
+                        window.initializeChartSidebar();
+                    }
+                }, 100);
+            } else {
+                console.log('Chart not initialized, calling initInvestmentChart...');
+                // Chart not initialized, need to initialize it
+                setTimeout(() => {
+                    if (typeof window.initInvestmentChart === 'function') {
+                        console.log('Calling initInvestmentChart as fallback...');
+                        window.initInvestmentChart();
+                    } else if (typeof initInvestmentChart === 'function') {
+                        console.log('Calling initInvestmentChart directly as fallback...');
+                        initInvestmentChart();
+                    } else {
+                        console.warn('No chart initialization functions found');
+                    }
+                }, 100);
+            }
+        }
+    }
+
+    /**
+     * Hide the sidebar (remove from DOM visibility)
+     */
+    hideSidebar() {
+        if (this.sidebar) {
+            this.sidebar.style.display = 'none';
+            this.sidebar.classList.remove('open');
+            this.isOpen = false;
+            
+            // Hide overlay if active
+            if (this.overlay) {
+                this.overlay.classList.remove('active');
+            }
+            document.body.style.overflow = '';
+        }
+        
+        // Hide chart options button
+        this.hideChartOptionsButton();
+    }
+
+    /**
+     * Show the chart options button
+     */
+    showChartOptionsButton() {
+        const chartOptionsBtn = document.getElementById('chart-options-btn');
+        if (chartOptionsBtn) {
+            chartOptionsBtn.style.display = 'flex';
+            console.log('Chart options button shown');
+        }
+    }
+
+    /**
+     * Hide the chart options button
+     */
+    hideChartOptionsButton() {
+        const chartOptionsBtn = document.getElementById('chart-options-btn');
+        if (chartOptionsBtn) {
+            chartOptionsBtn.style.display = 'none';
+            console.log('Chart options button hidden');
+        }
+    }
+
+    /**
+     * Open sidebar (only works when active)
      */
     openSidebar() {
+        if (!this.isActive) {
+            console.log('Chart sidebar not active - cannot open outside planning section');
+            return;
+        }
+        
         this.isOpen = true;
         this.sidebar.classList.add('open');
         
@@ -155,6 +351,12 @@ class ChartSidebarManager {
      * Close sidebar
      */
     closeSidebar() {
+        // Prevent closing if just opened
+        if (this.justOpened) {
+            console.log('Chart sidebar close prevented - just opened');
+            return;
+        }
+        
         this.isOpen = false;
         this.sidebar.classList.remove('open');
         this.overlay.classList.remove('active');
@@ -164,11 +366,11 @@ class ChartSidebarManager {
     }
 
     /**
-     * Handle keyboard navigation
+     * Handle keyboard navigation (only when active)
      */
     handleKeyboardNavigation(e) {
-        // Close sidebar on Escape key
-        if (e.key === 'Escape' && this.isOpen) {
+        // Close sidebar on Escape key (only when active and open)
+        if (e.key === 'Escape' && this.isActive && this.isOpen) {
             this.closeSidebar();
         }
     }
@@ -177,8 +379,14 @@ class ChartSidebarManager {
      * Handle clicks outside the sidebar to close it
      */
     handleClickOutside(e) {
-        // Only close if sidebar is open
-        if (!this.isOpen) return;
+        // Only work when sidebar is active and open
+        if (!this.isActive || !this.isOpen) return;
+
+        // Prevent closing if just opened
+        if (this.justOpened) {
+            console.log('Chart sidebar click outside ignored - just opened');
+            return;
+        }
 
         // Don't close if clicking on the chart options button (to open sidebar)
         const chartOptionsBtn = document.getElementById('chart-options-btn');
@@ -197,6 +405,7 @@ class ChartSidebarManager {
         }
 
         // Close the sidebar if clicking outside
+        console.log('Chart sidebar closing due to click outside');
         this.closeSidebar();
     }
 
