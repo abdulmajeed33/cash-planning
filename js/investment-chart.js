@@ -1408,11 +1408,6 @@ document.addEventListener("DOMContentLoaded", function () {
       <div style="display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
         <button id="apply-item-filter" class="btn btn-primary">Apply Filter</button>
         <button id="reset-item-filter" class="btn btn-secondary">Reset</button>
-        <div class="quick-select-buttons">
-          <button class="btn btn-outline-secondary" onclick="selectAllItemInclusions(true)">All</button>
-          <button class="btn btn-outline-secondary" onclick="selectAllItemInclusions(false)">None</button>
-          <button class="btn btn-outline-secondary" onclick="selectOperationalItemsOnly()">Operational</button>
-        </div>
       </div>
     `;
     section.appendChild(buttonsDiv);
