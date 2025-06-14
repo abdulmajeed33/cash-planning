@@ -1112,10 +1112,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Add to local array
         transactionData.push(transaction);
 
-        // Refresh visualization if it's already initialized
-        if (document.querySelector("#investment-chart svg")) {
-          updateInvestmentVisualization();
-        }
+        // Note: Visualization refresh is now handled by the calling code
+        // to avoid double refreshing when called from form submission
 
         // Dispatch event to notify other components of data change
         const dataChangeEvent = new CustomEvent('dataUpdated', {
@@ -1188,8 +1186,8 @@ document.addEventListener("DOMContentLoaded", function () {
           transactionData.push(transaction);
         }
 
-        // Refresh visualization
-        updateInvestmentVisualization();
+        // Note: Visualization refresh is now handled by the calling code
+        // to avoid double refreshing when called from form submission
 
         // Dispatch event to notify other components of data change
         const dataChangeEvent = new CustomEvent('dataUpdated', {
@@ -3909,6 +3907,12 @@ document.addEventListener("DOMContentLoaded", function () {
             await window.investmentChart.addTransaction(formData);
           }
 
+          // Refresh chart data from database to ensure consistency
+          await fetchChartData();
+          
+          // Update the visualization
+          updateInvestmentVisualization();
+
           // Close the modal
           investmentModal.style("display", "none");
         } catch (error) {
@@ -4728,6 +4732,13 @@ document.addEventListener("DOMContentLoaded", function () {
     updateInvestmentVisualization();
   }
 
+  // Expose the updateInvestmentVisualization function to the global scope
+  // so that other components (like Cash Flow Timeline) can call it
+  window.updateInvestmentVisualization = updateInvestmentVisualization;
+  
+  // Expose the fetchChartData function to the global scope
+  // so that other components (like Investment Timeline) can refresh data
+  window.fetchChartData = fetchChartData;
 });
 
 // Make functions globally accessible

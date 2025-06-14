@@ -692,6 +692,14 @@ function createInvestmentTimeline(config) {
       try {
         window.investmentChart.updateTransaction(transaction);
         
+        // Refresh chart data and visualization to ensure consistency
+        setTimeout(async () => {
+          if (window.fetchChartData && window.updateInvestmentVisualization) {
+            await window.fetchChartData();
+            window.updateInvestmentVisualization();
+          }
+        }, 100);
+        
         // Create transaction info for potential bar segment highlighting
         const transactionToHighlight = {
           id: transaction.id,
