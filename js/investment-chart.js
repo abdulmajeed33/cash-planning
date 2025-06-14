@@ -1116,6 +1116,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (document.querySelector("#investment-chart svg")) {
           updateInvestmentVisualization();
         }
+
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+          detail: {
+            type: 'transaction',
+            action: 'add',
+            data: transaction
+          }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
       } catch (error) {
         console.error("Error adding transaction:", error);
         alert("Error adding transaction: " + error.message);
@@ -1179,6 +1190,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Refresh visualization
         updateInvestmentVisualization();
+
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+          detail: {
+            type: 'transaction',
+            action: 'update',
+            data: transaction
+          }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
       } catch (error) {
         console.error("Error updating transaction:", error);
         alert("Error updating transaction: " + error.message);
@@ -1207,6 +1229,17 @@ document.addEventListener("DOMContentLoaded", function () {
         // Refresh visualization
         updateInvestmentVisualization();
         console.log("Transaction removed successfully");
+
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+          detail: {
+            type: 'transaction',
+            action: 'delete',
+            data: transaction
+          }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
       } catch (error) {
         console.error("Error removing transaction:", error);
         alert("Error removing transaction: " + error.message);

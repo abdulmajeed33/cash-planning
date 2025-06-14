@@ -361,12 +361,14 @@ investmentForm.addEventListener('submit', async function(e) {
 
     try {
         const investmentIdField = document.querySelector('input[name="investment-id"]');
+        let action = 'add';
         
         if (investmentIdField && investmentIdField.value) {
             // Update existing investment
             const id = parseInt(investmentIdField.value);
             await updateInvestment(id, formData);
             resetInvestmentForm();
+            action = 'update';
         } else {
             // Add new investment
             // Add date_added field for new investments
@@ -380,6 +382,17 @@ investmentForm.addEventListener('submit', async function(e) {
         }
         
         loadInvestments();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'investment',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing investment:', error);
         alert('Failed to save investment. Please try again.');
@@ -474,12 +487,14 @@ landForm.addEventListener('submit', async function(e) {
 
     try {
         const landIdField = document.querySelector('input[name="land-id"]');
+        let action = 'add';
         
         if (landIdField && landIdField.value) {
             // Update existing land
             const id = parseInt(landIdField.value);
             await updateLand(id, formData);
             resetLandForm();
+            action = 'update';
         } else {
             // Add new land
             // Add date_added field for new lands
@@ -493,6 +508,17 @@ landForm.addEventListener('submit', async function(e) {
         }
         
         loadLands();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'land',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing land:', error);
         alert('Failed to save land. Please try again.');
@@ -537,22 +563,28 @@ async function updateLand(id, formData) {
 document.addEventListener('click', async function(e) {
     if (e.target.classList.contains('delete-btn')) {
         const id = parseInt(e.target.dataset.id);
-        let storeName;
+        let storeName, dataType;
         
         // Determine which store to use based on the closest table ID
         const tableId = e.target.closest('table').id;
         if (tableId === 'investments-table') {
             storeName = STORES.investments;
+            dataType = 'investment';
         } else if (tableId === 'lands-table') {
             storeName = STORES.lands;
+            dataType = 'land';
         } else if (tableId === 'recurring-payments-table') {
             storeName = STORES.recurringPayments;
+            dataType = 'recurringPayment';
         } else if (tableId === 'nonrecurring-payments-table') {
             storeName = STORES.nonRecurringPayments;
+            dataType = 'nonRecurringPayment';
         } else if (tableId === 'invoices-table') {
             storeName = STORES.invoices;
+            dataType = 'invoice';
         } else if (tableId === 'suppliers-table') {
             storeName = STORES.supplierPayments;
+            dataType = 'supplierPayment';
         }
         
         if (storeName && confirm('Are you sure you want to delete this item?')) {
@@ -581,6 +613,17 @@ document.addEventListener('click', async function(e) {
                         window.investmentChart.reloadData();
                     }
                 }
+                
+                // Dispatch event to notify other components of data change
+                const dataChangeEvent = new CustomEvent('dataUpdated', {
+                    detail: {
+                        type: dataType,
+                        action: 'delete',
+                        data: { id: id }
+                    }
+                });
+                document.dispatchEvent(dataChangeEvent);
+                
             } catch (error) {
                 console.error('Error deleting item:', error);
                 alert('Failed to delete item. Please try again.');
@@ -835,12 +878,14 @@ recurringPaymentForm.addEventListener('submit', async function(e) {
 
     try {
         const paymentIdField = document.querySelector('input[name="recurring-payment-id"]');
+        let action = 'add';
         
         if (paymentIdField && paymentIdField.value) {
             // Update existing payment
             const id = parseInt(paymentIdField.value);
             await updateRecurringPayment(id, formData);
             resetRecurringPaymentForm();
+            action = 'update';
         } else {
             // Add new payment
             formData.date_added = new Date().toISOString();
@@ -853,6 +898,17 @@ recurringPaymentForm.addEventListener('submit', async function(e) {
         }
         
         loadRecurringPayments();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'recurringPayment',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing recurring payment:', error);
         alert('Failed to save recurring payment. Please try again.');
@@ -1028,12 +1084,14 @@ nonRecurringPaymentForm.addEventListener('submit', async function(e) {
 
     try {
         const paymentIdField = document.querySelector('input[name="nonrecurring-payment-id"]');
+        let action = 'add';
         
         if (paymentIdField && paymentIdField.value) {
             // Update existing payment
             const id = parseInt(paymentIdField.value);
             await updateNonRecurringPayment(id, formData);
             resetNonRecurringPaymentForm();
+            action = 'update';
         } else {
             // Add new payment
             formData.date_added = new Date().toISOString();
@@ -1046,6 +1104,17 @@ nonRecurringPaymentForm.addEventListener('submit', async function(e) {
         }
         
         loadNonRecurringPayments();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'nonRecurringPayment',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing non-recurring payment:', error);
         alert('Failed to save payment. Please try again.');
@@ -1223,12 +1292,14 @@ invoiceForm.addEventListener('submit', async function(e) {
 
     try {
         const invoiceIdField = document.querySelector('input[name="invoice-id"]');
+        let action = 'add';
         
         if (invoiceIdField && invoiceIdField.value) {
             // Update existing invoice
             const id = parseInt(invoiceIdField.value);
             await updateInvoice(id, formData);
             resetInvoiceForm();
+            action = 'update';
         } else {
             // Add new invoice
             formData.date_added = new Date().toISOString();
@@ -1241,6 +1312,17 @@ invoiceForm.addEventListener('submit', async function(e) {
         }
         
         loadInvoices();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'invoice',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing invoice:', error);
         alert('Failed to save invoice. Please try again.');
@@ -1419,12 +1501,14 @@ supplierForm.addEventListener('submit', async function(e) {
 
     try {
         const supplierIdField = document.querySelector('input[name="supplier-id"]');
+        let action = 'add';
         
         if (supplierIdField && supplierIdField.value) {
             // Update existing supplier payment
             const id = parseInt(supplierIdField.value);
             await updateSupplierPayment(id, formData);
             resetSupplierForm();
+            action = 'update';
         } else {
             // Add new supplier payment
             formData.date_added = new Date().toISOString();
@@ -1437,6 +1521,17 @@ supplierForm.addEventListener('submit', async function(e) {
         }
         
         loadSupplierPayments();
+        
+        // Dispatch event to notify other components of data change
+        const dataChangeEvent = new CustomEvent('dataUpdated', {
+            detail: {
+                type: 'supplierPayment',
+                action: action,
+                data: formData
+            }
+        });
+        document.dispatchEvent(dataChangeEvent);
+        
     } catch (error) {
         console.error('Error managing supplier payment:', error);
         alert('Failed to save supplier payment. Please try again.');
@@ -1602,3 +1697,11 @@ async function loadAllSettings() {
         return {};
     }
 }
+
+// Expose data loading functions globally for use by other components
+window.loadInvestments = loadInvestments;
+window.loadLands = loadLands;
+window.loadRecurringPayments = loadRecurringPayments;
+window.loadNonRecurringPayments = loadNonRecurringPayments;
+window.loadInvoices = loadInvoices;
+window.loadSupplierPayments = loadSupplierPayments;

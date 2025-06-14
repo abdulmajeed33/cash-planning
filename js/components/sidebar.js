@@ -10,10 +10,13 @@ class SidebarManager {
         this.overlay = null;
         this.navLinks = [];
         this.contentSections = [];
-        this.currentSection = 'data-entry';
+        this.currentSection = 'dashboard';
         this.isMobile = false;
+        this.isInitialized = false;
         
         this.init();
+        this.initializeEventListeners();
+        this.setupDataChangeListener();
     }
 
     /**
@@ -286,7 +289,8 @@ class SidebarManager {
                 this.initializeInvestmentChart();
                 break;
             case 'data-entry':
-                // Any data entry specific initialization
+                // Refresh data entry section data
+                this.refreshDataEntrySection();
                 break;
             case 'cash-flow-planner':
                 // Initialize cash flow planner when switching to this section
@@ -295,6 +299,42 @@ class SidebarManager {
             default:
                 console.warn(`Unknown section: ${sectionId}`);
         }
+    }
+
+    /**
+     * Refresh data entry section by reloading all data tables
+     */
+    refreshDataEntrySection() {
+        console.log('Refreshing data entry section...');
+        
+        // Small delay to ensure DOM is ready
+        setTimeout(async () => {
+            try {
+                // Refresh all data tables if the functions exist
+                if (typeof window.loadInvestments === 'function') {
+                    await window.loadInvestments();
+                }
+                if (typeof window.loadLands === 'function') {
+                    await window.loadLands();
+                }
+                if (typeof window.loadRecurringPayments === 'function') {
+                    await window.loadRecurringPayments();
+                }
+                if (typeof window.loadNonRecurringPayments === 'function') {
+                    await window.loadNonRecurringPayments();
+                }
+                if (typeof window.loadInvoices === 'function') {
+                    await window.loadInvoices();
+                }
+                if (typeof window.loadSupplierPayments === 'function') {
+                    await window.loadSupplierPayments();
+                }
+                
+                console.log('Data entry section refreshed successfully');
+            } catch (error) {
+                console.error('Error refreshing data entry section:', error);
+            }
+        }, 100);
     }
 
     /**
@@ -490,6 +530,19 @@ class SidebarManager {
         }
         
         console.log('Sidebar Manager destroyed');
+    }
+
+    setupDataChangeListener() {
+        // Listen for data change events from other components
+        document.addEventListener('dataUpdated', (event) => {
+            console.log('Data change detected:', event.detail);
+            
+            // If we're currently on the data entry section, refresh it
+            if (this.currentSection === 'data-entry') {
+                console.log('Refreshing data entry section due to data change');
+                this.refreshDataEntrySection();
+            }
+        });
     }
 }
 
