@@ -9,20 +9,11 @@ class ChartSidebarManager {
         this.sidebarClose = null;
         this.overlay = null;
         this.container = null;
-        this.resizeHandle = null;
         this.isOpen = false;
         this.isMobile = false;
         this.currentSection = 'data-entry'; // Default section
         this.isActive = false; // Only active in planning section
         this.justOpened = false; // Flag to prevent immediate closing
-        
-        // Resize functionality properties
-        this.isResizing = false;
-        this.startX = 0;
-        this.startWidth = 0;
-        this.minWidth = 250;
-        this.maxWidth = 600;
-        this.defaultWidth = 350;
         
         this.init();
     }
@@ -55,13 +46,11 @@ class ChartSidebarManager {
         this.sidebar = document.getElementById('chart-sidebar');
         this.sidebarClose = document.getElementById('chart-sidebar-close');
         this.container = document.getElementById('chart-controls-container');
-        this.resizeHandle = document.getElementById('chart-sidebar-resize-handle');
         
         console.log('Chart sidebar elements setup:');
         console.log('- Sidebar element:', this.sidebar ? 'Found' : 'NOT FOUND');
         console.log('- Close button:', this.sidebarClose ? 'Found' : 'NOT FOUND');
         console.log('- Container:', this.container ? 'Found' : 'NOT FOUND');
-        console.log('- Resize handle:', this.resizeHandle ? 'Found' : 'NOT FOUND');
         
         if (!this.sidebar) {
             console.error('Chart sidebar element not found');
@@ -87,22 +76,6 @@ class ChartSidebarManager {
                 this.openSidebar();
             });
         }
-
-        // Resize handle events
-        if (this.resizeHandle) {
-            this.resizeHandle.addEventListener('mousedown', (e) => {
-                this.startResize(e);
-            });
-        }
-
-        // Global mouse events for resizing
-        document.addEventListener('mousemove', (e) => {
-            this.handleResize(e);
-        });
-
-        document.addEventListener('mouseup', () => {
-            this.stopResize();
-        });
 
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
@@ -251,9 +224,6 @@ class ChartSidebarManager {
         if (this.sidebar) {
             this.sidebar.style.display = 'block';
             
-            // Load saved width before showing
-            this.loadSavedWidth();
-            
             // Automatically open the sidebar when entering planning section
             this.sidebar.classList.add('open');
             this.isOpen = true;
@@ -261,7 +231,7 @@ class ChartSidebarManager {
             
             // Add class to main content to prevent overlap
             const mainContent = document.querySelector('.main-content');
-            if (mainContent && !this.isMobile) {
+            if (mainContent) {
                 mainContent.classList.add('chart-sidebar-open');
             }
             
@@ -417,15 +387,12 @@ class ChartSidebarManager {
             return;
         }
         
-        // Load saved width before opening
-        this.loadSavedWidth();
-        
         this.isOpen = true;
         this.sidebar.classList.add('open');
         
         // Add class to main content to prevent overlap
         const mainContent = document.querySelector('.main-content');
-        if (mainContent && !this.isMobile) {
+        if (mainContent) {
             mainContent.classList.add('chart-sidebar-open');
         }
         
@@ -458,11 +425,6 @@ class ChartSidebarManager {
             mainContent.classList.remove('chart-sidebar-open');
         }
         
-        // Clear any inline width styles to allow proper CSS transition
-        if (this.sidebar) {
-            this.sidebar.style.width = '';
-        }
-        
         console.log('Chart sidebar closed');
     }
 
@@ -480,29 +442,20 @@ class ChartSidebarManager {
      * Handle clicks outside the sidebar to close it
      */
     handleClickOutside(e) {
-        // Only work when sidebar is active and open
-        if (!this.isActive || !this.isOpen) return;
-
-        // Prevent closing if just opened
-        if (this.justOpened) {
-            console.log('Chart sidebar click outside ignored - just opened');
+        // Don't close if sidebar is not open or not active
+        if (!this.isOpen || !this.isActive) {
             return;
         }
 
-        // Don't close if clicking on the chart options arrow indicator
+        // Don't close immediately after opening
+        if (this.justOpened) {
+            this.justOpened = false;
+            return;
+        }
+
+        // Don't close if clicking on the chart options arrow
         const chartOptionsArrow = document.getElementById('chart-options-arrow');
         if (chartOptionsArrow && (e.target === chartOptionsArrow || chartOptionsArrow.contains(e.target))) {
-            return;
-        }
-
-        // Don't close if clicking on the chart options button (legacy support)
-        const chartOptionsBtn = document.getElementById('chart-options-btn');
-        if (chartOptionsBtn && (e.target === chartOptionsBtn || chartOptionsBtn.contains(e.target))) {
-            return;
-        }
-
-        // Don't close if clicking on the resize handle
-        if (this.resizeHandle && (e.target === this.resizeHandle || this.resizeHandle.contains(e.target))) {
             return;
         }
 
@@ -517,7 +470,6 @@ class ChartSidebarManager {
         }
 
         // Close the sidebar if clicking outside
-        console.log('Chart sidebar closing due to click outside');
         this.closeSidebar();
     }
 
@@ -598,93 +550,17 @@ class ChartSidebarManager {
         }
 
         // Remove overlay
-        if (this.overlay) {
-            this.overlay.remove();
+        if (this.overlay && this.overlay.parentNode) {
+            this.overlay.parentNode.removeChild(this.overlay);
         }
 
-        // Reset body styles
-        document.body.style.overflow = '';
+        // Clear references
+        this.sidebar = null;
+        this.sidebarClose = null;
+        this.overlay = null;
+        this.container = null;
 
         console.log('Chart Sidebar Manager destroyed');
-    }
-
-    /**
-     * Start resizing the sidebar
-     */
-    startResize(e) {
-        if (!this.isActive || this.isMobile) return;
-        
-        this.isResizing = true;
-        this.startX = e.clientX;
-        this.startWidth = this.sidebar.offsetWidth;
-        
-        // Add resizing class to disable transitions
-        this.sidebar.classList.add('resizing');
-        
-        // Prevent text selection during resize
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'col-resize';
-        
-        e.preventDefault();
-        console.log('Started resizing sidebar');
-    }
-
-    /**
-     * Handle sidebar resize
-     */
-    handleResize(e) {
-        if (!this.isResizing) return;
-        
-        const deltaX = this.startX - e.clientX;
-        const newWidth = Math.max(this.minWidth, Math.min(this.maxWidth, this.startWidth + deltaX));
-        
-        // Update sidebar width
-        this.sidebar.style.width = newWidth + 'px';
-        
-        // Update CSS custom property for dynamic width
-        if (!this.isMobile && this.isOpen) {
-            document.documentElement.style.setProperty('--chart-sidebar-width', newWidth + 'px');
-        }
-        
-        e.preventDefault();
-    }
-
-    /**
-     * Stop resizing the sidebar
-     */
-    stopResize() {
-        if (!this.isResizing) return;
-        
-        this.isResizing = false;
-        
-        // Remove resizing class to re-enable transitions
-        this.sidebar.classList.remove('resizing');
-        
-        // Restore normal cursor and text selection
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
-        
-        // Save the new width to localStorage for persistence
-        const currentWidth = this.sidebar.offsetWidth;
-        localStorage.setItem('chartSidebarWidth', currentWidth.toString());
-        
-        console.log('Stopped resizing sidebar, new width:', currentWidth);
-    }
-
-    /**
-     * Load saved sidebar width from localStorage
-     */
-    loadSavedWidth() {
-        const savedWidth = localStorage.getItem('chartSidebarWidth');
-        if (savedWidth && !this.isMobile) {
-            const width = parseInt(savedWidth);
-            if (width >= this.minWidth && width <= this.maxWidth) {
-                this.sidebar.style.width = width + 'px';
-                // Update CSS custom property for consistent styling
-                document.documentElement.style.setProperty('--chart-sidebar-width', width + 'px');
-                console.log('Loaded saved sidebar width:', width);
-            }
-        }
     }
 }
 
