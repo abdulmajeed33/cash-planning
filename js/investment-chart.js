@@ -3584,10 +3584,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const deleteBtn = document.querySelector(".btn-delete");
     if (deleteBtn) deleteBtn.style.display = "none";
 
-    // Ensure amount field is readonly
+    // Make sure amount field is editable (remove readonly)
     const amountField = document.getElementById("transaction-amount");
     if (amountField) {
-      amountField.setAttribute("readonly", true);
+      amountField.removeAttribute("readonly");
+      amountField.value = ""; // Clear any existing value
     }
 
     // For new transactions, select first real investment option (not disabled options)
@@ -3707,6 +3708,43 @@ document.addEventListener("DOMContentLoaded", function () {
     `);
 
     console.log("Transaction modal HTML created, attaching event listeners");
+
+    // Add event listener for investment selection change to populate amount
+    document.getElementById("investment-name").addEventListener("change", function() {
+      const selectedOption = this.selectedOptions[0];
+      const amountField = document.getElementById("transaction-amount");
+      
+      if (selectedOption && selectedOption.value && amountField) {
+        const entityId = parseInt(selectedOption.value);
+        const entityType = selectedOption.dataset.type;
+        
+        // Find the selected investment/land in the data
+        const entity = investmentData.find(item => {
+          const idMatches = Number(item.id) === entityId;
+          const typeMatches = entityType === "investment" 
+            ? item.name && item.name.includes("Fund")
+            : item.name && item.name.includes("Land");
+          return idMatches && typeMatches;
+        });
+        
+        if (entity) {
+          // Get the cash investment/injection amount
+          const cashAmount = entityType === "investment" 
+            ? parseFloat(entity.cash_investment || entity.val6 || 0)
+            : parseFloat(entity.cash_injection || entity.val6 || 0);
+          
+          // Set the amount field to the cash investment amount
+          amountField.value = cashAmount > 0 ? cashAmount : "";
+          console.log(`Auto-populated amount: ${cashAmount} for ${entity.name}`);
+        } else {
+          // Clear amount if no valid entity found
+          amountField.value = "";
+        }
+      } else {
+        // Clear amount if no selection
+        if (amountField) amountField.value = "";
+      }
+    });
 
     // Add event listener for form submission
     document
